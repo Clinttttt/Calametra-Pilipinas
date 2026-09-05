@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <!-- References all four source assemblies: these tests assert on the
+       relationships BETWEEN them, so they must be able to load each one. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Calametra.Domain\Calametra.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Calametra.Application\Calametra.Application.csproj" />
+    <ProjectReference Include="..\..\src\Calametra.Infrastructure\Calametra.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Calametra.Api\Calametra.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+  </ItemGroup>
+
+</Project>

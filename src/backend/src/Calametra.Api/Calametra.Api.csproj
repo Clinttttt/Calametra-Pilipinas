@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Calametra.Api — how the application is exposed over HTTP.
+    Minimal APIs. Only Program.cs may name a Calametra.Infrastructure type
+    (design_3 §6 option (a)), enforced by an architecture test.
+
+    Deviation from the reference template: OpenAPI + Scalar replace Swashbuckle,
+    which is no longer part of the .NET 10 web templates.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Calametra.Application\Calametra.Application.csproj" />
+    <ProjectReference Include="..\Calametra.Infrastructure\Calametra.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Calametra.ArchitectureTests" />
+    <InternalsVisibleTo Include="Calametra.Api.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

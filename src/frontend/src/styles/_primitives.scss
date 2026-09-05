@@ -1,0 +1,366 @@
+/* ==========================================================================
+   PRIMITIVES
+   The shared visual vocabulary. Prefixed `c-` for component.
+
+   These exist so that consistency is the path of least resistance: a new
+   feature composes primitives instead of inventing another panel style.
+   If a component needs a look that is not here, the primitive gets extended
+   rather than the component growing a private variant.
+   ========================================================================== */
+
+/* ── MICRO LABEL ──────────────────────────────────────────────────────────
+   Small, uppercase, widely tracked. The main typographic signature of the
+   interface, and the reason panels can be dense without becoming shouty:
+   the label recedes and the value it introduces carries the emphasis. */
+.c-label {
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.c-label--accent {
+  color: var(--accent-dim);
+}
+
+/* ── INSTRUMENT FRAME ─────────────────────────────────────────────────────
+   A hairline box with tick marks at the corners, like the frame of a
+   scientific plot. Structure without weight: it delineates a region while
+   adding almost no visual mass, which matters when the map is underneath. */
+.c-frame {
+  position: relative;
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-md);
+}
+
+.c-frame::before,
+.c-frame::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  pointer-events: none;
+  border-color: var(--line-strong);
+  border-style: solid;
+  border-width: 0;
+}
+
+/* Top-left and bottom-right corner ticks. Two pseudo-elements give two
+   opposite corners, which is enough to read as a frame without the noise of
+   marking all four. */
+.c-frame::before {
+  top: -1px;
+  left: -1px;
+  border-top-width: 1px;
+  border-left-width: 1px;
+  border-top-left-radius: var(--radius-md);
+}
+
+.c-frame::after {
+  right: -1px;
+  bottom: -1px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+  border-bottom-right-radius: var(--radius-md);
+}
+
+/* ── PANEL ────────────────────────────────────────────────────────────────
+   A floating surface over the map. Blurred rather than opaque so the user
+   never loses the geographic context the panel is describing. */
+.c-panel {
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(130%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+.c-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.c-panel__body {
+  padding: var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── READOUT ──────────────────────────────────────────────────────────────
+   A label above a value. The workhorse of every detail panel. */
+.c-readout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.c-readout__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-lead);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+.c-readout__value--display {
+  font-size: var(--text-display);
+  letter-spacing: -0.02em;
+}
+
+.c-readout__unit {
+  font-size: var(--text-micro);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin-left: 0.2em;
+}
+
+/* ── SOURCE CHIP ──────────────────────────────────────────────────────────
+   Names the agency a value came from.
+
+   This primitive is required, not optional. The same earthquake is reported
+   as Ms 6.7 by PHIVOLCS and Mww 6.5 by USGS, so a magnitude shown without
+   its source and scale is not a fact the user can act on. Making attribution
+   a small, well-designed chip is what lets it appear everywhere without
+   turning every panel into a wall of citations. */
+.c-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 1.25rem;
+  padding: 0 var(--space-2);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background-color: var(--surface-400);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+}
+
+.c-chip--scale {
+  font-family: var(--font-mono);
+  text-transform: none;
+  letter-spacing: var(--tracking-normal);
+  color: var(--accent-dim);
+  border-color: var(--line-accent);
+  background-color: var(--accent-wash);
+}
+
+/* ── DISCLOSURE BADGE ─────────────────────────────────────────────────────
+   Flags a limitation in the data itself: a depth fixed to an agency default
+   rather than measured, magnitudes on scales that cannot be compared, a
+   catalogue incomplete below a threshold.
+
+   The caution hue appears nowhere else in the interface, so this badge is
+   unambiguous: it always means "there is a caveat here", never "danger" and
+   never "look at me". Roughly 28% of USGS CARAGA events carry an assigned
+   depth, so this badge is common by necessity and has to stay quiet. */
+.c-badge-caution {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 1.25rem;
+  padding: 0 var(--space-2);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  color: var(--caution);
+  background-color: var(--caution-wash);
+  border: 1px solid var(--caution-line);
+  border-radius: var(--radius-sm);
+  cursor: help;
+}
+
+/* ── SEGMENTED CONTROL ────────────────────────────────────────────────────
+   Used for camera modes and other small exclusive choices. A segmented
+   control shows every option at once, which suits a set of two to four
+   spatial views far better than a dropdown that hides them. */
+.c-segment {
+  display: inline-flex;
+  padding: 2px;
+  background-color: var(--surface-200);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-md);
+}
+
+.c-segment__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.c-segment__option:hover:not([aria-pressed='true']) {
+  color: var(--text-secondary);
+  background-color: var(--surface-400);
+}
+
+.c-segment__option[aria-pressed='true'] {
+  color: var(--accent);
+  background-color: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--line-accent);
+}
+
+/* ── ICON BUTTON ──────────────────────────────────────────────────────────*/
+.c-icon-button {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.c-icon-button:hover {
+  color: var(--text-primary);
+  background-color: var(--surface-400);
+}
+
+.c-icon-button[aria-pressed='true'] {
+  color: var(--accent);
+  background-color: var(--accent-wash);
+}
+
+/* ── TOOL RAIL ────────────────────────────────────────────────────────────
+   A vertical column of icon buttons that open panels, sitting over the map.
+
+   Deliberately low-contrast at rest. These are tools, not content: they should
+   be findable when looked for and invisible when not. Opacity carries that,
+   which is why the rail uses no fill until hovered. */
+.c-tool-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-md);
+}
+
+.c-tool {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  opacity: 0.65;
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out),
+    opacity var(--motion-quick) var(--ease-out);
+}
+
+.c-tool:hover {
+  color: var(--text-primary);
+  background-color: var(--surface-400);
+  opacity: 1;
+}
+
+.c-tool[aria-pressed='true'],
+.c-tool[aria-expanded='true'] {
+  color: var(--text-primary);
+  background-color: var(--accent-wash);
+  opacity: 1;
+}
+
+/* Active state marked with an inset edge, not a fill: the rail must not become
+   a block of colour over the map. */
+.c-tool[aria-pressed='true']::after,
+.c-tool[aria-expanded='true']::after {
+  content: '';
+  position: absolute;
+  inset-block: 25%;
+  left: -2px;
+  width: 2px;
+  background-color: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+.c-tool:disabled {
+  opacity: 0.25;
+}
+
+.c-tool:disabled:hover {
+  color: var(--text-tertiary);
+  background: none;
+  opacity: 0.25;
+}
+
+/* Separator inside a rail, for grouping unrelated tools. */
+.c-tool-rail__divider {
+  height: 1px;
+  margin: 2px 4px;
+  background-color: var(--line-faint);
+}
+
+/* ── DEPTH SWATCH ─────────────────────────────────────────────────────────
+   The legend key for the depth ramp. Depth is the one variable encoded as
+   hue, so its legend has to be present wherever depth-coloured marks are. */
+.c-depth-swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgb(0 0 0 / 35%);
+}
+
+.c-depth-swatch[data-band='shallow'] { background-color: var(--depth-shallow); }
+.c-depth-swatch[data-band='upper'] { background-color: var(--depth-upper); }
+.c-depth-swatch[data-band='mid'] { background-color: var(--depth-mid); }
+.c-depth-swatch[data-band='lower'] { background-color: var(--depth-lower); }
+.c-depth-swatch[data-band='deepest'] { background-color: var(--depth-deepest); }
+.c-depth-swatch[data-band='unknown'] { background-color: var(--depth-unknown); }
+
+/* ── TICKED RULE ──────────────────────────────────────────────────────────
+   A hairline divider carrying small tick marks, used above the timeline and
+   between panel sections. Reinforces the measuring-instrument language. */
+.c-rule {
+  height: 1px;
+  background-image: linear-gradient(
+    to right,
+    var(--line-subtle) 0,
+    var(--line-subtle) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+  background-size: 6px 1px;
+  background-repeat: repeat-x;
+}
+
+/* ── SCREEN-READER ONLY ───────────────────────────────────────────────────*/
+.u-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

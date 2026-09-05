@@ -1,0 +1,219 @@
+.detail {
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line-faint);
+  flex: none;
+}
+
+.detail__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.detail__state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  justify-content: center;
+}
+
+.detail__state--failed {
+  color: var(--caution);
+}
+
+/* ── HEADLINE ─────────────────────────────────────────────────────────────*/
+.detail__lead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.detail__magnitude {
+  font-size: var(--text-hero);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+/* The agency is part of the headline, not a footnote: a magnitude without its
+   source is not a fact the reader can use. */
+.detail__lead-source {
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+
+.detail__lead-source strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.detail__time {
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+}
+
+/* ── READINGS ─────────────────────────────────────────────────────────────*/
+.detail__readings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background-color: var(--surface-200);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-md);
+}
+
+/* The preferred reading is marked with an accent edge rather than a different
+   background, so the readings stay visually equal in weight — neither is more
+   correct than the other. */
+.reading--preferred {
+  border-left: 2px solid var(--accent-dim);
+}
+
+.reading__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.reading__agency {
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.reading__figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.reading__figures .c-readout__value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.reading__caveat {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  background-color: var(--caution-wash);
+  border-left: 2px solid var(--caution-line);
+  border-radius: var(--radius-sm);
+  max-inline-size: none;
+}
+
+.reading__caveat cal-icon {
+  margin-top: 1px;
+}
+
+.reading__meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+}
+
+.reading__meta dt {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.reading__meta dd {
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+.reading__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+}
+
+.reading__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--motion-quick) var(--ease-out);
+}
+
+.reading__action:hover {
+  color: var(--accent);
+}
+
+/* ── EXPLANATION ──────────────────────────────────────────────────────────
+   Uses the accent rather than the caution hue. This is not a caveat about data
+   quality — it is the scientific explanation, and the platform's purpose. */
+.detail__explanation {
+  padding: var(--space-3);
+  background-color: var(--accent-wash);
+  border: 1px solid var(--line-accent);
+  border-radius: var(--radius-md);
+}
+
+.detail__explanation h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.detail__explanation p {
+  font-size: var(--text-small);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+.detail__note {
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+@media (max-width: 48rem) {
+  /* Bottom sheet on mobile: the map keeps the top of the viewport, matching the
+     layout described in the project concept. */
+  .detail {
+    width: 100%;
+    max-height: 60vh;
+  }
+}

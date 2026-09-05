@@ -1,0 +1,146 @@
+<!--
+  Event detail panel.
+
+  Structure follows the argument it makes: the headline reading first, then every
+  agency's reading in full, then the explanation of why they differ. The
+  explanation sits *after* the readings rather than before, so a user reads the
+  disagreement and then finds it accounted for.
+-->
+<aside class="detail c-panel" role="complementary" aria-label="Earthquake detail">
+  <header class="detail__header">
+    <span class="c-label">Earthquake</span>
+    <button class="c-icon-button" type="button" (click)="close()">
+      <cal-icon name="close" [size]="16" label="Close detail panel" />
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="detail__state">
+      <span class="c-label">Loading readings…</span>
+    </div>
+  } @else if (failed()) {
+    <div class="detail__state detail__state--failed">
+      <cal-icon name="caution" [size]="16" />
+      <span class="c-label">Could not load this event</span>
+    </div>
+  } @else if (event(); as detail) {
+    <div class="detail__body">
+      <!-- Headline figure. Uses the preferred reading, and names its agency in the
+           same breath so the number is never presented as agency-neutral. -->
+      @if (preferred(); as lead) {
+        <section class="detail__lead">
+          <p class="detail__magnitude u-numeric">
+            {{ lead.magnitude?.display ?? 'Magnitude unknown' }}
+          </p>
+          <p class="detail__lead-source">
+            as reported by <strong>{{ lead.agency }}</strong>
+          </p>
+          <p class="detail__time">{{ formattedTime() }}</p>
+        </section>
+      }
+
+      <div class="c-rule"></div>
+
+      <!-- Every reading. Rendered as a list even when there is only one, so the
+           interface never implies that one reading is the whole picture. -->
+      <section class="detail__readings">
+        <h3 class="c-label">
+          {{ hasMultiple() ? observations().length + ' agency readings' : 'Reported by' }}
+        </h3>
+
+        @for (observation of observations(); track observation.id) {
+          <article class="reading" [class.reading--preferred]="observation.isPreferred">
+            <header class="reading__header">
+              <span class="reading__agency">{{ observation.agency }}</span>
+              @if (observation.isPreferred && hasMultiple()) {
+                <span class="c-chip">Shown on map</span>
+              }
+            </header>
+
+            <div class="reading__figures">
+              <div class="c-readout">
+                <span class="c-label">Magnitude</span>
+                @if (observation.magnitude; as magnitude) {
+                  <span class="c-readout__value">
+                    {{ magnitude.value.toFixed(1) }}
+                    <span class="c-chip c-chip--scale">{{ magnitude.scale }}</span>
+                  </span>
+                } @else {
+                  <span class="c-readout__value">—</span>
+                }
+              </div>
+
+              <div class="c-readout">
+                <span class="c-label">Depth</span>
+                <span class="c-readout__value">
+                  <span class="c-depth-swatch" [attr.data-band]="depthBand(observation)"></span>
+                  {{ observation.depth.kilometres !== null ? observation.depth.kilometres.toFixed(1) : '—' }}
+                  <span class="c-readout__unit">km</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Depth quality disclosure. 36% of the national archive carries an
+                 assigned depth, so this appears often and must stay quiet. -->
+            @if (!observation.depth.isMeasured) {
+              <p class="reading__caveat">
+                <cal-icon name="caution" [size]="13" />
+                <span>
+                  This depth was fixed to an agency default rather than measured, because it could
+                  not be resolved from the recording data. It is excluded from depth analysis.
+                </span>
+              </p>
+            }
+
+            <dl class="reading__meta">
+              <dt>Epicentre</dt>
+              <dd class="u-numeric">
+                {{ observation.latitude.toFixed(3) }}, {{ observation.longitude.toFixed(3) }}
+              </dd>
+              <dt>Identifier</dt>
+              <dd class="u-numeric">{{ observation.externalId }}</dd>
+            </dl>
+
+            <footer class="reading__actions">
+              <button class="reading__action" type="button" (click)="locate(observation)">
+                <cal-icon name="locate" [size]="14" />
+                <span>Locate this epicentre</span>
+              </button>
+              @if (observation.sourceUrl) {
+                <a
+                  class="reading__action"
+                  [href]="observation.sourceUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <cal-icon name="data-sources" [size]="14" />
+                  <span>Official record</span>
+                </a>
+              }
+            </footer>
+          </article>
+        }
+      </section>
+
+      <!-- The explanation. This is the point of the panel: two different numbers
+           for one earthquake, accounted for rather than reconciled away. -->
+      @if (detail.disagreementExplanation) {
+        <section class="detail__explanation">
+          <h3 class="c-label c-label--accent">
+            <cal-icon name="info" [size]="13" />
+            Why do these differ?
+          </h3>
+          <p>{{ detail.disagreementExplanation }}</p>
+        </section>
+      }
+
+      @if (epicentreSpreadKm(); as spreadKm) {
+        <p class="detail__note">
+          The reported epicentres are up to {{ spreadKm }} km apart. Locating an earthquake
+          depends on which stations recorded it and how the arrival times were modelled, so
+          agencies commonly differ by tens of kilometres.
+        </p>
+      }
+    </div>
+  }
+</aside>

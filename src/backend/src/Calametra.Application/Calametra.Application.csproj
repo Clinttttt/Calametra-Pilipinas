@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Calametra.Application — what the application does.
+    Feature slices, ports, pipeline behaviours, the dispatcher.
+
+    Takes a deliberate Microsoft.EntityFrameworkCore reference so handlers can
+    compose LINQ against IApplicationDbContext (design_3 §10, Option A).
+    It must NOT reference Npgsql or Calametra.Infrastructure — enforced by
+    Calametra.ArchitectureTests.Application_ShouldNotDependOnDatabaseProvider.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Calametra.Domain\Calametra.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

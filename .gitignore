@@ -1,0 +1,97 @@
+# ---------------------------------------------------------------------------
+# Documentation — excluded from the public repository by request.
+# ---------------------------------------------------------------------------
+/docs/
+/README.md
+/ROADMAP.md
+src/frontend/README.md
+
+# ---------------------------------------------------------------------------
+# Secrets and machine-local configuration.
+# Nothing here is committed. Local overrides live outside version control;
+# real credentials belong in user-secrets, environment variables or a
+# secret store.
+# ---------------------------------------------------------------------------
+*.env
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.Production.json
+appsettings.Staging.json
+secrets.json
+**/Properties/ServiceDependencies/
+*.pfx
+*.p12
+*.pem
+*.key
+*.keystore
+*.jks
+id_rsa
+id_ed25519
+.aws/
+.npmrc
+credentials
+*.publishsettings
+*.pubxml
+*.pubxml.user
+PublishProfiles/
+
+# ---------------------------------------------------------------------------
+# .NET build output
+# ---------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dll
+*.exe
+*.pdb
+*.cache
+*.tlog
+project.lock.json
+project.fragment.lock.json
+BenchmarkDotNet.Artifacts/
+TestResults/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+*.trx
+*.received.*
+
+# IDE
+.vs/
+.idea/
+*.swp
+*~
+
+# ---------------------------------------------------------------------------
+# Node / Angular
+# ---------------------------------------------------------------------------
+node_modules/
+/src/frontend/dist/
+/src/frontend/tmp/
+/src/frontend/out-tsc/
+/src/frontend/.angular/
+/src/frontend/coverage/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ---------------------------------------------------------------------------
+# OS noise
+# ---------------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

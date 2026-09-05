@@ -1,0 +1,311 @@
+/* Explore. Every overlay is positioned against the map, which is never cropped. */
+
+.explore {
+  position: absolute;
+  inset: 0;
+}
+
+.explore__canvas {
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-000);
+}
+
+/* ── CAMERA ───────────────────────────────────────────────────────────────
+   Named text buttons on a hairline group. Three spatial views are understood
+   faster read than inferred from icons alone, and the group needs no fill to
+   read as a set. */
+.explore__camera {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-map-overlay);
+  display: flex;
+  padding: 2px;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-md);
+}
+
+.camera__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.camera__option:hover {
+  color: var(--text-secondary);
+}
+
+/* Active state: white ink on a barely-there wash. No hue — the accent is
+   luminance, and hue belongs to the data. */
+.camera__option[aria-pressed='true'] {
+  color: var(--text-primary);
+  background-color: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--line-subtle);
+}
+
+/* ── ARCHIVE READOUT ──────────────────────────────────────────────────────
+   Typography rather than a card. The figure is the content; a panel around it
+   would only add weight. */
+.explore__readout {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  z-index: var(--z-map-overlay);
+  pointer-events: none;
+  /* Legible over both dark ocean and lit terrain without a background plate. */
+  text-shadow: 0 1px 12px rgb(0 0 0 / 90%), 0 0 3px rgb(0 0 0 / 80%);
+}
+
+.readout__figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.readout__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.readout__of {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-small);
+  color: var(--text-tertiary);
+}
+
+.readout__caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+/* The coverage floor travels with the count, so the number is never quoted
+   without the limit that qualifies it. */
+.readout__note {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line-subtle);
+  color: var(--text-tertiary);
+  text-transform: none;
+}
+
+.explore__readout--failed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--caution);
+  text-shadow: none;
+}
+
+/* ── TOOL RAIL ────────────────────────────────────────────────────────────*/
+.explore__tools {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: var(--z-panel);
+}
+
+/* ── LEGEND ───────────────────────────────────────────────────────────────*/
+.explore__legend {
+  position: absolute;
+  top: var(--space-3);
+  right: calc(var(--space-3) + 2.75rem);
+  z-index: var(--z-panel);
+  animation: panel-in var(--motion-quick) var(--ease-out);
+}
+
+/* ── DETAIL ───────────────────────────────────────────────────────────────*/
+.explore__detail {
+  position: absolute;
+  top: var(--space-3);
+  right: calc(var(--space-3) + 2.75rem);
+  bottom: var(--space-3);
+  z-index: var(--z-panel);
+  display: flex;
+  animation: panel-in var(--motion-considered) var(--ease-out);
+}
+
+/* Lifted clear of the drawer when the Time Machine is open. */
+.explore__detail--raised {
+  bottom: calc(var(--timeline-height) + var(--space-6));
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── DRAWER ───────────────────────────────────────────────────────────────
+   Full width across the bottom. Slides up rather than appearing, so the map does
+   not seem to jump when a tool opens. */
+.explore__drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-timeline);
+  background-color: var(--surface-glass-strong);
+  backdrop-filter: blur(24px) saturate(120%);
+  border-top: 1px solid var(--line-subtle);
+  animation: drawer-in var(--motion-considered) var(--ease-out);
+}
+
+/* Drawer close control. Sits in its own reserved gutter rather than floating over
+   the drawer's content, so it cannot collide with the extent readout. */
+.drawer__close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.25rem;
+  color: var(--text-tertiary);
+  border-left: 1px solid var(--line-faint);
+  border-bottom: 1px solid var(--line-faint);
+  border-bottom-left-radius: var(--radius-md);
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.drawer__close:hover {
+  color: var(--text-primary);
+  background-color: var(--surface-400);
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explore__drawer,
+  .explore__detail,
+  .explore__legend {
+    animation: none;
+  }
+}
+
+/* ── DISCLAIMER ───────────────────────────────────────────────────────────
+   Bottom-centre, set quietly. It must always be present and never compete. */
+.explore__disclaimer {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-map-overlay);
+  max-inline-size: 40rem;
+  margin: 0;
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
+  text-align: center;
+  color: var(--text-tertiary);
+  text-shadow: 0 1px 10px rgb(0 0 0 / 90%);
+  pointer-events: none;
+}
+
+/* Hidden while the drawer is up, which already occupies that edge. */
+.explore:has(.explore__drawer) .explore__disclaimer {
+  opacity: 0;
+}
+
+.explore__loading {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-map-overlay);
+  display: grid;
+  place-items: center;
+  background-color: var(--surface-000);
+}
+
+/* ── PRESENTATION ─────────────────────────────────────────────────────────
+   Chrome is already collapsed by the shell. Here the camera group and the readout
+   step back too, leaving the map, the tool rail and the disclaimer. */
+.explore--presenting .explore__camera {
+  opacity: 0.35;
+  transition: opacity var(--motion-quick) var(--ease-out);
+}
+
+.explore--presenting .explore__camera:hover {
+  opacity: 1;
+}
+
+@media (max-width: 48rem) {
+  .explore__camera {
+    top: var(--space-2);
+    left: var(--space-2);
+  }
+
+  /* Captions drop on narrow screens: three icons read fine, and the width is
+     better spent on the map. */
+  .camera__option span:not(.c-label) {
+    display: none;
+  }
+
+  .explore__tools {
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+
+  .explore__legend,
+  .explore__detail {
+    top: auto;
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    z-index: var(--z-modal);
+  }
+
+  .explore__readout {
+    bottom: var(--space-3);
+    left: var(--space-3);
+  }
+
+  .readout__value {
+    font-size: 1.375rem;
+  }
+
+  .explore__disclaimer {
+    display: none;
+  }
+}

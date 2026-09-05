@@ -1,0 +1,23 @@
+/* ==========================================================================
+   CALAMETRA — global stylesheet entry point.
+
+   Order matters: tokens define the vocabulary, base resets and styles
+   elements, primitives build the shared component vocabulary on top.
+   Components import nothing; they consume tokens and primitives.
+   ========================================================================== */
+
+/* Self-hosted variable fonts. Bundled rather than loaded from a CDN so the
+   interface renders identically offline — which matters for a platform whose
+   users may be looking it up during poor connectivity.
+   Namespaced because both files resolve to a module named `index`. */
+@use '@fontsource-variable/space-grotesk/index.css' as space-grotesk;
+@use '@fontsource-variable/jetbrains-mono/index.css' as jetbrains-mono;
+
+/* MapLibre's own stylesheet. Imported before ours so our tokens win where
+   they overlap; map control overrides live in _maplibre.scss. */
+@use 'maplibre-gl/dist/maplibre-gl.css';
+
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/primitives';
+@use 'styles/maplibre';

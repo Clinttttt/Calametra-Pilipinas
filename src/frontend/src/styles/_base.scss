@@ -1,0 +1,166 @@
+/* ==========================================================================
+   BASE — reset and typography.
+   Only element selectors here. Anything reusable and named belongs in
+   _primitives.scss; anything specific belongs to its component.
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  /* 1rem = 16px, so the token scale stays predictable. */
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--surface-000);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* The map owns scrolling; the shell itself must never scroll. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--text-title);
+}
+
+h2 {
+  font-size: var(--text-lead);
+}
+
+h3 {
+  font-size: var(--text-body);
+}
+
+p {
+  text-wrap: pretty;
+  max-inline-size: 62ch;
+}
+
+/* Every measured value uses tabular figures so columns of magnitudes and
+   depths align on the decimal point. Proportional digits in a scrolling
+   result list make numbers visibly jitter, which reads as imprecision. */
+[data-numeric],
+.u-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+  letter-spacing: var(--tracking-normal);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  color: var(--text-disabled);
+}
+
+a {
+  color: var(--accent);
+  text-decoration-color: var(--line-accent);
+  text-underline-offset: 0.2em;
+  transition: color var(--motion-quick) var(--ease-out);
+}
+
+a:hover {
+  color: var(--accent-bright);
+}
+
+svg {
+  display: block;
+  flex: none;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+/* ── FOCUS ────────────────────────────────────────────────────────────────
+   Focus is never removed, only redirected to :focus-visible so pointer users
+   are not shown rings they did not ask for. The accent hue earns its keep
+   here: this is the single most important interactive signal in the app. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── SCROLLBARS ───────────────────────────────────────────────────────────
+   Thin and neutral. A default-styled scrollbar is one of the fastest ways an
+   otherwise considered interface starts to look unfinished. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-500) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--surface-500);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-tertiary);
+}
+
+::selection {
+  background-color: var(--accent-glow);
+  color: var(--text-primary);
+}

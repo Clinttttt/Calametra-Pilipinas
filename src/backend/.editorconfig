@@ -1,0 +1,143 @@
+root = true
+
+# ==========================================================================
+# Calametra — solution-wide code style and analyzer policy.
+# Every analyzer suppression below carries its reason. Unexplained
+# suppressions are not permitted: if a rule is wrong for this codebase, say why.
+# ==========================================================================
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{cs,csx}]
+indent_size = 4
+max_line_length = 120
+
+[*.{csproj,props,targets,xml,config}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# --------------------------------------------------------------------------
+# C# language conventions
+# --------------------------------------------------------------------------
+[*.cs]
+csharp_using_directive_placement = outside_namespace:error
+csharp_style_namespace_declarations = file_scoped:error
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+csharp_prefer_braces = true:error
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_prefer_primary_constructors = false:suggestion
+
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_prefer_not_pattern = true:suggestion
+csharp_style_throw_expression = true:suggestion
+csharp_style_prefer_readonly_struct = true:suggestion
+
+dotnet_style_readonly_field = true:error
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:error
+dotnet_style_predefined_type_for_locals_parameters_members = true:error
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+
+# Naming: interfaces begin with I
+dotnet_naming_rule.interfaces_start_with_i.severity = error
+dotnet_naming_rule.interfaces_start_with_i.symbols = interface_symbols
+dotnet_naming_rule.interfaces_start_with_i.style = prefixed_with_i
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_style.prefixed_with_i.required_prefix = I
+dotnet_naming_style.prefixed_with_i.capitalization = pascal_case
+
+# Naming: private fields begin with underscore
+dotnet_naming_rule.private_fields_underscore.severity = error
+dotnet_naming_rule.private_fields_underscore.symbols = private_field_symbols
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_symbols.private_field_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_field_symbols.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+# --------------------------------------------------------------------------
+# Justified analyzer suppressions
+# --------------------------------------------------------------------------
+
+# CA1716 — "Rename type Error, it conflicts with a reserved keyword."
+# The rule protects consumers written in other CLR languages, chiefly VB.NET.
+# Calametra is C# end to end and exposes no public library surface. The
+# reference architecture names this type Error, and Domain.Abstractions.Error
+# is referenced in roughly every slice, so a rename would cost clarity to
+# satisfy a constraint that does not apply.
+dotnet_diagnostic.CA1716.severity = none
+
+# CA1000 — "Do not declare static members on generic types."
+# Result<T>.Success(value) and Result<T>.Failure(error) are the entire ergonomic
+# point of the Result pattern; the alternative is a non-generic factory that
+# cannot infer T. PaginatedList<T>.Create has the same shape. This rule predates
+# the pattern's widespread use in .NET.
+dotnet_diagnostic.CA1000.severity = none
+
+# CA1062 — "Validate arguments of public methods."
+# Argument validation happens in FluentValidation validators at the pipeline
+# boundary, before a handler ever runs. Re-checking every parameter inside
+# domain factories would duplicate that layer without adding safety.
+dotnet_diagnostic.CA1062.severity = none
+
+# CA2007 — "Do not directly await a Task without ConfigureAwait."
+# There is no synchronisation context in ASP.NET Core or a Worker host, so
+# ConfigureAwait(false) is noise in this codebase.
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1861 — "Prefer static readonly fields over constant array arguments."
+# Fires on inline arrays passed to test data attributes, where inlining is
+# clearer than hoisting to a field.
+dotnet_diagnostic.CA1861.severity = suggestion
+
+# CA1711 — "Do not use reserved type-name suffixes."
+# Fires on RequestHandlerDelegate, which is a delegate. The rule exists to stop
+# types being named as though they were something they are not; here the suffix
+# is accurate and matches the vocabulary every .NET mediator implementation uses.
+dotnet_diagnostic.CA1711.severity = none
+
+# --------------------------------------------------------------------------
+# EF Core migrations are generated code.
+# They are not hand-maintained and their shape is decided by the EF tooling, so
+# holding them to this project's style rules produces failures that can only be
+# fixed by editing a file that will be regenerated. Marked as generated so the
+# analyzers skip them entirely.
+# --------------------------------------------------------------------------
+[**/Migrations/*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.IDE0300.severity = none
+dotnet_diagnostic.CA1861.severity = none
+
+# --------------------------------------------------------------------------
+# Test projects: relax rules that only make sense for shipped code.
+# --------------------------------------------------------------------------
+[tests/**/*.cs]
+# CA1707 — underscores in member names. Test names read as sentences:
+# Depth_ShouldBeOperatorAssigned_WhenReportedAtExactlyTenKilometres.
+dotnet_diagnostic.CA1707.severity = none
+# CA2234 / CA1054 — string URIs are how HttpClient test helpers are called.
+dotnet_diagnostic.CA2234.severity = none
+dotnet_diagnostic.CA1054.severity = none

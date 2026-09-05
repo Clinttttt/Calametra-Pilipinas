@@ -1,0 +1,150 @@
+<!--
+  Explore.
+
+  The map holds the whole viewport. Everything else floats over it, and nothing is
+  permanently on screen that the user has not asked for.
+-->
+<div class="explore" [class.explore--presenting]="presenting()">
+  <div
+    #canvas
+    class="explore__canvas"
+    role="application"
+    aria-label="Interactive map of the Philippines"
+  ></div>
+
+  <!-- Camera perspective. Text buttons on a hairline group rather than an icon
+       cluster: three named views are clearer read than guessed. -->
+  <div class="explore__camera" role="group" aria-label="Camera perspective">
+    @for (option of cameraOptions; track option.mode) {
+      <button
+        class="camera__option"
+        type="button"
+        [attr.aria-pressed]="cameraMode() === option.mode"
+        (click)="setCamera(option)"
+      >
+        <cal-icon [name]="option.icon" [size]="15" />
+        <span>{{ option.label }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Archive readout. States the catalogue and its floor, because a bare count
+       would invite "this is every earthquake in the Philippines", which is false. -->
+  @if (eventCount(); as count) {
+    <div class="explore__readout">
+      <p class="readout__figure">
+        <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
+        @if (filtered()) {
+          <span class="readout__of">of {{ count.toLocaleString() }}</span>
+        }
+      </p>
+      <p class="readout__caption">
+        Earthquakes · USGS catalogue
+        <span class="readout__note">M4.0+ · 1901–2026</span>
+      </p>
+    </div>
+  } @else if (loadFailed()) {
+    <div class="explore__readout explore__readout--failed">
+      <cal-icon name="caution" [size]="15" />
+      <span>Archive unavailable</span>
+    </div>
+  }
+
+  <!-- Tool rail. Low opacity at rest: findable when looked for, invisible when not. -->
+  <div class="explore__tools">
+    <div class="c-tool-rail">
+      <button
+        class="c-tool"
+        type="button"
+        [attr.aria-expanded]="openTool() === 'timeline'"
+        title="Time Machine"
+        (click)="toggleTool('timeline')"
+      >
+        <cal-icon name="time" [size]="19" label="Time Machine" />
+      </button>
+
+      <button
+        class="c-tool"
+        type="button"
+        [attr.aria-expanded]="openTool() === 'legend'"
+        title="Legend"
+        (click)="toggleTool('legend')"
+      >
+        <cal-icon name="legend" [size]="19" label="Legend" />
+      </button>
+
+      <button
+        class="c-tool"
+        type="button"
+        title="Fit to the Philippines"
+        (click)="resetView()"
+      >
+        <cal-icon name="explore" [size]="19" label="Fit to the Philippines" />
+      </button>
+
+      <div class="c-tool-rail__divider"></div>
+
+      <button
+        class="c-tool"
+        type="button"
+        [attr.aria-pressed]="presenting()"
+        [title]="presenting() ? 'Leave presentation view' : 'Presentation view'"
+        (click)="togglePresentation()"
+      >
+        <cal-icon
+          [name]="presenting() ? 'collapse' : 'expand'"
+          [size]="19"
+          [label]="presenting() ? 'Leave presentation view' : 'Presentation view'"
+        />
+      </button>
+    </div>
+  </div>
+
+  <!-- Legend panel. Opens from the rail rather than sitting on the map. -->
+  @if (openTool() === 'legend') {
+    <div class="explore__legend">
+      <cal-map-legend (closed)="closeTool()" />
+    </div>
+  }
+
+  <!-- Detail panel for a selected event. -->
+  @if (selectedEventId()) {
+    <div class="explore__detail" [class.explore__detail--raised]="openTool() === 'timeline'">
+      <cal-event-detail
+        [event]="selectedDetail()"
+        [loading]="detailLoading()"
+        [failed]="detailFailed()"
+        (closed)="clearSelection()"
+        (locateRequested)="locateObservation($event)"
+      />
+    </div>
+  }
+
+  <!-- Time Machine drawer. Mounted only while open, so the map keeps the full
+       viewport the rest of the time. -->
+  @if (openTool() === 'timeline' && activity(); as activityData) {
+    <div class="explore__drawer">
+      <button class="drawer__close" type="button" (click)="closeTool()">
+        <cal-icon name="chevron-down" [size]="16" label="Close the Time Machine" />
+      </button>
+      <cal-timeline
+        [buckets]="activityData.buckets"
+        [totalCount]="activityData.totalCount"
+        (instantChanged)="onInstantChanged($event)"
+        (magnitudeFloorChanged)="onMagnitudeFloorChanged($event)"
+      />
+    </div>
+  }
+
+  <!-- Scientific boundary. Stated in the interface rather than buried in a footer:
+       the platform must never be mistaken for a warning authority. -->
+  <p class="explore__disclaimer">
+    Educational and research tool. Official warnings come from PHIVOLCS, PAGASA and NDRRMC.
+  </p>
+
+  @if (!ready()) {
+    <div class="explore__loading">
+      <span class="c-label">Preparing the map</span>
+    </div>
+  }
+</div>

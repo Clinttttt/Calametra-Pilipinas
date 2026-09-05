@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Calametra.Api/Calametra.Api.csproj" />
+    <Project Path="src/Calametra.Application/Calametra.Application.csproj" />
+    <Project Path="src/Calametra.Domain/Calametra.Domain.csproj" />
+    <Project Path="src/Calametra.Infrastructure/Calametra.Infrastructure.csproj" />
+    <Project Path="src/Calametra.Ingestion/Calametra.Ingestion.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Calametra.Api.IntegrationTests/Calametra.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Calametra.Application.UnitTests/Calametra.Application.UnitTests.csproj" />
+    <Project Path="tests/Calametra.ArchitectureTests/Calametra.ArchitectureTests.csproj" />
+    <Project Path="tests/Calametra.Domain.UnitTests/Calametra.Domain.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,134 @@
+<!--
+  Time Machine.
+
+  Three rows: the year distribution, the scrubber, then controls. The scrubber sits
+  directly beneath the distribution so the playhead reads as a position within it
+  rather than as an unrelated slider.
+-->
+<section class="timeline" aria-label="Time Machine">
+  <header class="timeline__header">
+    <div class="timeline__title">
+      <span class="timeline__label">Showing</span>
+      <span class="timeline__value">{{ currentLabel() }}</span>
+    </div>
+
+    <div class="timeline__extent">
+      <span>{{ firstYear() }}</span>
+      <span class="timeline__extent-dash"></span>
+      <span>{{ lastYear() }}</span>
+    </div>
+  </header>
+
+  <!-- Year distribution. Bars are buttons: a spike is the most likely thing a user
+       wants to reach, so it should be directly clickable. -->
+  <div class="timeline__chart">
+    <div class="timeline__bars" role="group" aria-label="Events by year">
+      @for (bar of bars(); track bar.year; let i = $index) {
+        <button
+          class="bar"
+          type="button"
+          [class.bar--past]="bar.isPast"
+          [class.bar--significant]="bar.isSignificant"
+          [style.height.%]="bar.heightPercent"
+          [attr.aria-label]="
+            bar.year + ': ' + bar.count + ' events' +
+            (bar.maxMagnitude ? ', largest M' + bar.maxMagnitude.toFixed(1) : '')
+          "
+          [title]="
+            bar.year + '  ·  ' + bar.count + ' events' +
+            (bar.maxMagnitude ? '  ·  largest M' + bar.maxMagnitude.toFixed(1) : '')
+          "
+          (click)="jumpToYear(i)"
+        ></button>
+      }
+    </div>
+
+    <!-- One label per decade. A label per year is what made this unreadable. -->
+    <div class="timeline__axis" aria-hidden="true">
+      @for (decade of decades(); track decade.year) {
+        <span class="timeline__decade" [style.left.%]="decade.offsetPercent">{{ decade.year }}</span>
+      }
+    </div>
+  </div>
+
+  <input
+    class="timeline__scrubber"
+    type="range"
+    min="0"
+    max="1000"
+    step="1"
+    [value]="position() * 1000"
+    [attr.aria-label]="'Timeline position: ' + currentLabel()"
+    [attr.aria-valuetext]="currentLabel()"
+    (input)="onScrub($event)"
+  />
+
+  <footer class="timeline__controls">
+    <div class="timeline__transport">
+      <button class="c-icon-button" type="button" title="Back one year" (click)="step(-1)">
+        <cal-icon name="step-back" [size]="15" label="Back one year" />
+      </button>
+
+      <button
+        class="timeline__play"
+        type="button"
+        [attr.aria-label]="playing() ? 'Pause' : 'Play'"
+        (click)="togglePlay()"
+      >
+        <cal-icon [name]="playing() ? 'pause' : 'play'" [size]="16" />
+      </button>
+
+      <button class="c-icon-button" type="button" title="Forward one year" (click)="step(1)">
+        <cal-icon name="step-forward" [size]="15" label="Forward one year" />
+      </button>
+    </div>
+
+    <div class="timeline__speed" role="group" aria-label="Playback speed">
+      @for (option of speeds; track option) {
+        <button
+          class="timeline__speed-option"
+          type="button"
+          [attr.aria-pressed]="speed() === option"
+          [title]="option + ' years per second'"
+          (click)="setSpeed(option)"
+        >
+          {{ option }}×
+        </button>
+      }
+    </div>
+
+    <div class="timeline__spacer"></div>
+
+    <!-- Era-comparable view. Turns the catalogue's largest limitation into
+         something the user can act on. -->
+    <button
+      class="timeline__option"
+      type="button"
+      [attr.aria-pressed]="comparableOnly()"
+      title="Restrict to magnitude 6.0 and above — the only part of the record consistent from 1901 to today"
+      (click)="toggleComparable()"
+    >
+      M6.0+ only
+    </button>
+
+    <button
+      class="timeline__option"
+      type="button"
+      [disabled]="showingAll()"
+      (click)="showEverything()"
+    >
+      Reset
+    </button>
+  </footer>
+
+  @if (inSparseEra() && !comparableOnly()) {
+    <p class="timeline__notice">
+      <cal-icon name="caution" [size]="14" />
+      <span>
+        Before about 1970 the catalogue records only larger earthquakes. There were far fewer
+        seismometers, not far fewer earthquakes — use <strong>M6.0+ only</strong> to compare
+        this era with the present.
+      </span>
+    </p>
+  }
+</section>

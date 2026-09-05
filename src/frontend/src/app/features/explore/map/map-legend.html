@@ -1,0 +1,63 @@
+<aside class="legend" aria-label="Map legend">
+  <header class="legend__header">
+    <span class="c-label">Legend</span>
+    <button class="c-icon-button" type="button" (click)="close()">
+      <cal-icon name="close" [size]="14" label="Close the legend" />
+    </button>
+  </header>
+
+  <div class="legend__body">
+    <section>
+      <h3 class="c-label">Depth · colour</h3>
+      <ul class="legend__bands">
+        @for (band of depthBands; track band.id) {
+          <li>
+            <span class="c-depth-swatch" [attr.data-band]="band.id"></span>
+            <span class="legend__label u-numeric">{{ band.label }}</span>
+          </li>
+        }
+      </ul>
+
+      <!-- Separated by a hairline so "not measured" reads as a different kind of
+           statement from the bands above it, not as a sixth band. -->
+      <ul class="legend__bands legend__bands--separated">
+        <li>
+          <span
+            class="c-depth-swatch"
+            data-band="unknown"
+            [style.background-color]="unmeasuredColour"
+          ></span>
+          <span class="legend__label">Not measured</span>
+        </li>
+      </ul>
+
+      <p class="legend__note">
+        Agencies report a fixed default depth when it cannot be resolved from the recording
+        data. Those events are shown in grey and excluded from depth analysis.
+      </p>
+    </section>
+
+    <div class="c-rule"></div>
+
+    <section>
+      <h3 class="c-label">Magnitude · size</h3>
+      <ul class="legend__sizes">
+        @for (magnitude of magnitudeStops; track magnitude) {
+          <li>
+            <span
+              class="legend__dot"
+              [style.width.px]="diameter(magnitude)"
+              [style.height.px]="diameter(magnitude)"
+            ></span>
+            <span class="legend__label u-numeric">M{{ magnitude }}</span>
+          </li>
+        }
+      </ul>
+
+      <p class="legend__note">
+        Scaled by energy release, not linearly. Magnitude is always shown with its scale:
+        values on different scales are not directly comparable.
+      </p>
+    </section>
+  </div>
+</aside>

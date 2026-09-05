@@ -1,0 +1,73 @@
+.legend {
+  width: 15.5rem;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.legend__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.legend__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.legend__body h3 {
+  margin-bottom: var(--space-2);
+}
+
+.legend__bands,
+.legend__sizes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* "Not measured" is separated by a hairline so it reads as a different kind of
+   statement from the depth bands, not as a sixth band. */
+.legend__bands--separated {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+}
+
+.legend__bands li,
+.legend__sizes li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legend__sizes li {
+  min-height: 1.5rem;
+}
+
+.legend__label {
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+.legend__dot {
+  flex: none;
+  background-color: var(--text-tertiary);
+  border-radius: var(--radius-pill);
+}
+
+.legend__note {
+  margin-top: var(--space-2);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}

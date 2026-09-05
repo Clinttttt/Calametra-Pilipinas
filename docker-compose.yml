@@ -1,0 +1,59 @@
+services:
+  # PostgreSQL with PostGIS. The postgis image is used rather than plain postgres
+  # because every spatial feature in Calametra depends on the extension, and the
+  # initial migration creates it.
+  database:
+    image: postgis/postgis:17-3.5
+    container_name: calametra-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: calametra
+      POSTGRES_USER: calametra
+      # Local development only. Production credentials come from the environment
+      # or a secret store, never from this file.
+      POSTGRES_PASSWORD: calametra_dev
+      # Speeds up initdb; safe because this volume is disposable dev data.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      # Host port 5433, not 5432.
+      #
+      # A natively installed PostgreSQL service commonly already owns 5432 on a
+      # development machine. When it does, Docker's port mapping loses the race
+      # and localhost:5432 silently reaches the native server instead of this
+      # container. The failure is genuinely misleading: if the native server also
+      # happens to have a matching role, the error is
+      # "28P01 password authentication failed" rather than anything suggesting the
+      # wrong server answered.
+      #
+      # Binding 5433 sidesteps the conflict entirely and leaves any existing local
+      # PostgreSQL installation untouched.
+      - "5433:5432"
+    volumes:
+      - calametra-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calametra -d calametra"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # pgAdmin, for inspecting spatial data during development.
+  # Optional: start with `docker compose --profile tools up -d`.
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: calametra-pgadmin
+    profiles: ["tools"]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@calametra.local
+      PGADMIN_DEFAULT_PASSWORD: calametra_dev
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  calametra-pgdata:
+    name: calametra-pgdata

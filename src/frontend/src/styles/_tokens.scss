@@ -1,0 +1,231 @@
+/* ==========================================================================
+   CALAMETRA DESIGN TOKENS
+   The single source of truth. No component may hard-code a colour, a spacing
+   value, a radius, or a duration. If a value is needed and not here, it gets
+   added here first.
+
+   ── THE ONE RULE THAT SHAPES EVERYTHING ─────────────────────────────────
+   Colour is a data channel, not decoration.
+
+   This is a geospatial hazard platform. Hue has to carry meaning: earthquake
+   depth, data quality, magnitude. Every hue spent on a button or a panel is a
+   hue that can no longer be read as information, and the map — which is the
+   product — gets harder to interpret.
+
+   So the interface chrome is deliberately near-monochrome: one cool neutral
+   ramp, one accent used only to signal interactivity, one caution hue used
+   only to disclose data limitations. Saturated colour belongs to the data.
+
+   The consequence is that Calametra looks restrained next to a typical
+   dashboard, and its map reads better than one. That trade is the design.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ── SURFACES ───────────────────────────────────────────────────────────
+     A single cool neutral ramp with a faint blue-cyan cast, so terrain and
+     bathymetry sit naturally against the chrome rather than fighting it.
+     Numbered by elevation: 000 recedes furthest, 500 sits closest.        */
+  --surface-000: #05080c; /* map void, deepest ocean, page ground   */
+  --surface-100: #090e14; /* app shell                               */
+  --surface-200: #0e141d; /* panels                                  */
+  --surface-300: #141c27; /* raised panels, popovers                 */
+  --surface-400: #1c2634; /* controls at rest                        */
+  --surface-500: #263243; /* controls hovered                        */
+
+  /* Translucent overlays for panels that float above the map. Blurred, so
+     the map stays legible underneath and the panel never feels bolted on. */
+  --surface-glass: rgb(9 14 20 / 82%);
+  --surface-glass-strong: rgb(5 8 12 / 92%);
+  --surface-scrim: rgb(3 5 8 / 60%);
+
+  /* ── HAIRLINES ──────────────────────────────────────────────────────────
+     Structure is drawn with 1px hairlines rather than shadows or fills.
+     This is what gives the interface its instrument-panel character.      */
+  --line-faint: rgb(255 255 255 / 6%);
+  --line-subtle: rgb(255 255 255 / 10%);
+  --line-strong: rgb(255 255 255 / 18%);
+  --line-accent: rgb(255 255 255 / 30%);
+
+  /* ── TEXT ───────────────────────────────────────────────────────────────
+     Four steps only. More than four and hierarchy stops being readable.   */
+  --text-primary: #e8eef6; /* values, headings                        */
+  --text-secondary: #9dabbd; /* labels, supporting copy               */
+  --text-tertiary: #66748a; /* metadata, units, timestamps            */
+  --text-disabled: #3d4757;
+  --text-on-accent: #04120f;
+
+  /* ── ACCENT — INTERACTION ONLY ──────────────────────────────────────────
+     Interaction is signalled by LUMINANCE, not hue.
+
+     The accent is white. Not a stylistic preference: this platform will carry
+     earthquakes, cyclones, floods, volcanic and landslide data simultaneously,
+     and each hazard needs its own colour identity. Any hue spent on the
+     interface is a hue that becomes ambiguous the moment a hazard claims it.
+     White cannot collide with anything, reads as editorial rather than
+     "dashboard", and holds up in a projected defence room.
+
+     Permitted uses: focus rings, active states, the current timeline position.
+     Forbidden: decorative fills, panel backgrounds, chart series, glows. */
+  --accent: #ffffff;
+  --accent-bright: #ffffff;
+  --accent-dim: #b9c4d0;
+  --accent-wash: rgb(255 255 255 / 8%);
+  --accent-glow: rgb(255 255 255 / 16%);
+
+  /* ── CAUTION — DATA DISCLOSURE ONLY ─────────────────────────────────────
+     Reserved for telling the user something about the data's limits: a
+     depth that was assigned rather than measured, magnitudes that cannot be
+     compared, a catalogue that is incomplete below a threshold.
+     This hue means "read the caveat". It never means "danger" and is never
+     used for emphasis.                                                    */
+  --caution: #d9a53b;
+  --caution-wash: rgb(217 165 59 / 14%);
+  --caution-line: rgb(217 165 59 / 40%);
+
+  /* ── DEPTH RAMP — DATA ENCODING ─────────────────────────────────────────
+     Earthquake depth is encoded as HUE and magnitude as SIZE. That split is
+     the standard seismological convention, and adopting it means the two
+     variables never compete for the same visual channel — which is what
+     makes the map and the cross-section readable at the same time.
+
+     Ramp follows the familiar shallow-warm to deep-cool progression, so it
+     is immediately legible to anyone who has read a seismicity map.       */
+  --depth-shallow: #e8563f; /* 0–30 km    crustal                     */
+  --depth-upper: #e8913c; /* 30–70 km   upper slab                    */
+  --depth-mid: #ddc85c; /* 70–150 km  intermediate                    */
+  --depth-lower: #5fb9a8; /* 150–300 km deep                          */
+  --depth-deepest: #5a7fc0; /* 300 km+   deepest slab                 */
+  --depth-unknown: #4a5464; /* not measured — deliberately inert      */
+
+  /* ── STATE ──────────────────────────────────────────────────────────────
+     Only for genuine system state, never for data. Kept desaturated so a
+     transient toast can never out-shout a magnitude 7 marker.            */
+  --state-error: #d4574e;
+  --state-error-wash: rgb(212 87 78 / 14%);
+
+  /* ── BRAND ──────────────────────────────────────────────────────────────
+     Taken from the Calametra mark: the archipelago drawn as topographic
+     contours in teal over deep navy, with an orange epicentre pulse.
+
+     These belong to the mark and to nothing else. They are deliberately NOT
+     the interface accent — the mark's orange sits close to the shallow end of
+     the depth ramp, so promoting it to chrome would put brand colour in
+     competition with data. The mark keeps its identity where it appears; the
+     interface stays white and dark around it. */
+  --brand-navy: #123a52;
+  --brand-teal: #17a2b8;
+  --brand-teal-deep: #1a7a8c;
+  --brand-pulse: #ff6b35;
+
+  /* ── HAZARD IDENTITY ────────────────────────────────────────────────────
+     One hue per hazard family, claimed here so the set stays coherent as the
+     platform grows past earthquakes into cyclones, floods, volcanic and
+     landslide data. Used for lens selection and layer identity only — never
+     for interface chrome. */
+  --hazard-seismic: #e8913c;
+  --hazard-cyclone: #5b9bd5;
+  --hazard-flood: #4f8fa8;
+  --hazard-volcanic: #cf5a3f;
+  --hazard-landslide: #a9803f;
+
+  /* ── SPACING — 4px base ─────────────────────────────────────────────────
+     Named by step, not by pixel, so the rhythm can be retuned globally.  */
+  --space-1: 0.25rem; /*  4px */
+  --space-2: 0.5rem; /*   8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /*    16px */
+  --space-5: 1.5rem; /*  24px */
+  --space-6: 2rem; /*    32px */
+  --space-7: 3rem; /*    48px */
+  --space-8: 4rem; /*    64px */
+
+  /* ── RADII ──────────────────────────────────────────────────────────────
+     Tight. Large radii read as consumer-app friendly; this is an instrument
+     and its corners should feel machined rather than soft.               */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-pill: 999px;
+
+  /* ── ELEVATION ──────────────────────────────────────────────────────────
+     Used sparingly. Structure comes from hairlines; shadow only separates
+     a floating surface from the map beneath it.                          */
+  --shadow-panel: 0 8px 32px rgb(0 0 0 / 48%);
+  --shadow-popover: 0 4px 20px rgb(0 0 0 / 56%);
+  --shadow-focus: 0 0 0 1px var(--surface-000), 0 0 0 3px var(--accent-glow);
+
+  /* ── MOTION ─────────────────────────────────────────────────────────────
+     Two speeds for interface feedback and one long easing for map camera
+     moves. Camera transitions are slow on purpose: the user has to keep
+     their geographic bearings while the view changes, and an instant jump
+     loses them.                                                          */
+  --motion-instant: 90ms;
+  --motion-quick: 180ms;
+  --motion-considered: 320ms;
+  --motion-camera: 1400ms;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Slight overshoot, for a control settling into an active state. */
+  --ease-settle: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── TYPOGRAPHY ─────────────────────────────────────────────────────────
+     Two families. Space Grotesk for the interface: geometric, technical,
+     and uncommon enough that the product does not read as a template.
+     JetBrains Mono for every measured value, because magnitudes and depths
+     in a scrolling list must align on the decimal point.                 */
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  /* Type scale, 1.25 ratio from a 14px base. Deliberately compact: this is
+     a dense data interface, not a marketing page.                        */
+  --text-micro: 0.625rem; /* 10px — axis ticks, unit suffixes         */
+  --text-label: 0.6875rem; /* 11px — tracked uppercase labels         */
+  --text-small: 0.8125rem; /* 13px — secondary copy                   */
+  --text-body: 0.875rem; /*  14px — base                              */
+  --text-lead: 1rem; /*      16px — panel titles                      */
+  --text-title: 1.25rem; /*  20px — section headings                  */
+  --text-display: 1.75rem; /* 28px — the headline value               */
+  --text-hero: 2.5rem; /*    40px — a single focal magnitude          */
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.55;
+
+  /* Wide tracking on small uppercase labels is the main typographic
+     signature of the interface. */
+  --tracking-label: 0.09em;
+  --tracking-wide: 0.04em;
+  --tracking-normal: 0;
+
+  /* ── LAYOUT ─────────────────────────────────────────────────────────────*/
+  --rail-width: 4rem; /*        icon lens rail                        */
+  --panel-width: 21rem; /*      layers / details panel                */
+  --panel-width-wide: 26rem;
+  --timeline-height: 5.5rem; /* timeline + density histogram          */
+  --topbar-height: 3.25rem;
+
+  /* ── Z-INDEX — declared as a full scale so no component invents a 9999 ──*/
+  --z-map: 0;
+  --z-map-overlay: 10;
+  --z-panel: 20;
+  --z-timeline: 30;
+  --z-topbar: 40;
+  --z-popover: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+}
+
+/* Respect the OS reduced-motion setting. The camera flights and the pulse are
+   the two things most likely to cause discomfort, so they are cut to a
+   near-instant transition rather than merely shortened. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 1ms;
+    --motion-quick: 1ms;
+    --motion-considered: 1ms;
+    --motion-camera: 1ms;
+  }
+}

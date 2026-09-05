@@ -1,0 +1,77 @@
+<!--
+  Application shell.
+
+  Deliberately minimal chrome: a brand bar and a navigation rail, nothing else.
+  Tools live on the map's own right-hand rail rather than in the shell, so the
+  shell never competes with the content for attention.
+-->
+<div class="shell" [class.shell--presenting]="presenting()">
+  <header class="shell__bar">
+    <a class="brand" routerLink="/explore" [attr.aria-label]="'Calametra Pilipinas — home'">
+      <img
+        class="brand__mark"
+        src="calametra-logo.png"
+        alt=""
+        width="28"
+        height="28"
+        aria-hidden="true"
+      />
+      <span class="brand__text">
+        <span class="brand__name">Calametra</span>
+        <span class="brand__region">Pilipinas</span>
+      </span>
+    </a>
+
+    <p class="shell__descriptor">
+      Multi-hazard intelligence and historical exploration
+    </p>
+  </header>
+
+  <nav class="shell__rail" aria-label="Primary">
+    <ul>
+      @for (item of navigation; track item.path) {
+        <li>
+          @if (item.available) {
+            <a
+              class="rail__link"
+              [routerLink]="item.path"
+              routerLinkActive="rail__link--active"
+              [attr.aria-label]="item.label"
+              [title]="item.label"
+            >
+              <cal-icon [name]="item.icon" [size]="20" />
+              <span class="rail__caption">{{ item.label }}</span>
+            </a>
+          } @else {
+            <span
+              class="rail__link rail__link--pending"
+              [attr.aria-label]="item.label + ' — not yet available'"
+              [title]="item.label + ' — a later phase'"
+            >
+              <cal-icon [name]="item.icon" [size]="20" />
+              <span class="rail__caption">{{ item.label }}</span>
+            </span>
+          }
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <main class="shell__stage">
+    <router-outlet />
+  </main>
+</div>
+
+<!-- Notifications. Polite live region: a failed tile fetch must not interrupt
+     whatever the user is reading. -->
+<div class="toasts" role="status" aria-live="polite">
+  @for (notification of notifications(); track notification.id) {
+    <div class="toast" [class.toast--error]="notification.kind === 'error'">
+      <cal-icon [name]="notification.kind === 'error' ? 'caution' : 'info'" [size]="15" />
+      <p>{{ notification.message }}</p>
+      <button class="c-icon-button" type="button" (click)="dismiss(notification.id)">
+        <cal-icon name="close" [size]="13" label="Dismiss" />
+      </button>
+    </div>
+  }
+</div>

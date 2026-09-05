@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Calametra.Domain — what the business is.
+
+    HARD RULE: no <ProjectReference> ever.
+    SINGLE PERMITTED PACKAGE: NetTopologySuite.
+
+    NetTopologySuite is a pure geometry value-type library: no I/O, no database,
+    no framework, no provider SDK. Calametra's domain is inherently geospatial —
+    an event's epicentre and a hazard's extent ARE domain concepts. Excluding
+    geometry types would push those concepts out of the domain, which damages the
+    architecture more than the package reference does.
+
+    This is the same class of deliberate trade the reference template makes for
+    EF Core in the Application layer (design_3 §10 Option A).
+
+    Enforced by Calametra.ArchitectureTests:
+      Domain_ShouldHaveNoProjectReferences
+      Domain_ShouldOnlyReferenceNetTopologySuite
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="NetTopologySuite" />
+  </ItemGroup>
+
+</Project>

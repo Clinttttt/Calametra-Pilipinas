@@ -1,0 +1,281 @@
+/* Application shell layout. Consumes tokens and primitives only. */
+
+:host {
+  display: contents;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--rail-width) 1fr;
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-areas:
+    'bar  bar'
+    'rail stage';
+  height: 100vh;
+  height: 100dvh;
+  background-color: var(--surface-000);
+  transition: grid-template-rows var(--motion-considered) var(--ease-out);
+}
+
+/* ── PRESENTATION MODE ────────────────────────────────────────────────────
+   Collapses the shell to nothing so the map fills the viewport. Driven by the
+   routed feature rather than the shell, because the feature knows whether a
+   full-bleed view makes sense for it. */
+.shell--presenting {
+  grid-template-columns: 0 1fr;
+  grid-template-rows: 0 1fr;
+}
+
+.shell--presenting .shell__bar,
+.shell--presenting .shell__rail {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── BRAND BAR ─────────────────────────────────────────────────────────────*/
+.shell__bar {
+  grid-area: bar;
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding-inline: var(--space-4);
+  overflow: hidden;
+  background-color: var(--surface-100);
+  border-bottom: 1px solid var(--line-subtle);
+  transition: opacity var(--motion-quick) var(--ease-out);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--text-primary);
+}
+
+/* The mark is the artwork; it needs no container treatment. Sized to the cap
+   height of the wordmark so the two read as one lockup. */
+.brand__mark {
+  width: 1.625rem;
+  height: 1.625rem;
+  object-fit: contain;
+  flex: none;
+}
+
+.brand__text {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.brand__name {
+  font-size: 1.0625rem;
+  font-weight: 500;
+  /* Slight negative tracking so the wordmark reads as one unit. */
+  letter-spacing: -0.015em;
+}
+
+/* Set in the same weight as the wordmark but in secondary ink, so "Pilipinas"
+   reads as part of the name rather than as a tag hung off it. */
+.brand__region {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--text-tertiary);
+}
+
+/* Replaces the old status indicator. A descriptor states what the platform is;
+   an animated dot only asserted that something was happening. */
+.shell__descriptor {
+  margin: 0;
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--line-faint);
+  font-size: var(--text-small);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  max-inline-size: none;
+}
+
+/* ── NAVIGATION RAIL ──────────────────────────────────────────────────────*/
+.shell__rail {
+  grid-area: rail;
+  z-index: var(--z-panel);
+  padding-top: var(--space-2);
+  overflow: hidden;
+  background-color: var(--surface-100);
+  border-right: 1px solid var(--line-subtle);
+  transition: opacity var(--motion-quick) var(--ease-out);
+}
+
+.shell__rail ul {
+  display: flex;
+  flex-direction: column;
+}
+
+.rail__link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-1);
+  color: var(--text-tertiary);
+  text-decoration: none;
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.rail__link:hover {
+  color: var(--text-secondary);
+  background-color: var(--surface-200);
+}
+
+.rail__caption {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.15;
+}
+
+/* Active state: white ink and a hairline edge. No fill, no colour — the rail
+   should read as a set of labels, one of which is current. */
+.rail__link--active {
+  color: var(--text-primary);
+  background-color: var(--surface-200);
+}
+
+.rail__link--active::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 2px;
+  background-color: var(--accent);
+}
+
+.rail__link--pending {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.rail__link--pending:hover {
+  color: var(--text-disabled);
+  background: none;
+}
+
+/* ── STAGE ────────────────────────────────────────────────────────────────*/
+.shell__stage {
+  grid-area: stage;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── TOASTS ───────────────────────────────────────────────────────────────*/
+.toasts {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 26rem;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  pointer-events: auto;
+  background-color: var(--surface-glass-strong);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  animation: toast-enter var(--motion-considered) var(--ease-out);
+}
+
+.toast p {
+  flex: 1;
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+.toast--error {
+  border-color: rgb(212 87 78 / 40%);
+}
+
+.toast--error > cal-icon {
+  color: var(--state-error);
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── MOBILE ───────────────────────────────────────────────────────────────*/
+@media (max-width: 48rem) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--topbar-height) 1fr auto;
+    grid-template-areas:
+      'bar'
+      'stage'
+      'rail';
+  }
+
+  .shell--presenting {
+    grid-template-rows: 0 1fr 0;
+  }
+
+  /* The descriptor is the first thing to go: on a phone the brand alone is
+     enough, and the width is better spent on the map. */
+  .shell__descriptor {
+    display: none;
+  }
+
+  .shell__rail {
+    padding-top: 0;
+    border-right: none;
+    border-top: 1px solid var(--line-subtle);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .shell__rail ul {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+
+  .rail__link--active::before {
+    inset: auto 25% auto 25%;
+    top: 0;
+    width: auto;
+    height: 2px;
+  }
+
+  .toasts {
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: 5rem;
+    max-width: none;
+  }
+}
