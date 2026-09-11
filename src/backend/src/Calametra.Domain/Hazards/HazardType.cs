@@ -31,6 +31,16 @@ public enum HazardType
     Lava = 22,
     VolcanicLahar = 23,
     BaseSurge = 24,
+
+    // Rainfall-triggered ground hazards, published by DOST-MGB rather than PHIVOLCS.
+    //
+    // Deliberately separate from EarthquakeInducedLandslide, which is a different
+    // phenomenon: that map describes slope failure triggered by ground shaking, this one
+    // describes failure triggered by rainfall. They have different causes, different
+    // published extents and different authors, and folding them into one type would assert
+    // an equivalence neither agency claims.
+    RainInducedLandslide = 30,
+    Flood = 31,
 }
 
 /// <summary>

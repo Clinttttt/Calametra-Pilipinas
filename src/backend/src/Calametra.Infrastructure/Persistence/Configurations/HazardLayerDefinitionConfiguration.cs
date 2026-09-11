@@ -18,6 +18,12 @@ internal sealed class HazardLayerDefinitionConfiguration : IEntityTypeConfigurat
         builder.Property(layer => layer.WmsEndpoint).HasMaxLength(512);
         builder.Property(layer => layer.WmsLayerName).HasMaxLength(128);
         builder.Property(layer => layer.FeatureInfoEndpoint).HasMaxLength(512);
+
+        builder.Property(layer => layer.CachedTileEndpoint).HasMaxLength(512);
+
+        // Derived from whether an endpoint is stored, so it is never persisted as a flag that
+        // could disagree with the endpoint beside it.
+        builder.Ignore(layer => layer.SupportsCachedTiles);
         builder.Property(layer => layer.Explainer).HasMaxLength(2_000);
         builder.Property(layer => layer.InterpretationNote).HasMaxLength(2_000);
 

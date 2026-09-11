@@ -224,6 +224,18 @@ export class CalametraApi {
     );
   }
 
+  /**
+   * Builds the tile template for a layer whose publisher exposes a pre-rendered cache.
+   *
+   * Preferred wherever `supportsCachedTiles` is set on the catalogue entry. For the DOST-MGB
+   * susceptibility maps the same tile takes 60–120 ms from the agency's cache against 18.8–19.4
+   * seconds rendered through WMS — the difference between a layer a reader can pan and one that
+   * appears to hang. It is also considerably kinder to the agency's server.
+   */
+  cachedHazardTileTemplate(baseUrl: string, layerId: string): string {
+    return `${baseUrl}/api/hazard-layers/${layerId}/tile/{z}/{x}/{y}`;
+  }
+
   /** Fetches the publisher's own attributes for the feature at a position. */
   identifyHazardFeature(
     layerId: string,

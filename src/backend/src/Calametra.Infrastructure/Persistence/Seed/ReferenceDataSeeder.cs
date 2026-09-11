@@ -3,6 +3,7 @@ using Calametra.Domain.Sources;
 using Calametra.Infrastructure.Sources.Gem;
 using Calametra.Infrastructure.Sources.GeoNames;
 using Calametra.Infrastructure.Sources.Ibtracs;
+using Calametra.Infrastructure.Sources.Mgb;
 using Calametra.Infrastructure.Sources.Phivolcs;
 using Calametra.Infrastructure.Sources.Usgs;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,7 @@ public sealed class ReferenceDataSeeder(
         var gem = await EnsureGemAsync(now, cancellationToken);
         var activeFault = await EnsurePhivolcsActiveFaultAsync(now, cancellationToken);
         var trenches = await EnsurePhivolcsTrenchesAsync(now, cancellationToken);
+        var mgb = await EnsureMgbAsync(now, cancellationToken);
 
         await EnsureCycloneAgenciesAsync(now, cancellationToken);
         await EnsureGeoNamesAsync(now, cancellationToken);
@@ -46,6 +48,7 @@ public sealed class ReferenceDataSeeder(
 
         await EnsureFaultLayerAsync(activeFault, now, cancellationToken);
         await EnsureTrenchLayerAsync(trenches, now, cancellationToken);
+        await EnsureMgbLayersAsync(mgb, now, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -361,6 +364,81 @@ public sealed class ReferenceDataSeeder(
         return created;
     }
 
+    /// <summary>
+    /// DOST-MGB — rainfall-triggered susceptibility, displayed and never stored.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Probed on 2026-09-11 before being registered. Both services are live on
+    /// <c>controlmap.mgb.gov.ph</c>, expose the <c>WMSServer</c> extension, render EPSG:3857
+    /// <c>GetMap</c> requests as PNG, and answer <c>identify</c> with a single susceptibility
+    /// rating per polygon.
+    /// </para>
+    /// <para>
+    /// <b>Not redistributable, because no licence is published.</b> The services carry an empty
+    /// <c>copyrightText</c> and the layers are not ArcGIS Online items, so there is nothing that
+    /// grants storage. This is the PHIVOLCS position exactly: reachability is not permission, and
+    /// the domain refuses to store a feature from a source flagged this way.
+    /// </para>
+    /// <para>
+    /// Registered as one source rather than two. The rain-induced landslide and flood maps come
+    /// from the same programme, the same publisher and the same licence position; splitting them
+    /// would suggest a difference in provenance that does not exist. They are two layers under it.
+    /// </para>
+    /// </remarks>
+    private async Task<DataSource> EnsureMgbAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(source => source.Slug == MgbOptions.RainInducedLandslideSlug, cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                MgbOptions.RainInducedLandslideSlug,
+                agency: "DOST-MGB",
+                datasetName: "Detailed geohazard susceptibility maps (rain-induced landslide and flood)",
+                SourceAccessKind.WmsProxy,
+                attribution:
+                    "Geohazard susceptibility mapping © DOST-Mines and Geosciences Bureau. "
+                    + "Displayed via the agency's own public map service.",
+                now)
+            .Value;
+
+        created
+            .WithLinks(
+                sourceUrl: "https://controlmap.mgb.gov.ph/arcgis/rest/services/GeospatialDataInventory_Public",
+                termsUrl: "https://mgb.gov.ph/")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "Susceptibility is not a forecast. These maps state that an area has terrain, "
+                    + "geology or drainage that makes it prone to failure or inundation given "
+                    + "enough rain — not that an event will occur, and not when.\n\n"
+                    + "The ratings are MGB's own. Landslide susceptibility is published as Very "
+                    + "High, High, Moderate and Low, plus a separate class for debris flow paths "
+                    + "and possible accumulation zones; flood susceptibility as Very High, High, "
+                    + "Moderate and Low. Calametra does not reclassify or combine them.\n\n"
+                    + "Rainfall-triggered, and therefore not specific to any one storm. A tropical "
+                    + "cyclone is the most common trigger in this country, which is why these "
+                    + "layers appear alongside storm tracks, but monsoon rain produces the same "
+                    + "failures and these extents describe neither event.\n\n"
+                    + "Distinct from the earthquake-induced landslide hazard PHIVOLCS publishes. "
+                    + "That map describes slope failure caused by ground shaking; this one "
+                    + "describes failure caused by rain. They are different phenomena from "
+                    + "different agencies and must not be read as one.\n\n"
+                    + "Calametra stores none of this geometry. MGB publishes no licence for it — "
+                    + "the services carry no copyright statement — so it is displayed by proxying "
+                    + "the agency's own rendering, and no figure on this platform is computed from "
+                    + "it. MGB also publishes a landslide inventory of 10,783 dated polygons, "
+                    + "which for the same reason cannot be held here.")
+            .WithPermissions(isRedistributable: false, isAuthoritativeForPhilippines: true);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
+
+        return created;
+    }
+
     private async Task<DataSource> EnsureUsgsAsync(DateTimeOffset now, CancellationToken cancellationToken)
     {
         var existing = await context.DataSources
@@ -610,6 +688,123 @@ public sealed class ReferenceDataSeeder(
             .WithPresentation(isEnabledByDefault: false, sortOrder: 20, supportsFeatureInfo: true);
 
         context.HazardLayers.Add(layer);
+    }
+
+    /// <summary>
+    /// The two DOST-MGB susceptibility layers.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Filed under the cyclone lens, which is a judgement worth stating.</b> These maps are
+    /// rainfall-triggered and not storm-specific, so no lens fits them perfectly. The alternatives
+    /// were worse: <c>Terrain</c> and <c>Coastal</c> are reachable by no hazard the reader can
+    /// select, so layers filed there would be catalogued and invisible, and inventing a hazard mode
+    /// for them would put a third card on the chooser with no event archive behind it. A tropical
+    /// cyclone is the dominant rainfall driver in this country, so the storm view is where a reader
+    /// asking "where does this rain cause landslides and floods" already is. The interpretation
+    /// note carries the correction that the maps describe neither a storm nor a forecast.
+    /// </para>
+    /// <para>
+    /// Both default to off. They are dense national polygon fills, and switching them on
+    /// automatically would bury the track a reader opened the storm view to see.
+    /// </para>
+    /// <para>
+    /// Endpoints are composed from <see cref="MgbOptions"/> rather than written out, because the
+    /// OGC and REST paths differ by one segment and getting that wrong yields a 404 rather than an
+    /// informative error.
+    /// </para>
+    /// </remarks>
+    private async Task EnsureMgbLayersAsync(
+        DataSource source,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var mgb = new MgbOptions();
+
+        var definitions = new (HazardType Type, string Service, string DisplayName, int SortOrder,
+            string Explainer, string Note)[]
+        {
+            (HazardType.RainInducedLandslide,
+                mgb.RainInducedLandslideService,
+                "Rain-induced Landslide Susceptibility",
+                30,
+                "Where terrain, geology and slope make ground failure likely when it rains hard "
+                + "enough. MGB maps this nationwide at detailed scale and rates each area Very "
+                + "High, High, Moderate or Low, with a separate class for debris flow paths and "
+                + "the places debris comes to rest.",
+                "Susceptibility is not a forecast. A Very High rating means the ground is prone to "
+                + "failure given sufficient rain, not that it will fail, and not when. This is "
+                + "also a different hazard from the earthquake-induced landslide map PHIVOLCS "
+                + "publishes: that one describes slope failure caused by shaking."),
+
+            (HazardType.Flood,
+                mgb.FloodService,
+                "Flood Susceptibility",
+                31,
+                "Where water is likely to collect or a channel to overtop when rainfall is heavy, "
+                + "rated Very High, High, Moderate or Low. Derived from terrain and drainage "
+                + "rather than from any particular storm.",
+                "Susceptibility is not a forecast, and this is not a flood map of any event. It "
+                + "describes the ground's tendency to flood given enough rain. Actual flooding "
+                + "depends on how much rain falls, over how long, and on drainage that may have "
+                + "changed since the mapping."),
+        };
+
+        foreach (var definition in definitions)
+        {
+            var existing = await context.HazardLayers
+                .FirstOrDefaultAsync(
+                    layer => layer.DataSourceId == source.Id && layer.HazardType == definition.Type,
+                    cancellationToken);
+
+            var identifyEndpoint =
+                $"{mgb.RestServicesRoot}/{definition.Service}/MapServer/identify";
+
+            // ArcGIS addresses a cached tile as level/row/column, so y precedes x. Measured
+            // 2026-09-11: 60-120 ms per tile from this cache against 18.8-19.4 s for the same tile
+            // rendered through WMS.
+            var cachedTileEndpoint =
+                $"{mgb.RestServicesRoot}/{definition.Service}/MapServer/tile/{{z}}/{{y}}/{{x}}";
+
+            if (existing is not null)
+            {
+                // Reconciled rather than skipped, for the reason the fault layer records: seeding
+                // runs on every start and a create-only seeder means a correction never reaches a
+                // database that already has the row. The cached tile endpoint was added after these
+                // two layers were first seeded, and without this they would have kept rendering
+                // every tile on demand — 19 seconds each — while the code believed otherwise.
+                if (string.IsNullOrWhiteSpace(existing.FeatureInfoEndpoint))
+                {
+                    existing.WithFeatureInfo(identifyEndpoint);
+                }
+
+                if (string.IsNullOrWhiteSpace(existing.CachedTileEndpoint))
+                {
+                    existing.WithCachedTiles(cachedTileEndpoint);
+                }
+
+                continue;
+            }
+
+            var layer = HazardLayerDefinition.CreateRemote(
+                    source.Id,
+                    definition.Type,
+                    HazardLens.Cyclone,
+                    displayName: definition.DisplayName,
+                    wmsEndpoint: $"{mgb.ServicesRoot}/{definition.Service}/MapServer/WMSServer",
+                    wmsLayerName: "0",
+                    now)
+                .Value
+                .WithExplainer(definition.Explainer, definition.Note)
+                .WithFeatureInfo(identifyEndpoint)
+                .WithCachedTiles(cachedTileEndpoint)
+                .WithPresentation(
+                    isEnabledByDefault: false,
+                    sortOrder: definition.SortOrder,
+                    supportsFeatureInfo: true);
+
+            context.HazardLayers.Add(layer);
+        }
     }
 }
 

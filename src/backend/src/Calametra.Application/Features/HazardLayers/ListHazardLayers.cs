@@ -30,6 +30,7 @@ public static class ListHazardLayers
         string DisplayName,
         string DeliveryMode,
         bool SupportsFeatureInfo,
+        bool SupportsCachedTiles,
         bool IsEnabledByDefault,
         int SortOrder,
         string? Explainer,
@@ -68,6 +69,9 @@ public static class ListHazardLayers
                     row.Layer.DisplayName,
                     row.Layer.DeliveryMode.ToString(),
                     row.Layer.SupportsFeatureInfo,
+                    // Computed from whether an endpoint is stored, so the client is told what is
+                    // actually available rather than a flag someone remembered to set.
+                    row.Layer.CachedTileEndpoint != null,
                     row.Layer.IsEnabledByDefault,
                     row.Layer.SortOrder,
                     row.Layer.Explainer,

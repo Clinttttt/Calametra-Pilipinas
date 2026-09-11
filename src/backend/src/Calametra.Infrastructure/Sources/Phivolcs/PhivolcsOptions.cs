@@ -1,6 +1,12 @@
 namespace Calametra.Infrastructure.Sources.Phivolcs;
 
-/// <summary>Configuration for the PHIVOLCS hazard map proxy.</summary>
+/// <summary>Identity of the DOST-PHIVOLCS datasets in the catalogue.</summary>
+/// <remarks>
+/// The timeout, cache duration and user agent that used to live here moved to
+/// <c>HazardProxyOptions</c> when DOST-MGB became the second publisher behind the same proxy:
+/// those are properties of how this platform behaves as a client rather than of whose service is
+/// being called. What is left is PHIVOLCS's own.
+/// </remarks>
 public sealed class PhivolcsOptions
 {
     public const string SectionName = "Sources:Phivolcs";
@@ -18,15 +24,4 @@ public sealed class PhivolcsOptions
     /// </summary>
     public string ServicesRoot { get; set; } =
         "https://gisweb.phivolcs.dost.gov.ph/arcgis/services/PHIVOLCSPublic";
-
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>
-    /// How long a proxied tile may be cached. Hazard layers and fault traces change
-    /// on a timescale of years, so caching aggressively is both safe and the polite
-    /// way to consume someone else's map service.
-    /// </summary>
-    public TimeSpan TileCacheDuration { get; set; } = TimeSpan.FromDays(7);
-
-    public string UserAgent { get; set; } = "Calametra-Pilipinas/0.1 (academic research platform)";
 }

@@ -81,6 +81,23 @@ public sealed class HazardLayerDefinition : AuditableEntity
     public string? FeatureInfoEndpoint { get; private set; }
 
     /// <summary>
+    /// Template for a pre-rendered tile, with <c>{z}</c>, <c>{x}</c> and <c>{y}</c> placeholders.
+    /// Null when the publisher offers no cache and every tile must be rendered on demand.
+    /// </summary>
+    /// <remarks>
+    /// Held because the difference is not cosmetic. Measured on 2026-09-11: DOST-MGB renders a
+    /// 256 px susceptibility tile through WMS in 18.8-19.4 seconds and serves the same tile from
+    /// its published cache in 60-120 milliseconds. A layer without the cached path is unusable
+    /// for panning and puts a fresh render on the agency's server for every tile a reader crosses.
+    /// PHIVOLCS publishes no cache for its hazard services, so those layers keep the rendered
+    /// path — which is why this is per layer rather than a platform-wide switch.
+    /// </remarks>
+    public string? CachedTileEndpoint { get; private set; }
+
+    /// <summary>Whether a pre-rendered tile cache is available for this layer.</summary>
+    public bool SupportsCachedTiles => !string.IsNullOrWhiteSpace(CachedTileEndpoint);
+
+    /// <summary>
     /// Whether the service answers <c>GetFeatureInfo</c>, which determines if
     /// clicking a feature can reveal official attributes.
     /// </summary>
@@ -208,6 +225,20 @@ public sealed class HazardLayerDefinition : AuditableEntity
     {
         FeatureInfoEndpoint = featureInfoEndpoint;
         SupportsFeatureInfo = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Records that the publisher exposes a pre-rendered tile cache, and where.
+    /// </summary>
+    /// <param name="cachedTileEndpoint">
+    /// A template containing <c>{z}</c>, <c>{x}</c> and <c>{y}</c>. The caller is responsible for
+    /// ordering the placeholders to match the publisher's scheme — ArcGIS addresses a cached tile
+    /// as <c>level/row/column</c>, which is <c>{z}/{y}/{x}</c>.
+    /// </param>
+    public HazardLayerDefinition WithCachedTiles(string cachedTileEndpoint)
+    {
+        CachedTileEndpoint = cachedTileEndpoint;
         return this;
     }
 

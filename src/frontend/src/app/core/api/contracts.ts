@@ -227,6 +227,15 @@ export interface HazardLayer {
   readonly deliveryMode: 'RemoteWms' | 'LocalVector';
 
   readonly supportsFeatureInfo: boolean;
+
+  /**
+   * Whether the publisher exposes a pre-rendered tile cache for this layer.
+   *
+   * When true the map addresses tiles as `{z}/{x}/{y}` at 256 px; when false it asks the
+   * publisher to render a bounding box. Not a preference: the MGB susceptibility maps serve a
+   * cached tile in 60–120 ms and render the same tile in about 19 seconds.
+   */
+  readonly supportsCachedTiles: boolean;
   readonly isEnabledByDefault: boolean;
   readonly sortOrder: number;
 

@@ -1,9 +1,11 @@
 using Calametra.Application.Abstractions.Data;
 using Calametra.Application.Abstractions.Sources;
 using Calametra.Infrastructure.Persistence;
+using Calametra.Infrastructure.Sources.ArcGis;
 using Calametra.Infrastructure.Sources.Gem;
 using Calametra.Infrastructure.Sources.GeoNames;
 using Calametra.Infrastructure.Sources.Ibtracs;
+using Calametra.Infrastructure.Sources.Mgb;
 using Calametra.Infrastructure.Sources.Phivolcs;
 using Calametra.Infrastructure.Sources.Usgs;
 using Microsoft.EntityFrameworkCore;
@@ -86,6 +88,18 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Agency-neutral: the proxy serves DOST-PHIVOLCS and DOST-MGB from the same code path,
+        // driven by the endpoints stored on each catalogue row.
+        services.AddOptions<HazardProxyOptions>()
+            .Bind(configuration.GetSection(HazardProxyOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<MgbOptions>()
+            .Bind(configuration.GetSection(MgbOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddOptions<GemOptions>()
             .Bind(configuration.GetSection(GemOptions.SectionName))
             .ValidateDataAnnotations()
@@ -105,9 +119,9 @@ public static class DependencyInjection
             // an agency that is already struggling is worse.
             .AddStandardResilienceHandler();
 
-        services.AddHttpClient<IHazardMapService, PhivolcsHazardMapService>((provider, client) =>
+        services.AddHttpClient<IHazardMapService, ArcGisHazardMapService>((provider, client) =>
             {
-                var options = provider.GetRequiredService<IOptions<PhivolcsOptions>>().Value;
+                var options = provider.GetRequiredService<IOptions<HazardProxyOptions>>().Value;
 
                 client.Timeout = options.Timeout;
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
