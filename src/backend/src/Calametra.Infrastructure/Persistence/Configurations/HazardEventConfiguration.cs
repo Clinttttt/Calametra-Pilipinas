@@ -25,6 +25,20 @@ internal sealed class HazardEventConfiguration : IEntityTypeConfiguration<Hazard
 
         builder.Property(hazardEvent => hazardEvent.CanonicalOccurredAt).IsRequired();
 
+        // Nullable: most earthquakes have no name. 96 characters is generous for a cyclone
+        // name and leaves room for a compound form should a local name ever be stored beside
+        // the international one.
+        builder.Property(hazardEvent => hazardEvent.Name).HasMaxLength(96);
+
+        // The national authority's name, held separately because it comes from a different
+        // naming body than Name does.
+        builder.Property(hazardEvent => hazardEvent.LocalName).HasMaxLength(96);
+
+        // The crosswalk matches on name and season together, because international names are
+        // reused: MERANTI appears in both 2010 and 2016, GONI in 2015 and 2020. Matching on
+        // name alone would attach the wrong local name to the wrong storm.
+        builder.HasIndex(hazardEvent => new { hazardEvent.Type, hazardEvent.Name });
+
         // Timeline scrubbing and the density histogram both scan by time within a
         // hazard type, so the composite index leads with type.
         builder.HasIndex(hazardEvent => new { hazardEvent.Type, hazardEvent.CanonicalOccurredAt });

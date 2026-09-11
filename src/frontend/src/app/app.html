@@ -10,7 +10,7 @@
     <a class="brand" routerLink="/explore" [attr.aria-label]="'Calametra Pilipinas — home'">
       <img
         class="brand__mark"
-        src="calametra-logo.png"
+        src="calametra-mark-56.png"
         alt=""
         width="28"
         height="28"
@@ -25,6 +25,10 @@
     <p class="shell__descriptor">
       Multi-hazard intelligence and historical exploration
     </p>
+
+    <!-- Theme control at the trailing edge of the bar. It changes the whole interface, so it
+         belongs to the shell rather than to any one feature. -->
+    <cal-basemap-switcher />
   </header>
 
   <nav class="shell__rail" aria-label="Primary">

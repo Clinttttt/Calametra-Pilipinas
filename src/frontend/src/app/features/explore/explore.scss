@@ -259,7 +259,7 @@
 }
 
 /* ── PRESENTATION ─────────────────────────────────────────────────────────
-   Chrome is already collapsed by the shell. Here the camera group and the readout
+   Chrome is already collapsed by the shell. Here the control column and the readout
    step back too, leaving the map, the tool rail and the disclaimer. */
 .explore--presenting .explore__camera {
   opacity: 0.35;
@@ -308,4 +308,140 @@
   .explore__disclaimer {
     display: none;
   }
+}
+
+/* ── PANEL CONTAINERS ─────────────────────────────────────────────────────
+   These rules were lost when this file was restored from the last commit after a shell command
+   truncated it, and have been rewritten to the conventions of the surviving ones above:
+   `--z-panel`, the `panel-in` animation, and a rail offset of `--space-3 + 2.75rem` so a panel
+   clears the tool rail rather than sliding under it. */
+
+/* Anything opened from the rail: legend, layers, hazard selection. One class for all three, so
+   they cannot drift apart in position or motion. */
+.explore__side-panel {
+  position: absolute;
+  top: var(--space-3);
+  right: calc(var(--space-3) + 2.75rem);
+  bottom: var(--space-3);
+  z-index: var(--z-panel);
+  display: flex;
+  animation: panel-in var(--motion-quick) var(--ease-out);
+}
+
+/* The storm list sits on the left, opposite the rail. Cyclone work is a browse-then-inspect task
+   and the list stays open while the map is read, so it takes the side the reader's attention is not
+   already on. */
+.explore__cyclones {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  bottom: var(--space-3);
+  z-index: var(--z-panel);
+  display: flex;
+  animation: panel-in var(--motion-quick) var(--ease-out);
+}
+
+/* Full width across the foot of the map: the horizontal axis is distance along the drawn line, so
+   the plot wants the width of the map the line was drawn on. Above the disclaimer, not over it. */
+.explore__section {
+  position: absolute;
+  right: calc(var(--space-3) + 2.75rem);
+  bottom: var(--space-6);
+  left: var(--space-3);
+  z-index: var(--z-panel);
+  animation: panel-in var(--motion-quick) var(--ease-out);
+}
+
+/* Comparison takes the detail panel's position, because it replaces that reading rather than
+   accompanying it. */
+.explore__comparison {
+  position: absolute;
+  top: var(--space-3);
+  right: calc(var(--space-3) + 2.75rem);
+  bottom: var(--space-3);
+  z-index: var(--z-panel);
+  display: flex;
+  animation: panel-in var(--motion-considered) var(--ease-out);
+}
+
+.explore__comparison--raised {
+  bottom: calc(var(--timeline-height) + var(--space-6));
+}
+
+/* ── INSPECTOR ────────────────────────────────────────────────────────────
+   Published attributes of a hazard feature. Carries its own panel chrome because, unlike the
+   others, its content is markup in this template rather than a child component. */
+.explore__inspector {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  max-height: calc(100% - var(--space-6));
+  overflow: hidden;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  animation: panel-in var(--motion-quick) var(--ease-out);
+}
+
+.inspector__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.inspector__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.inspector__name {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--text-primary);
+  max-inline-size: none;
+}
+
+/* Two columns, key then value. The publisher's own field order is preserved, so the keys are not
+   sorted and the grid must not reorder them either. */
+.inspector__attributes {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+
+  dt {
+    font-size: var(--text-micro);
+    color: var(--text-tertiary);
+  }
+
+  dd {
+    margin: 0;
+    font-size: var(--text-micro);
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+}
+
+.inspector__caveat {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-faint);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-disabled);
+  max-inline-size: none;
 }

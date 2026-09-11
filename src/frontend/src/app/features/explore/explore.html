@@ -30,7 +30,7 @@
 
   <!-- Archive readout. States the catalogue and its floor, because a bare count
        would invite "this is every earthquake in the Philippines", which is false. -->
-  @if (eventCount(); as count) {
+  @if (earthquakesActive() && eventCount(); as count) {
     <div class="explore__readout">
       <p class="readout__figure">
         <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
@@ -40,89 +40,253 @@
       </p>
       <p class="readout__caption">
         Earthquakes · USGS catalogue
-        <span class="readout__note">M4.0+ · 1901–2026</span>
+        <span class="readout__note">{{ floorLabel() }}</span>
       </p>
     </div>
-  } @else if (loadFailed()) {
+  } @else if (earthquakesActive() && loadFailed()) {
     <div class="explore__readout explore__readout--failed">
       <cal-icon name="caution" [size]="15" />
       <span>Archive unavailable</span>
     </div>
   }
 
-  <!-- Tool rail. Low opacity at rest: findable when looked for, invisible when not. -->
+  <!-- Tool rail. Low opacity at rest: findable when looked for, invisible when not.
+
+       Grouped by what a tool applies to. Hazard selection leads, because every tool under it depends
+       on that choice. Hazard-specific tools appear only with their hazard — a depth cross-section of
+       a typhoon is meaningless, and offering it beside a wind field invited exactly that reading. The
+       final group works whatever is on screen. -->
   <div class="explore__tools">
     <div class="c-tool-rail">
+      <!-- Hazard selection leads the rail. It is the choice every tool below it depends on, so it
+           is present whether or not anything is selected yet. -->
       <button
         class="c-tool"
         type="button"
-        [attr.aria-expanded]="openTool() === 'timeline'"
-        title="Time Machine"
-        (click)="toggleTool('timeline')"
+        [attr.aria-expanded]="openTool() === 'hazards'"
+        title="Hazard"
+        (click)="toggleTool('hazards')"
       >
-        <cal-icon name="time" [size]="19" label="Time Machine" />
+        <cal-icon [name]="activeHazard()?.icon ?? 'hazards'" [size]="19" label="Hazard" />
       </button>
 
-      <button
-        class="c-tool"
-        type="button"
-        [attr.aria-expanded]="openTool() === 'legend'"
-        title="Legend"
-        (click)="toggleTool('legend')"
-      >
-        <cal-icon name="legend" [size]="19" label="Legend" />
-      </button>
+      @if (earthquakesActive() || cyclonesActive()) {
+        <div class="c-tool-rail__divider"></div>
+      }
 
-      <button
-        class="c-tool"
-        type="button"
-        title="Fit to the Philippines"
-        (click)="resetView()"
-      >
-        <cal-icon name="explore" [size]="19" label="Fit to the Philippines" />
-      </button>
+      @if (earthquakesActive()) {
+          <button
+            class="c-tool"
+            type="button"
+            [attr.aria-expanded]="openTool() === 'timeline'"
+            title="Time Machine"
+            (click)="toggleTool('timeline')"
+          >
+            <cal-icon name="time" [size]="19" label="Time Machine" />
+          </button>
 
-      <div class="c-tool-rail__divider"></div>
+          <button
+            class="c-tool"
+            type="button"
+            [attr.aria-expanded]="sectionActive()"
+            title="Depth cross-section"
+            (click)="toggleCrossSection()"
+          >
+            <cal-icon name="depth-section" [size]="19" label="Depth cross-section" />
+          </button>
 
-      <button
-        class="c-tool"
-        type="button"
-        [attr.aria-pressed]="presenting()"
-        [title]="presenting() ? 'Leave presentation view' : 'Presentation view'"
-        (click)="togglePresentation()"
-      >
-        <cal-icon
-          [name]="presenting() ? 'collapse' : 'expand'"
-          [size]="19"
-          [label]="presenting() ? 'Leave presentation view' : 'Presentation view'"
-        />
-      </button>
+          <button
+            class="c-tool"
+            type="button"
+            [attr.aria-expanded]="placesOpen()"
+            title="Place explorer"
+            (click)="togglePlaces()"
+          >
+            <cal-icon name="search" [size]="19" label="Place explorer" />
+          </button>
+
+          <button
+            class="c-tool"
+            type="button"
+            [attr.aria-expanded]="openTool() === 'legend'"
+            title="Legend"
+            (click)="toggleTool('legend')"
+          >
+            <cal-icon name="legend" [size]="19" label="Legend" />
+          </button>
+        }
+
+        @if (cyclonesActive()) {
+          <button
+            class="c-tool"
+            type="button"
+            [attr.aria-expanded]="cyclonesOpen()"
+            title="Storm list"
+            (click)="toggleCyclones()"
+          >
+            <cal-icon name="lens-cyclone" [size]="19" label="Storm list" />
+          </button>
+        }
+
+        <div class="c-tool-rail__divider"></div>
+
+      @if (hasHazardLayers()) {
+        <button
+          class="c-tool"
+          type="button"
+          [attr.aria-expanded]="openTool() === 'layers'"
+          title="Hazard layers"
+          (click)="toggleTool('layers')"
+        >
+          <cal-icon name="layers" [size]="19" label="Hazard layers" />
+        </button>
+      }
+
+        <button
+          class="c-tool"
+          type="button"
+          title="Fit to the Philippines"
+          (click)="resetView()"
+        >
+          <cal-icon name="explore" [size]="19" label="Fit to the Philippines" />
+        </button>
+
+        <button
+          class="c-tool"
+          type="button"
+          [attr.aria-pressed]="presenting()"
+          [title]="presenting() ? 'Leave presentation view' : 'Presentation view'"
+          (click)="togglePresentation()"
+        >
+          <cal-icon
+            [name]="presenting() ? 'collapse' : 'expand'"
+            [size]="19"
+            [label]="presenting() ? 'Leave presentation view' : 'Presentation view'"
+          />
+        </button>
     </div>
   </div>
 
+  <!-- Hazard selection panel. Opens from the rail like every other tool. -->
+  @if (openTool() === 'hazards') {
+    <div class="explore__side-panel">
+      <cal-hazard-chooser (chosen)="selectHazard($event)" (closed)="closeTool()" />
+    </div>
+  }
+
   <!-- Legend panel. Opens from the rail rather than sitting on the map. -->
-  @if (openTool() === 'legend') {
-    <div class="explore__legend">
+  @if (earthquakesActive() && openTool() === 'legend') {
+    <div class="explore__side-panel">
       <cal-map-legend (closed)="closeTool()" />
     </div>
   }
 
-  <!-- Detail panel for a selected event. -->
-  @if (selectedEventId()) {
+  <!-- Hazard layer controls, grouped by lens. -->
+  @if (hasHazardLayers() && openTool() === 'layers') {
+    <div class="explore__side-panel">
+      <cal-layers-panel (closed)="closeTool()" />
+    </div>
+  }
+
+  <!-- Place explorer. Gated on the hazard as well as on its own state: it counts earthquakes and
+       names fault traces, so it must not be renderable over a storm map by any route. -->
+  @if (earthquakesActive() && placesOpen()) {
+    <div class="explore__side-panel">
+      <cal-place-panel
+        (placeSelected)="locatePlace($event)"
+        (eventSelected)="locatePlaceEvent($event)"
+      />
+    </div>
+  }
+
+  <!-- The cross-section spans the foot of the map rather than sitting in the side rail:
+       its horizontal axis is distance along the drawn line, so it wants to be as wide as
+       the map it was drawn on.
+
+       Gated on the hazard as well as on its own phase. Selecting a hazard already closes the other
+       hazard's tools, but this panel describes slab depth and must not be renderable over a storm
+       map by any route — a second condition here costs nothing and removes the whole class of bug. -->
+  @if (earthquakesActive() && sectionActive()) {
+    <div class="explore__section">
+      <cal-cross-section-plot />
+    </div>
+  }
+
+  <!-- Inspected hazard feature. Separate from the event panel because a fault and an
+       earthquake are different kinds of thing. -->
+  @if (inspectedFeature(); as feature) {
+    <div class="explore__inspector">
+      <header class="inspector__header">
+        <span class="c-label">{{ feature.layerName }}</span>
+        <button class="c-icon-button" type="button" (click)="clearInspectedFeature()">
+          <cal-icon name="close" [size]="14" label="Close" />
+        </button>
+      </header>
+
+      <div class="inspector__body">
+        @if (feature.displayValue) {
+          <p class="inspector__name">{{ feature.displayValue }}</p>
+        }
+
+        <dl class="inspector__attributes">
+          @for (entry of inspectedAttributes(); track entry.key) {
+            <dt>{{ entry.key }}</dt>
+            <dd>{{ entry.value }}</dd>
+          }
+        </dl>
+
+        <!-- Stated because it is the substantive limit on what a fault line means: a
+             trace shows where a fault was mapped, not that it caused anything. -->
+        <p class="inspector__caveat">
+          Attributes as published by the source agency. A mapped fault near an earthquake
+          does not establish that this fault produced it.
+        </p>
+      </div>
+    </div>
+  }
+
+  <!-- Detail panel for a selected event. The similarity search is projected inside it so
+       the two share one panel, one width and one scroll area. -->
+  @if (earthquakesActive() && selectedEventId()) {
     <div class="explore__detail" [class.explore__detail--raised]="openTool() === 'timeline'">
       <cal-event-detail
         [event]="selectedDetail()"
         [loading]="detailLoading()"
         [failed]="detailFailed()"
+        [similarOpen]="similarEventId() !== null"
         (closed)="clearSelection()"
         (locateRequested)="locateObservation($event)"
-      />
+        (similarRequested)="openSimilarEvents()"
+      >
+        @if (similarEventId()) {
+          <cal-similar-events
+            (matchSelected)="selectSimilarMatch($event)"
+            (compareRequested)="compareWithMatch($event)"
+          />
+        }
+      </cal-event-detail>
+    </div>
+  }
+
+  <!-- Cyclone tracks. Left of the map so the track, which spans thousands of kilometres,
+       has the wider part of the viewport to itself. -->
+  @if (cyclonesActive() && cyclonesOpen()) {
+    <div class="explore__cyclones">
+      <cal-cyclone-panel />
+    </div>
+  }
+
+  <!-- Comparison. Its own panel to the left of the detail column, because it is about two
+       events rather than the one in view, and it needs a wider frame for the table. -->
+  @if (earthquakesActive() && comparisonActive()) {
+    <div class="explore__comparison" [class.explore__comparison--raised]="openTool() === 'timeline'">
+      <cal-event-comparison />
     </div>
   }
 
   <!-- Time Machine drawer. Mounted only while open, so the map keeps the full
        viewport the rest of the time. -->
-  @if (openTool() === 'timeline' && activity(); as activityData) {
+  @if (earthquakesActive() && openTool() === 'timeline' && activity(); as activityData) {
     <div class="explore__drawer">
       <button class="drawer__close" type="button" (click)="closeTool()">
         <cal-icon name="chevron-down" [size]="16" label="Close the Time Machine" />
@@ -130,6 +294,8 @@
       <cal-timeline
         [buckets]="activityData.buckets"
         [totalCount]="activityData.totalCount"
+        [magnitudeFloor]="activeMagnitudeFloor()"
+        [instantMs]="activeInstantMs()"
         (instantChanged)="onInstantChanged($event)"
         (magnitudeFloorChanged)="onMagnitudeFloorChanged($event)"
       />

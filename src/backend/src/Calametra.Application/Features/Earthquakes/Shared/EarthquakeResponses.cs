@@ -24,7 +24,7 @@ public sealed record MagnitudeResponse(
 /// </summary>
 /// <remarks>
 /// <see cref="IsMeasured"/> is what the cross-section and the depth filters key on.
-/// Roughly 28% of USGS CARAGA events report an agency default depth of exactly
+/// Roughly 43% of USGS Philippine events report an agency default depth of exactly
 /// 10 km or 35 km, so a client that ignored this flag would draw two false
 /// horizontal bands of hypocentres.
 /// </remarks>
@@ -82,11 +82,22 @@ public sealed record EarthquakeSummaryResponse(
     bool HasMagnitudeDisagreement);
 
 /// <summary>An earthquake with every agency reading and the disagreement made explicit.</summary>
+/// <param name="Location">
+/// The epicentre stated relative to the nearest city or municipality, e.g.
+/// <c>21 km NNW of Surigao City</c>. Null when the nearest is further than 300 km — 66 of the
+/// 27,241 catalogued events, all deep-ocean — or when the place directory has not been imported.
+/// <para>
+/// The distance is to the gazetteer's representative point for the place, not to its boundary,
+/// which is the same convention the USGS uses for its own place field. No boundary is stored for
+/// Philippine local government units.
+/// </para>
+/// </param>
 public sealed record EarthquakeDetailResponse(
     Guid Id,
     DateTimeOffset OccurredAt,
     double Latitude,
     double Longitude,
+    string? Location,
     IReadOnlyList<ObservationResponse> Observations,
     bool HasMagnitudeDisagreement,
     string? DisagreementExplanation);

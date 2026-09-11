@@ -1,0 +1,256 @@
+<section class="places" aria-label="Place explorer">
+  <header class="places__header">
+    <span class="c-label">Places</span>
+    <button class="c-icon-button" type="button" (click)="close()">
+      <cal-icon name="close" [size]="14" label="Close places" />
+    </button>
+  </header>
+
+  <div class="places__body">
+    <!-- Search stays visible after a place is chosen, so changing place is one gesture rather
+         than a trip back through a list. -->
+    <label class="places__search">
+      <span class="c-label">City, municipality or province</span>
+      <input
+        class="c-input"
+        type="search"
+        autocomplete="off"
+        placeholder="Surigao, Legazpi, Quezon…"
+        [value]="term()"
+        (input)="search($any($event.target).value)"
+      />
+    </label>
+
+    @if (selected(); as place) {
+      <div class="place">
+        <div class="place__head">
+          <div>
+            <h3 class="place__name">{{ place.name }}</h3>
+            <p class="place__where">
+              <span class="place__kind">{{ place.kind }}</span>
+              @if (place.containedBy) {
+                <span class="place__divider" aria-hidden="true">·</span>
+                <span>{{ place.containedBy }}</span>
+              }
+              @if (place.region && place.region !== place.containedBy) {
+                <span class="place__divider" aria-hidden="true">·</span>
+                <span>{{ place.region }}</span>
+              }
+            </p>
+          </div>
+
+          <button class="c-icon-button" type="button" (click)="back()">
+            <cal-icon name="chevron-left" [size]="14" label="Clear this place" />
+          </button>
+        </div>
+
+        <!-- Radius label above the control, not beside it: side by side leaves the four
+             options narrow enough to wrap "100" onto two lines. -->
+        <div class="place__radius">
+          <span class="c-label">Radius (km)</span>
+          <div class="c-segment">
+            @for (option of radii; track option) {
+              <button
+                class="c-segment__option"
+                type="button"
+                [attr.aria-pressed]="radiusKm() === option"
+                [attr.aria-label]="option + ' kilometres'"
+                (click)="setRadius(option)"
+              >
+                {{ option }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (notAddressable()) {
+          <!-- Not a failure to hide. The gazetteer publishes no usable code for five places,
+               each for a reason that is itself administrative history. -->
+          <p class="places__note">
+            <cal-icon name="caution" [size]="13" />
+            <span>
+              No Philippine Standard Geographic Code is held for this place, so its
+              surroundings cannot be queried. The gazetteer's codes predate the 2019 register,
+              and this is one of five entries — Cotabato City, Basilan, the Bangsamoro region
+              and both halves of Maguindanao — where the code is ambiguous or absent.
+            </span>
+          </p>
+        } @else if (loadingContext()) {
+          <p class="places__hint">Reading the archive…</p>
+        } @else if (failed()) {
+          <p class="places__hint">This place's surroundings could not be loaded.</p>
+        } @else if (context(); as found) {
+          <!-- The tally leads, and the M6.0+ figure sits beside the raw count rather than
+               beneath it, because the raw count on its own invites a comparison it cannot
+               support. -->
+          <dl class="tally">
+            <div>
+              <dt>Within {{ found.radiusKm }} km</dt>
+              <dd>{{ found.eventsWithinRadius }}</dd>
+            </div>
+            <div>
+              <dt>M6.0+</dt>
+              <dd>{{ found.eventsAtComparableMagnitude }}</dd>
+            </div>
+            <div>
+              <dt>Assigned depth</dt>
+              <dd>{{ found.eventsWithAssignedDepth }}</dd>
+            </div>
+          </dl>
+
+          @if (found.earliestEvent && found.latestEvent) {
+            <p class="places__span">
+              Catalogued {{ formatYear(found.earliestEvent) }}–{{ formatYear(found.latestEvent) }}
+            </p>
+          }
+
+          @if (found.eventsWithinRadius === 0) {
+            <p class="places__hint">
+              No catalogued earthquakes within {{ found.radiusKm }} km. This catalogue holds
+              effectively nothing below magnitude 4.0, so it is a statement about the record
+              rather than about the ground.
+            </p>
+          }
+
+          <!-- Strongest per scale family. Never one figure: the reading count beside each
+               family is what shows why. -->
+          @if (found.strongestByScaleFamily.length > 0) {
+            <div class="strongest">
+              <span class="c-label">Strongest reading, per scale</span>
+
+              <ul class="strongest__list">
+                @for (family of found.strongestByScaleFamily; track family.scaleFamily) {
+                  <li class="reading">
+                    <div class="reading__head">
+                      <span class="reading__magnitude">{{ family.event.magnitudeDisplay }}</span>
+                      <span class="reading__count">
+                        {{ family.readingsInFamily }}
+                        {{ family.readingsInFamily === 1 ? 'reading' : 'readings' }}
+                      </span>
+                    </div>
+
+                    <p class="reading__family">{{ formatFamily(family.scaleFamily) }} magnitude</p>
+
+                    <dl class="reading__meta">
+                      <div>
+                        <dt>Date</dt>
+                        <dd>{{ formatDate(family.event.occurredAt) }}</dd>
+                      </div>
+                      <div>
+                        <dt>Depth</dt>
+                        <dd>{{ family.event.depthDisplay }}</dd>
+                      </div>
+                      <div>
+                        <dt>Distance</dt>
+                        <dd>{{ family.event.distanceKm }} km</dd>
+                      </div>
+                    </dl>
+
+                    <div class="reading__foot">
+                      <span class="reading__agency">{{ family.event.agency }}</span>
+                      <button
+                        class="c-button c-button--quiet"
+                        type="button"
+                        (click)="locate(family.event)"
+                      >
+                        Locate
+                      </button>
+                    </div>
+                  </li>
+                }
+              </ul>
+
+              @if (found.strongestByScaleFamily.length > 1) {
+                <p class="places__note places__note--quiet">
+                  One per scale family, deliberately. Body-wave magnitude saturates near M6 and
+                  cannot be ranked against a moment magnitude, so there is no single largest
+                  earthquake here to report.
+                </p>
+              }
+            </div>
+          }
+
+          @if (found.mostRecentEvent; as recent) {
+            <div class="recent">
+              <span class="c-label">Most recent</span>
+              <div class="reading__head">
+                <span class="reading__magnitude">{{ recent.magnitudeDisplay }}</span>
+                <span class="reading__count">{{ formatDate(recent.occurredAt) }}</span>
+              </div>
+              <div class="reading__foot">
+                <span class="reading__agency">
+                  {{ recent.distanceKm }} km · {{ recent.depthDisplay }}
+                </span>
+                <button class="c-button c-button--quiet" type="button" (click)="locate(recent)">
+                  Locate
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (found.nearestFaults.length > 0) {
+            <div class="faults">
+              <span class="c-label">Nearest mapped faults</span>
+
+              <ul class="faults__list">
+                @for (fault of found.nearestFaults; track fault.name) {
+                  <li class="fault">
+                    <span class="fault__name">{{ fault.name }}</span>
+                    <span class="fault__distance">
+                      {{ fault.distanceKm }} km
+                      @if (!fault.withinRadius) {
+                        <span class="fault__outside">outside radius</span>
+                      }
+                    </span>
+                    @if (fault.classification) {
+                      <span class="fault__slip">{{ fault.classification }}</span>
+                    }
+                  </li>
+                }
+              </ul>
+
+              @if (faultAttribution(); as attribution) {
+                <p class="places__note places__note--quiet">{{ attribution }}</p>
+              }
+            </div>
+          }
+
+          <!-- Verbatim from the server. These sentences are claims about the data, and the
+               layer holding the data is the one that can make them without drifting. -->
+          @for (note of found.notes; track note) {
+            <p class="places__note places__note--quiet">{{ note }}</p>
+          }
+        }
+      </div>
+    } @else if (searching()) {
+      <p class="places__hint">Searching…</p>
+    } @else if (matches().length > 0) {
+      <ul class="results">
+        @for (match of matches(); track match.psgcCode ?? match.name + match.containedBy) {
+          <li>
+            <button class="result" type="button" (click)="select(match)">
+              <span class="result__name">{{ match.name }}</span>
+              <span class="result__where">
+                <span class="result__kind">{{ match.kind }}</span>
+                @if (match.containedBy) {
+                  <span class="place__divider" aria-hidden="true">·</span>
+                  <span>{{ match.containedBy }}</span>
+                }
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    } @else if (searched()) {
+      <p class="places__hint">
+        No place matches that name. The directory holds regions, provinces, cities and
+        municipalities — 1,750 in all — but no barangays.
+      </p>
+    } @else {
+      <p class="places__hint">
+        Type at least two letters. Every result names the province containing it, because
+        111 of the country's municipality names are shared by more than one place.
+      </p>
+    }
+  </div>
+</section>

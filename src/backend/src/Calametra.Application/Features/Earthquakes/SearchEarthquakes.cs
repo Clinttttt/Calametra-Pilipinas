@@ -117,7 +117,7 @@ public static class SearchEarthquakes
             // to an agency reading, never to the event itself.
             var query =
                 from hazardEvent in context.HazardEvents.AsNoTracking()
-                join observation in context.EventObservations.AsNoTracking()
+                join observation in context.EarthquakeObservations.AsNoTracking()
                     on hazardEvent.PreferredObservationId equals observation.Id
                 join source in context.DataSources.AsNoTracking()
                     on observation.DataSourceId equals source.Id

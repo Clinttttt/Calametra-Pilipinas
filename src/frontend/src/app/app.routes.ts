@@ -14,6 +14,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/explore/explore').then((m) => m.Explore),
   },
   {
+    path: 'stories',
+    title: 'Stories · Calametra Pilipinas',
+    loadComponent: () => import('./features/story/story').then((m) => m.StoryView),
+  },
+  {
     path: 'about-data',
     title: 'About the data · Calametra Pilipinas',
     loadComponent: () => import('./features/about-data/about-data').then((m) => m.AboutData),

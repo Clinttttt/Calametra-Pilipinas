@@ -11,7 +11,7 @@ namespace Calametra.Domain.Similarity;
 /// with that result set.
 /// <para>
 /// Defaults were chosen against measured catalogue behaviour. Searching from the
-/// 2017 Surigao event (Mww 6.5) in the USGS CARAGA catalogue returns 4 matches at
+/// 2017 Surigao event (Mww 6.5) in the USGS catalogue returns 4 matches at
 /// 150 km / ±0.5, and 13 matches at 150 km / ±1.0 — enough to populate a panel
 /// without loosening the window to the point where results stop being meaningful.
 /// </para>

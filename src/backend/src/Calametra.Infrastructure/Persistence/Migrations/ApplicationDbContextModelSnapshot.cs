@@ -24,10 +24,178 @@ namespace Calametra.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Calametra.Domain.Events.EventObservation", b =>
+            modelBuilder.Entity("Calametra.Domain.Events.CycloneTrackPoint", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CapturedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("captured_at");
+
+                    b.Property<string>("Classification")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("classification");
+
+                    b.Property<Guid>("DataSourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("data_source_id");
+
+                    b.Property<double?>("DistanceToLandKm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("distance_to_land_km");
+
+                    b.Property<string>("ExternalStormId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("external_storm_id");
+
+                    b.Property<int?>("GaleRadiusBearingDegrees")
+                        .HasColumnType("integer")
+                        .HasColumnName("gale_radius_bearing_degrees");
+
+                    b.Property<double?>("GaleRadiusLongAxisNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gale_radius_long_axis_nm");
+
+                    b.Property<double?>("GaleRadiusNorthEastNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gale_radius_north_east_nm");
+
+                    b.Property<double?>("GaleRadiusNorthWestNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gale_radius_north_west_nm");
+
+                    b.Property<double?>("GaleRadiusShortAxisNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gale_radius_short_axis_nm");
+
+                    b.Property<double?>("GaleRadiusSouthEastNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gale_radius_south_east_nm");
+
+                    b.Property<double?>("GaleRadiusSouthWestNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gale_radius_south_west_nm");
+
+                    b.Property<int>("GaleThresholdKnots")
+                        .HasColumnType("integer")
+                        .HasColumnName("gale_threshold_knots");
+
+                    b.Property<Guid>("HazardEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hazard_event_id");
+
+                    b.Property<double?>("HurricaneRadiusNorthEastNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("hurricane_radius_north_east_nm");
+
+                    b.Property<double?>("HurricaneRadiusNorthWestNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("hurricane_radius_north_west_nm");
+
+                    b.Property<double?>("HurricaneRadiusSouthEastNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("hurricane_radius_south_east_nm");
+
+                    b.Property<double?>("HurricaneRadiusSouthWestNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("hurricane_radius_south_west_nm");
+
+                    b.Property<bool>("IsLandfall")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_landfall");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<int?>("MinimumPressureMillibars")
+                        .HasColumnType("integer")
+                        .HasColumnName("minimum_pressure_millibars");
+
+                    b.Property<Point>("Position")
+                        .IsRequired()
+                        .HasColumnType("geography (Point, 4326)")
+                        .HasColumnName("position");
+
+                    b.Property<double?>("RadiusOfMaximumWindNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("radius_of_maximum_wind_nm");
+
+                    b.Property<double?>("RadiusOutermostIsobarNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("radius_outermost_isobar_nm");
+
+                    b.Property<double?>("StormRadiusNorthEastNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("storm_radius_north_east_nm");
+
+                    b.Property<double?>("StormRadiusNorthWestNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("storm_radius_north_west_nm");
+
+                    b.Property<double?>("StormRadiusSouthEastNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("storm_radius_south_east_nm");
+
+                    b.Property<double?>("StormRadiusSouthWestNm")
+                        .HasColumnType("double precision")
+                        .HasColumnName("storm_radius_south_west_nm");
+
+                    b.Property<string>("WindAveragingPeriod")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("wind_averaging_period");
+
+                    b.Property<string>("WindFieldGeometry")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("wind_field_geometry");
+
+                    b.Property<double?>("WindSpeedKnots")
+                        .HasColumnType("double precision")
+                        .HasColumnName("wind_speed_knots");
+
+                    b.HasKey("Id")
+                        .HasName("pk_cyclone_track_points");
+
+                    b.HasIndex("DataSourceId")
+                        .HasDatabaseName("ix_cyclone_track_points_data_source_id");
+
+                    b.HasIndex("ExternalStormId")
+                        .HasDatabaseName("ix_cyclone_track_points_external_storm_id");
+
+                    b.HasIndex("Position")
+                        .HasDatabaseName("ix_cyclone_track_points_position");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Position"), "gist");
+
+                    b.HasIndex("HazardEventId", "CapturedAt")
+                        .HasDatabaseName("ix_cyclone_track_points_hazard_event_id_captured_at");
+
+                    b.HasIndex("WindAveragingPeriod", "WindSpeedKnots")
+                        .HasDatabaseName("ix_cyclone_track_points_wind_averaging_period_wind_speed_knots");
+
+                    b.HasIndex("HazardEventId", "DataSourceId", "CapturedAt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_cyclone_track_points_hazard_event_id_data_source_id_capture");
+
+                    b.ToTable("cyclone_track_points", (string)null);
+                });
+
+            modelBuilder.Entity("Calametra.Domain.Events.EarthquakeObservation", b =>
+                {
+                    b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -96,96 +264,33 @@ namespace Calametra.Infrastructure.Persistence.Migrations
                         .HasColumnName("source_url");
 
                     b.HasKey("Id")
-                        .HasName("pk_event_observations");
+                        .HasName("pk_earthquake_observations");
 
                     b.HasIndex("Epicenter")
-                        .HasDatabaseName("ix_event_observations_epicenter");
+                        .HasDatabaseName("ix_earthquake_observations_epicenter");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Epicenter"), "gist");
 
                     b.HasIndex("DataSourceId", "ExternalEventId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_observations_data_source_id_external_event_id");
+                        .HasDatabaseName("ix_earthquake_observations_data_source_id_external_event_id");
 
                     b.HasIndex("DepthQuality", "DepthKilometres")
-                        .HasDatabaseName("ix_event_observations_depth_quality_depth_kilometres");
+                        .HasDatabaseName("ix_earthquake_observations_depth_quality_depth_kilometres");
 
                     b.HasIndex("HazardEventId", "DataSourceId")
                         .IsUnique()
-                        .HasDatabaseName("ix_event_observations_hazard_event_id_data_source_id");
+                        .HasDatabaseName("ix_earthquake_observations_hazard_event_id_data_source_id");
 
                     b.HasIndex("MagnitudeValue", "MagnitudeScale")
-                        .HasDatabaseName("ix_event_observations_magnitude_value_magnitude_scale");
+                        .HasDatabaseName("ix_earthquake_observations_magnitude_value_magnitude_scale");
 
-                    b.ToTable("event_observations", (string)null);
-                });
-
-            modelBuilder.Entity("Calametra.Domain.Events.EventTrackPoint", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CapturedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("captured_at");
-
-                    b.Property<string>("Classification")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("classification");
-
-                    b.Property<Guid>("DataSourceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("data_source_id");
-
-                    b.Property<double?>("DistanceToLandKm")
-                        .HasColumnType("double precision")
-                        .HasColumnName("distance_to_land_km");
-
-                    b.Property<Guid>("HazardEventId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("hazard_event_id");
-
-                    b.Property<bool>("IsLandfall")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_landfall");
-
-                    b.Property<int?>("MaxSustainedWindKnots")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_sustained_wind_knots");
-
-                    b.Property<int?>("MinimumPressureMillibars")
-                        .HasColumnType("integer")
-                        .HasColumnName("minimum_pressure_millibars");
-
-                    b.Property<Point>("Position")
-                        .IsRequired()
-                        .HasColumnType("geography (Point, 4326)")
-                        .HasColumnName("position");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_track_points");
-
-                    b.HasIndex("DataSourceId")
-                        .HasDatabaseName("ix_event_track_points_data_source_id");
-
-                    b.HasIndex("Position")
-                        .HasDatabaseName("ix_event_track_points_position");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Position"), "gist");
-
-                    b.HasIndex("HazardEventId", "CapturedAt")
-                        .HasDatabaseName("ix_event_track_points_hazard_event_id_captured_at");
-
-                    b.ToTable("event_track_points", (string)null);
+                    b.ToTable("earthquake_observations", (string)null);
                 });
 
             modelBuilder.Entity("Calametra.Domain.Events.HazardEvent", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -201,6 +306,16 @@ namespace Calametra.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("LocalName")
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)")
+                        .HasColumnName("local_name");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)")
+                        .HasColumnName("name");
 
                     b.Property<Guid?>("PreferredObservationId")
                         .HasColumnType("uuid")
@@ -227,13 +342,15 @@ namespace Calametra.Infrastructure.Persistence.Migrations
                     b.HasIndex("Type", "CanonicalOccurredAt")
                         .HasDatabaseName("ix_hazard_events_type_canonical_occurred_at");
 
+                    b.HasIndex("Type", "Name")
+                        .HasDatabaseName("ix_hazard_events_type_name");
+
                     b.ToTable("hazard_events", (string)null);
                 });
 
             modelBuilder.Entity("Calametra.Domain.Hazards.HazardFeature", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -299,7 +416,6 @@ namespace Calametra.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Calametra.Domain.Hazards.HazardLayerDefinition", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -391,7 +507,6 @@ namespace Calametra.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Calametra.Domain.Places.Place", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -408,11 +523,23 @@ namespace Calametra.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid>("DataSourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("data_source_id");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)")
                         .HasColumnName("kind");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -458,6 +585,9 @@ namespace Calametra.Infrastructure.Persistence.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Centroid"), "gist");
 
+                    b.HasIndex("DataSourceId")
+                        .HasDatabaseName("ix_places_data_source_id");
+
                     b.HasIndex("ParentPlaceId")
                         .HasDatabaseName("ix_places_parent_place_id");
 
@@ -475,7 +605,6 @@ namespace Calametra.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Calametra.Domain.Sources.DataSource", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -568,38 +697,38 @@ namespace Calametra.Infrastructure.Persistence.Migrations
                     b.ToTable("data_sources", (string)null);
                 });
 
-            modelBuilder.Entity("Calametra.Domain.Events.EventObservation", b =>
+            modelBuilder.Entity("Calametra.Domain.Events.CycloneTrackPoint", b =>
                 {
                     b.HasOne("Calametra.Domain.Sources.DataSource", null)
                         .WithMany()
                         .HasForeignKey("DataSourceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_event_observations_data_sources_data_source_id");
-
-                    b.HasOne("Calametra.Domain.Events.HazardEvent", null)
-                        .WithMany("Observations")
-                        .HasForeignKey("HazardEventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_observations_hazard_events_hazard_event_id");
-                });
-
-            modelBuilder.Entity("Calametra.Domain.Events.EventTrackPoint", b =>
-                {
-                    b.HasOne("Calametra.Domain.Sources.DataSource", null)
-                        .WithMany()
-                        .HasForeignKey("DataSourceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_track_points_data_sources_data_source_id");
+                        .HasConstraintName("fk_cyclone_track_points_data_sources_data_source_id");
 
                     b.HasOne("Calametra.Domain.Events.HazardEvent", null)
                         .WithMany("TrackPoints")
                         .HasForeignKey("HazardEventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_event_track_points_hazard_events_hazard_event_id");
+                        .HasConstraintName("fk_cyclone_track_points_hazard_events_hazard_event_id");
+                });
+
+            modelBuilder.Entity("Calametra.Domain.Events.EarthquakeObservation", b =>
+                {
+                    b.HasOne("Calametra.Domain.Sources.DataSource", null)
+                        .WithMany()
+                        .HasForeignKey("DataSourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_earthquake_observations_data_sources_data_source_id");
+
+                    b.HasOne("Calametra.Domain.Events.HazardEvent", null)
+                        .WithMany("Observations")
+                        .HasForeignKey("HazardEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_earthquake_observations_hazard_events_hazard_event_id");
                 });
 
             modelBuilder.Entity("Calametra.Domain.Hazards.HazardFeature", b =>
@@ -631,6 +760,13 @@ namespace Calametra.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Calametra.Domain.Places.Place", b =>
                 {
+                    b.HasOne("Calametra.Domain.Sources.DataSource", null)
+                        .WithMany()
+                        .HasForeignKey("DataSourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_places_data_sources_data_source_id");
+
                     b.HasOne("Calametra.Domain.Places.Place", null)
                         .WithMany()
                         .HasForeignKey("ParentPlaceId")

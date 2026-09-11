@@ -1,0 +1,203 @@
+<!--
+  Story mode.
+
+  The map holds the stage and the panel on the right holds either the index or the story being
+  read. One layout for both states, so choosing a story swaps the panel's contents rather than
+  navigating to a different page — the reader stays in the same place and the map stays live.
+-->
+<div class="story">
+  <!-- Always rendered, index or not. Previously the map lived inside the story branch, which meant
+       it was created and destroyed as the reader moved between the index and a story, and each cycle
+       cost a WebGL context and a full style load. -->
+  <div class="story__map" #mapContainer></div>
+
+  <!-- Readings for whatever the current beat focuses, over the map rather than in the panel: the
+       panel is prose, and a reader checking a figure should not lose their place in it. -->
+  @if (observations().length > 0) {
+    <aside class="readings" aria-label="Agency readings">
+      <span class="c-label">Reported by</span>
+      <ul class="readings__list">
+        @for (observation of observations(); track observation.id) {
+          <li class="reading">
+            <span class="reading__agency">{{ observation.agency }}</span>
+            <span class="reading__values">
+              <span class="reading__magnitude">
+                {{ observation.magnitude?.display ?? 'No magnitude' }}
+              </span>
+              <span
+                class="reading__depth"
+                [class.reading__depth--assigned]="!observation.depth.isMeasured"
+              >
+                {{ observation.depth.display }}
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+    </aside>
+  }
+
+  <!-- Every agency's peak for the storm under discussion. The wind figure carries its averaging
+       period, because without it the four numbers look comparable and are not. -->
+  @if (cycloneReadings().length > 0) {
+    <aside class="readings" aria-label="Agency readings">
+      <span class="c-label">Reported by</span>
+      <ul class="readings__list">
+        @for (agency of cycloneReadings(); track agency.sourceSlug) {
+          <li class="reading">
+            <span class="reading__agency">{{ agency.agency }}</span>
+            <span class="reading__values">
+              <span class="reading__magnitude">
+                {{ agency.peakWindKnots ?? '—' }} kt
+                <span class="reading__period">{{ agency.averagingPeriod }}</span>
+              </span>
+              <span class="reading__depth">
+                {{ agency.minimumPressureMillibars ?? '—' }} mb
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+    </aside>
+  }
+
+  <!-- A focus this beat asked for and could not get. Stated rather than left blank: the prose beside
+       it quotes figures from this event, so an empty space reads as "the platform holds nothing"
+       instead of "this reference did not resolve". -->
+  @if (focusUnavailable(); as identifier) {
+    <aside class="readings readings--unavailable" aria-label="Unresolved reference">
+      <span class="c-label">Not available</span>
+      <p class="readings__note">
+        This beat refers to <span class="u-numeric">{{ identifier }}</span>, which this archive did
+        not return. The figures quoted here cannot be checked against the data until it resolves.
+      </p>
+    </aside>
+  }
+
+  <aside class="panel">
+    @if (story(); as loaded) {
+      <header class="panel__head">
+        <button class="panel__back" type="button" (click)="backToIndex()">
+          <cal-icon name="chevron-left" [size]="13" />
+          <span>All stories</span>
+        </button>
+        <h1 class="panel__title">{{ loaded.title }}</h1>
+        <p class="panel__standfirst">{{ loaded.standfirst }}</p>
+        <p class="panel__byline">{{ loaded.place }} · {{ loaded.when }}</p>
+      </header>
+
+      <!-- Scroll-snapped. Each beat fills the panel and snaps to it, so a scroll gesture lands on
+           the next section rather than stopping between two of them — which is what made the old
+           full-page scroll feel like falling through empty space. -->
+      <div class="panel__scroll" #scroll>
+        @for (beat of beats(); track beat.id; let i = $index) {
+          <section class="beat" #beat [class.beat--active]="i === beatIndex()">
+            <div class="beat__body">
+              <span class="beat__index">{{ i + 1 }} / {{ beats().length }}</span>
+              <h2 class="beat__heading">{{ beat.heading }}</h2>
+
+              @for (paragraph of beat.body; track $index) {
+                <p class="beat__paragraph">{{ paragraph }}</p>
+              }
+
+              <!-- Caveats travel with the beat that raises them rather than being collected at the
+                   end, where they would read as boilerplate. -->
+              @if (beat.caveat) {
+                <p class="beat__caveat">
+                  <cal-icon name="caution" [size]="13" />
+                  <span>{{ beat.caveat }}</span>
+                </p>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Sources as the final snap position, so they are part of the reading rather than a
+             footnote a reader has to hunt for. -->
+        <section class="beat beat--sources">
+          <div class="beat__body">
+            <h2 class="beat__heading">Sources</h2>
+            <ul class="sources__list">
+              @for (source of loaded.sources; track source.url) {
+                <li class="source">
+                  <a class="source__title" [href]="source.url" target="_blank" rel="noreferrer">
+                    {{ source.title }}
+                  </a>
+                  <span class="source__publisher">{{ source.publisher }}</span>
+                  <span class="source__note">{{ source.note }}</span>
+                </li>
+              }
+            </ul>
+
+            <p class="beat__caveat">
+              <cal-icon name="caution" [size]="13" />
+              <span>
+                Calametra holds catalogued hazard parameters, storm tracks and fault geometry. It
+                holds no impact data and makes no claim about damage or casualties.
+              </span>
+            </p>
+
+            <div class="beat__actions">
+              <button class="c-button" type="button" (click)="backToIndex()">All stories</button>
+              <a class="c-button" routerLink="/explore">Open the full map</a>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Stepping for readers who would rather not scroll, and a progress readout. -->
+      <footer class="panel__foot">
+        <button
+          class="c-icon-button"
+          type="button"
+          [disabled]="beatIndex() === 0"
+          (click)="step(-1)"
+        >
+          <cal-icon name="chevron-up" [size]="14" label="Previous section" />
+        </button>
+        <div class="panel__progress" role="presentation">
+          <span class="panel__progress-fill" [style.width.%]="progress() * 100"></span>
+        </div>
+        <button
+          class="c-icon-button"
+          type="button"
+          [disabled]="beatIndex() >= beats().length - 1"
+          (click)="step(1)"
+        >
+          <cal-icon name="chevron-down" [size]="14" label="Next section" />
+        </button>
+      </footer>
+    } @else {
+      <header class="panel__head">
+        <span class="c-label">Stories</span>
+        <h1 class="panel__title">Guided readings</h1>
+        <p class="panel__standfirst">
+          Each story walks one event, or one property of the record, using the live archive rather
+          than illustrations of it. Every figure in the prose is one from the database.
+        </p>
+      </header>
+
+      <div class="panel__scroll panel__scroll--list">
+        <ul class="index__list">
+          @for (entry of stories; track entry.id) {
+            <li>
+              <button class="story-card" type="button" (click)="openStory(entry.id)">
+                <span class="story-card__meta">
+                  <span class="story-card__hazard">{{ entry.hazard }}</span>
+                  <span class="story-card__when">{{ entry.when }}</span>
+                </span>
+                <span class="story-card__title">{{ entry.title }}</span>
+                <span class="story-card__standfirst">{{ entry.standfirst }}</span>
+                <span class="story-card__shows">{{ entry.shows }}</span>
+                <span class="story-card__foot">
+                  <span>{{ entry.place }}</span>
+                  <span>{{ entry.beats.length }} sections</span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </aside>
+</div>

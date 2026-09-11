@@ -4,6 +4,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Icon } from './shared/ui/icon/icon';
 import { NotificationStore } from './core/notifications/notification-store';
 import { PresentationStore } from './core/presentation/presentation-store';
+import { BasemapSwitcher } from './shared/ui/basemap-switcher/basemap-switcher';
 import { type IconName } from './shared/ui/icon/icon-paths';
 
 interface NavigationItem {
@@ -23,7 +24,7 @@ interface NavigationItem {
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BasemapSwitcher],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -52,7 +53,7 @@ export class App {
     { path: '/explore', label: 'Explore', icon: 'explore', available: true },
     { path: '/time', label: 'Time', icon: 'time', available: false },
     { path: '/events', label: 'Events', icon: 'events', available: false },
-    { path: '/stories', label: 'Stories', icon: 'stories', available: false },
+    { path: '/stories', label: 'Stories', icon: 'stories', available: true },
     { path: '/compare', label: 'Compare', icon: 'compare', available: false },
     { path: '/about-data', label: 'Sources', icon: 'data-sources', available: true },
   ];

@@ -84,6 +84,21 @@
   --caution-wash: rgb(217 165 59 / 14%);
   --caution-line: rgb(217 165 59 / 40%);
 
+  /* ── STORY HIGHLIGHT — WAYFINDING, STORY MODE ONLY ──────────────────────
+     Marks the place a story's prose is pointing at, so the reader is not left
+     scanning a wide frame for whatever the sentence means.
+
+     A documented deviation from "no hue in chrome". It is permitted because it
+     appears only in Story mode, where the camera is not under the reader's
+     control and there is exactly one subject per beat — so it cannot be
+     mistaken for a data channel. It never appears on the Explore map.
+
+     Deliberately brighter and more saturated than --caution: the two would
+     otherwise be indistinguishable at ring weight, and a highlight must not
+     read as "there is a caveat about this place".                          */
+  --story-highlight: #f0b429;
+  --story-highlight-wash: rgb(240 180 41 / 18%);
+
   /* ── DEPTH RAMP — DATA ENCODING ─────────────────────────────────────────
      Earthquake depth is encoded as HUE and magnitude as SIZE. That split is
      the standard seismological convention, and adopting it means the two

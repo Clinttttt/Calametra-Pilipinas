@@ -1,0 +1,105 @@
+<aside class="layers" aria-label="Hazard layers">
+  <header class="layers__header">
+    <span class="c-label">Layers</span>
+    <button class="c-icon-button" type="button" (click)="close()">
+      <cal-icon name="close" [size]="14" label="Close the layers panel" />
+    </button>
+  </header>
+
+  <div class="layers__body">
+    @if (!loaded()) {
+      <p class="layers__empty"><span class="c-label">Loading catalogue</span></p>
+    } @else if (groups().length === 0) {
+      <p class="layers__empty">
+        No layers registered. Run the ingestion service to seed reference data.
+      </p>
+    } @else {
+      @for (group of groups(); track group.lens) {
+        <section class="lens">
+          <h3 class="lens__title">
+            <cal-icon [name]="lensIcon(group.lens)" [size]="14" />
+            <span class="c-label">{{ group.lens }}</span>
+          </h3>
+
+          <ul class="lens__layers">
+            @for (entry of group.entries; track entry.layer.id) {
+              <li class="layer-row">
+                <div class="layer-row__main">
+                  <button
+                    class="layer"
+                    type="button"
+                    [attr.aria-pressed]="entry.visible"
+                    (click)="toggle(entry.layer.id)"
+                  >
+                    <span class="layer__indicator" aria-hidden="true">
+                      @if (entry.visible) {
+                        <svg viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                          <path
+                            d="M2 5.2 4 7.2 8 3"
+                            stroke="currentColor"
+                            stroke-width="1.6"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      }
+                    </span>
+
+                    <span class="layer__text">
+                      <span class="layer__name">{{ entry.layer.displayName }}</span>
+                      <span class="layer__meta">
+                        <span>{{ entry.layer.sourceAgency }}</span>
+                        <!-- Delivery mode is stated because it changes what the layer
+                             is: proxied imagery Calametra does not hold, versus stored
+                             geometry it can query. -->
+                        <span class="layer__delivery">{{ deliveryLabel(entry.layer) }}</span>
+                      </span>
+                    </span>
+                  </button>
+
+                  <!-- The caveat is behind an affordance rather than always open. Every
+                       layer has one, and six expanded at once turned the panel into a
+                       wall of warnings that buried the controls it exists for. -->
+                  @if (entry.layer.interpretationNote || entry.layer.explainer) {
+                    <button
+                      class="layer__info"
+                      type="button"
+                      [attr.aria-expanded]="isExpanded(entry.layer.id)"
+                      [title]="'About ' + entry.layer.displayName"
+                      (click)="toggleNote(entry.layer.id)"
+                    >
+                      <cal-icon name="info" [size]="14" [label]="'About ' + entry.layer.displayName" />
+                    </button>
+                  }
+
+                  @if (entry.loading) {
+                    <span class="layer__status c-label">…</span>
+                  } @else if (entry.failed) {
+                    <span class="layer__status layer__status--failed" title="This layer could not be loaded">
+                      <cal-icon name="caution" [size]="14" label="Failed to load" />
+                    </span>
+                  }
+                </div>
+
+                @if (isExpanded(entry.layer.id)) {
+                  <div class="layer__detail">
+                    @if (entry.layer.explainer) {
+                      <p class="layer__explainer">{{ entry.layer.explainer }}</p>
+                    }
+                    @if (entry.layer.interpretationNote) {
+                      <p class="layer__caveat">
+                        <cal-icon name="caution" [size]="13" />
+                        <span>{{ entry.layer.interpretationNote }}</span>
+                      </p>
+                    }
+                    <p class="layer__attribution">{{ entry.layer.attribution }}</p>
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  </div>
+</aside>

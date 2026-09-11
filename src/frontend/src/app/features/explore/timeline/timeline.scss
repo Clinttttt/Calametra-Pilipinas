@@ -203,7 +203,9 @@
 }
 
 .timeline__play:hover {
-  background-color: #ffffff;
+  /* Token rather than a literal, so the hover state inverts with the theme instead of
+     always brightening toward white. */
+  background-color: var(--accent-bright);
 }
 
 /* Speed as plain text buttons on a hairline group rather than a filled segmented

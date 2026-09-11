@@ -164,7 +164,7 @@
 
    The caution hue appears nowhere else in the interface, so this badge is
    unambiguous: it always means "there is a caveat here", never "danger" and
-   never "look at me". Roughly 28% of USGS CARAGA events carry an assigned
+   never "look at me". Roughly 43% of USGS Philippine events carry an assigned
    depth, so this badge is common by necessity and has to stay quiet. */
 .c-badge-caution {
   display: inline-flex;
@@ -335,6 +335,178 @@
 .c-depth-swatch[data-band='lower'] { background-color: var(--depth-lower); }
 .c-depth-swatch[data-band='deepest'] { background-color: var(--depth-deepest); }
 .c-depth-swatch[data-band='unknown'] { background-color: var(--depth-unknown); }
+
+/* ── CHECKBOX ─────────────────────────────────────────────────────────────
+   A labelled binary control. Built on a button with `aria-pressed` rather than an
+   `<input type="checkbox">` because these toggles are filters applied immediately, not
+   form fields awaiting submission — and a native checkbox brings platform styling that
+   fights the rest of the interface.
+
+   The box takes a check mark when on. A filled square alone proved ambiguous at this
+   size against a translucent panel: it read as an empty box with a light border. */
+.c-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+  text-align: left;
+  transition: color var(--motion-quick) var(--ease-out);
+}
+
+.c-checkbox:hover {
+  color: var(--text-primary);
+}
+
+.c-checkbox__box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  /* Nudged so the box sits on the first line's baseline, not its box top. */
+  margin-top: 0.125rem;
+  color: var(--surface-100);
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  transition:
+    background-color var(--motion-quick) var(--ease-out),
+    border-color var(--motion-quick) var(--ease-out);
+}
+
+.c-checkbox__box svg {
+  width: 100%;
+  height: 100%;
+}
+
+.c-checkbox[aria-pressed='true'] {
+  color: var(--text-primary);
+}
+
+.c-checkbox[aria-pressed='true'] .c-checkbox__box {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── BUTTON ───────────────────────────────────────────────────────────────
+   A text action. Quiet by default: the interface is mostly a map, and buttons that
+   assert themselves compete with the data. Emphasis comes from luminance, never hue —
+   hue is reserved as a data channel. */
+.c-button {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    border-color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.c-button:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background-color: var(--surface-400);
+}
+
+.c-button--quiet {
+  border-color: transparent;
+}
+
+.c-button--quiet:hover {
+  border-color: var(--line-subtle);
+}
+
+/* ── SELECT ───────────────────────────────────────────────────────────────
+   A native select, restyled. Native rather than a custom listbox because it keeps keyboard
+   handling, touch behaviour and screen-reader semantics for free, and the platform's own
+   dropdowns are short enough not to need search or grouping.
+
+   `appearance: none` removes the platform chrome; the caret is drawn as a background image
+   because a pseudo-element cannot be placed on a replaced element. */
+.c-select {
+  appearance: none;
+  width: 100%;
+  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--text-small);
+  color: var(--text-primary);
+  background-color: var(--surface-300);
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%),
+    linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.125rem) 50%,
+    calc(100% - 0.75rem) 50%;
+  background-size: 0.375rem 0.375rem, 0.375rem 0.375rem;
+  background-repeat: no-repeat;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--motion-quick) var(--ease-out);
+}
+
+.c-select:hover {
+  border-color: var(--line-strong);
+}
+
+.c-select:focus-visible {
+  border-color: var(--accent);
+}
+
+/* The list itself cannot be styled cross-browser, so the options are given the panel's
+   surface explicitly to avoid a white dropdown against a dark interface. */
+.c-select option {
+  color: var(--text-primary);
+  background-color: var(--surface-200);
+}
+
+/* ── TEXT INPUT ───────────────────────────────────────────────────────────
+   Matched to `.c-select` deliberately: the two sit side by side in the cyclone filters, and any
+   difference in height, radius or border weight between them reads as a mistake rather than as a
+   distinction. The search variant carries a leading icon, so horizontal padding is set by the
+   wrapper in that case.
+
+   `appearance: none` also removes Safari's and Chrome's native search decorations, which arrive
+   with their own clear button and inset shadow and cannot otherwise be reconciled with this
+   surface. */
+.c-input {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--text-small);
+  color: var(--text-primary);
+  background-color: var(--surface-300);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--motion-quick) var(--ease-out);
+}
+
+.c-input::placeholder {
+  color: var(--text-disabled);
+}
+
+.c-input:hover {
+  border-color: var(--line-strong);
+}
+
+.c-input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* Chrome's native clear affordance sits inside the field and is drawn in its own colours. The
+   field is short and the value is easily selected, so it is removed rather than restyled. */
+.c-input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
+}
 
 /* ── TICKED RULE ──────────────────────────────────────────────────────────
    A hairline divider carrying small tick marks, used above the timeline and

@@ -1,0 +1,122 @@
+// A panel on the right rail, matching the other tool panels. It was briefly a centred modal over a
+// scrim; that was wrong twice over. It blocked the map behind a dialogue the reader had not asked
+// for, and it broke the platform's own rule that tools live as low-opacity icons on the right rail
+// and open panels — a rule every other tool already follows.
+.chooser {
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  max-height: 100%;
+  overflow: hidden;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+}
+
+.chooser__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.chooser__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.chooser__lede,
+.chooser__note {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+.chooser__note {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-faint);
+  color: var(--text-disabled);
+}
+
+.chooser__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Icon, then a stacked label/summary/coverage. The whole row is the target, so the chevron is a cue
+// rather than a second thing to aim at.
+.hazard-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  text-align: left;
+  color: var(--text-tertiary);
+  background-color: var(--surface-200);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.hazard-option:hover {
+  background-color: var(--surface-300);
+  border-color: var(--line-strong);
+}
+
+.hazard-option:focus-visible {
+  border-color: var(--accent);
+}
+
+// The active hazard. Marked by luminance and a border, not a tint: hue is a data channel here and
+// the two hazards already own ramps of their own.
+.hazard-option[aria-pressed='true'] {
+  background-color: var(--surface-300);
+  border-color: var(--line-strong);
+  color: var(--text-secondary);
+}
+
+.hazard-option__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hazard-option__label {
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.hazard-option__summary {
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}
+
+// Tabular figures so the two date ranges align vertically, which makes the difference in coverage
+// between the hazards legible at a glance.
+.hazard-option__coverage {
+  margin-top: 2px;
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-disabled);
+}

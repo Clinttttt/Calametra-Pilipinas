@@ -15,7 +15,7 @@ namespace Calametra.Application.Features.HazardLayers;
 /// instead, so the client chooses its path from the layer's
 /// <c>deliveryMode</c> rather than guessing.
 /// <para>
-/// GeoJSON rather than vector tiles. At CARAGA scale the fault set is 19 features,
+/// GeoJSON rather than vector tiles. Nationally the fault set is 155 features,
 /// so a single document is smaller and simpler than a tile pyramid, and it lets
 /// MapLibre style and hit-test the traces as real features — which is what makes
 /// hovering a fault to inspect it possible.

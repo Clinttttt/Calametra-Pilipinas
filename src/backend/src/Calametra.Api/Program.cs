@@ -1,5 +1,8 @@
+using Calametra.Api.Endpoints.Cyclones;
 using Calametra.Api.Endpoints.Earthquakes;
 using Calametra.Api.Endpoints.HazardLayers;
+using Calametra.Api.Endpoints.Places;
+using Calametra.Api.Endpoints.Sources;
 using Calametra.Api.Extensions;
 using Calametra.Application;
 using Calametra.Infrastructure;
@@ -30,7 +33,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference(options => options
-        .WithTitle("Calametra CARAGA API")
+        .WithTitle("Calametra Pilipinas API")
         .WithTheme(ScalarTheme.BluePlanet));
 }
 else
@@ -47,7 +50,10 @@ app.UseRateLimiter();
 app.MapHealthChecks("/health");
 
 app.MapEarthquakes();
+app.MapCyclones();
 app.MapHazardLayers();
+app.MapPlaces();
+app.MapDataSources();
 
 await app.RunAsync();
 

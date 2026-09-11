@@ -28,7 +28,24 @@ var backfillFrom = ParseDate(builder.Configuration["Ingestion:Backfill:From"]);
 var backfillTo = ParseDate(builder.Configuration["Ingestion:Backfill:To"]);
 var isBackfill = backfillFrom is not null && backfillTo is not null;
 
-if (!isBackfill)
+// Cyclone import is its own one-shot mode, opted into explicitly:
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Cyclones:Import=true
+var isCycloneImport = bool.TryParse(
+    builder.Configuration["Ingestion:Cyclones:Import"],
+    out var cycloneFlag) && cycloneFlag;
+
+var cycloneFromSeason = int.TryParse(
+    builder.Configuration["Ingestion:Cyclones:FromSeason"],
+    out var parsedSeason) ? parsedSeason : 1945;
+
+// The place directory is its own one-shot mode for the same reason as cyclones, and more so:
+// administrative boundaries change on a timescale of years, by legislation.
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Places:Import=true
+var isPlaceImport = bool.TryParse(
+    builder.Configuration["Ingestion:Places:Import"],
+    out var placeFlag) && placeFlag;
+
+if (!isBackfill && !isCycloneImport && !isPlaceImport)
 {
     builder.Services.AddHostedService<EarthquakeIngestionWorker>();
 }
@@ -58,6 +75,71 @@ await using (var scope = host.Services.CreateAsyncScope())
             faultImport.Error!.Code,
             faultImport.Error.Description);
     }
+}
+
+if (isCycloneImport)
+{
+    // A separate one-shot mode, deliberately not part of the rolling worker. The western
+    // Pacific basin file is over 100 MB; streaming it on every boot would be pointless
+    // traffic against a public archive that is revised once a season.
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var logger = host.Services.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Calametra.Ingestion.Cyclones");
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new IngestCycloneTracks.Command { FromSeason = cycloneFromSeason });
+
+    if (result.IsFailure)
+    {
+        WorkerLog.CycloneImportFailed(logger, result.Error!.Code, result.Error.Description);
+
+        return 1;
+    }
+
+    // Local names are applied after import, because a storm has to exist before it can be
+    // matched. Curated rather than ingested: PAGASA publishes name lists as documents, and no
+    // machine-readable crosswalk from international to local name exists.
+    await scope.ServiceProvider.GetRequiredService<PagasaNameSeeder>().SeedAsync();
+
+    WorkerLog.CycloneImportCompleted(
+        logger,
+        result.Value.StormsCreated,
+        result.Value.StormsSkipped,
+        result.Value.TrackPointsCreated,
+        result.Value.StormsRejected);
+
+    return 0;
+}
+
+if (isPlaceImport)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var logger = host.Services.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Calametra.Ingestion.Places");
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new ImportPlaces.Command());
+
+    if (result.IsFailure)
+    {
+        WorkerLog.PlaceImportFailed(logger, result.Error!.Code, result.Error.Description);
+
+        return 1;
+    }
+
+    WorkerLog.PlaceImportCompleted(
+        logger,
+        result.Value.CreatedCount,
+        result.Value.SkippedCount,
+        result.Value.RejectedCount,
+        result.Value.WithoutPsgcCodeCount,
+        result.Value.UnresolvedParentCount);
+
+    return 0;
 }
 
 if (isBackfill)

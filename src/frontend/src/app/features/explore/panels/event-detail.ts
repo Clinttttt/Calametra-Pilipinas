@@ -35,6 +35,12 @@ export class EventDetail {
   /** True when the request failed, so the panel can say so rather than look empty. */
   readonly failed = input(false);
 
+  /** Whether the similarity section is showing, so the button that opens it can hide. */
+  readonly similarOpen = input(false);
+
+  /** Raised when the reader wants events resembling this one. */
+  readonly similarRequested = output<void>();
+
   readonly closed = output<void>();
 
   /** Fly the map to a specific agency's epicentre. */
@@ -92,6 +98,10 @@ export class EventDetail {
 
   protected depthBand(observation: ObservationSummary): string {
     return depthBandFor(observation.depth);
+  }
+
+  protected requestSimilar(): void {
+    this.similarRequested.emit();
   }
 
   protected close(): void {

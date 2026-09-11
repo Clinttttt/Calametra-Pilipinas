@@ -1,0 +1,90 @@
+<aside class="comparison" aria-label="Event comparison">
+  <header class="comparison__header">
+    <span class="c-label">Comparison</span>
+    <div class="comparison__actions">
+      <button class="c-button c-button--quiet" type="button" (click)="swap()">Swap</button>
+      <button class="c-icon-button" type="button" (click)="close()">
+        <cal-icon name="close" [size]="14" label="Close the comparison" />
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <p class="comparison__state">Loading comparison…</p>
+  } @else if (result(); as comparison) {
+    <div class="comparison__body">
+      <!-- The three derived differences, first. They are the reason the two events are on
+           screen together, and two of them can be unavailable — which is itself the
+           finding, so it leads rather than trails the table. -->
+      <section class="deltas">
+        <div class="delta">
+          <span class="delta__label">Separation</span>
+          <span class="delta__value">{{ comparison.deltas.separationKm }} km</span>
+          <span class="delta__note">{{ comparison.deltas.timeApart }}</span>
+        </div>
+
+        <div class="delta" [class.delta--unavailable]="comparison.deltas.magnitudeDelta === null">
+          <span class="delta__label">&Delta; Magnitude</span>
+          <span class="delta__value">
+            @if (comparison.deltas.magnitudeDelta === null) {
+              <span class="delta__missing">Not comparable</span>
+            } @else {
+              ±{{ comparison.deltas.magnitudeDelta }}
+            }
+          </span>
+          <span class="delta__note">{{ comparison.deltas.magnitudeNote }}</span>
+        </div>
+
+        <div class="delta" [class.delta--unavailable]="comparison.deltas.depthDelta === null">
+          <span class="delta__label">&Delta; Depth</span>
+          <span class="delta__value">
+            @if (comparison.deltas.depthDelta === null) {
+              <span class="delta__missing">Not comparable</span>
+            } @else {
+              ±{{ comparison.deltas.depthDelta }} km
+            }
+          </span>
+          <span class="delta__note">{{ comparison.deltas.depthNote }}</span>
+        </div>
+      </section>
+
+      <!-- Attribute table. Read across rows: the same attribute sits adjacent on both
+           sides, which is what a comparison is for. -->
+      <table class="attributes">
+        <thead>
+          <tr>
+            <th scope="col"><span class="c-label">Attribute</span></th>
+            <th scope="col"><span class="attributes__side">A</span></th>
+            <th scope="col"><span class="attributes__side">B</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.label) {
+            <tr [class.attributes__row--differs]="row.differs">
+              <th scope="row">{{ row.label }}</th>
+              <td>{{ row.left }}</td>
+              <td>{{ row.right }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <!-- Per-event disagreement, kept separate from the cross-event deltas. One event
+           disagreeing with itself across agencies is a different fact from two events
+           differing, and conflating them would muddle both. -->
+      @if (comparison.left.disagreementExplanation) {
+        <p class="comparison__note">
+          <cal-icon name="caution" [size]="13" />
+          <span><strong>A:</strong> {{ comparison.left.disagreementExplanation }}</span>
+        </p>
+      }
+
+      @if (comparison.right.disagreementExplanation) {
+        <p class="comparison__note">
+          <cal-icon name="caution" [size]="13" />
+          <span><strong>B:</strong> {{ comparison.right.disagreementExplanation }}</span>
+        </p>
+      }
+    </div>
+  }
+</aside>

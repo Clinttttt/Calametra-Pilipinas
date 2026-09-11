@@ -1,0 +1,230 @@
+.layers {
+  display: flex;
+  flex-direction: column;
+  width: 18rem;
+  /* Bounded, so a growing catalogue scrolls inside the panel rather than running off
+     the bottom of the viewport. */
+  max-height: 100%;
+  overflow: hidden;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+}
+
+.layers__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+  flex: none;
+}
+
+.layers__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.layers__empty {
+  padding: var(--space-4) 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+/* ── LENS GROUP ───────────────────────────────────────────────────────────*/
+.lens__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line-faint);
+  color: var(--text-tertiary);
+}
+
+.lens__layers {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── LAYER ROW ────────────────────────────────────────────────────────────*/
+.layer-row + .layer-row {
+  margin-top: 1px;
+}
+
+.layer-row__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.layer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2);
+  text-align: left;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-quick) var(--ease-out);
+}
+
+.layer:hover {
+  background-color: var(--surface-400);
+}
+
+/* A hairline square that takes a check mark when on. The mark matters: a filled
+   square alone was ambiguous at this size against a translucent panel. */
+.layer__indicator {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--surface-100);
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  transition:
+    background-color var(--motion-quick) var(--ease-out),
+    border-color var(--motion-quick) var(--ease-out);
+}
+
+.layer__indicator svg {
+  width: 100%;
+  height: 100%;
+}
+
+.layer[aria-pressed='true'] .layer__indicator {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.layer__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.layer__name {
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+  /* Long layer names truncate rather than reflowing the row to two lines. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer[aria-pressed='true'] .layer__name {
+  color: var(--text-primary);
+}
+
+.layer__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+  min-width: 0;
+}
+
+.layer__meta > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Delivery mode set apart: it is a statement about provenance, not a description of
+   the layer's subject. */
+.layer__delivery {
+  flex: none;
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line-faint);
+  font-style: italic;
+}
+
+.layer__info {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--text-disabled);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.layer__info:hover {
+  color: var(--text-secondary);
+  background-color: var(--surface-400);
+}
+
+.layer__info[aria-expanded='true'] {
+  color: var(--text-primary);
+  background-color: var(--accent-wash);
+}
+
+.layer__status {
+  flex: none;
+  width: 1.5rem;
+  display: grid;
+  place-items: center;
+}
+
+.layer__status--failed {
+  color: var(--caution);
+}
+
+/* ── EXPANDED DETAIL ──────────────────────────────────────────────────────
+   Indented to the label column so it reads as belonging to the layer above it. */
+.layer__detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-2) calc(0.875rem + var(--space-3) + var(--space-2));
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--line-faint);
+}
+
+.layer__explainer {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+.layer__caveat {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+}
+
+.layer__caveat cal-icon {
+  margin-top: 1px;
+  flex: none;
+}
+
+.layer__attribution {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-disabled);
+  max-inline-size: none;
+}

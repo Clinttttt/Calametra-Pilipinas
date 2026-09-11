@@ -1,0 +1,314 @@
+// A panel in its own right, so it carries its own surface -- unlike `.similar`, which is
+// projected into the event detail panel and borrows that panel's chrome.
+//
+// Comments here are `//` rather than `/* */` throughout: Sass strips the former at compile time
+// and keeps the latter in the output. This panel's rules sit close to the 4 kB budget, and the
+// reasoning is worth more in the source than in the shipped bytes.
+.places {
+  display: flex;
+  flex-direction: column;
+  width: 19rem;
+  max-height: 100%;
+  overflow: hidden;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+}
+
+.places__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+  flex: none;
+}
+
+.places__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// The search field stays visible after a place is chosen: changing place is the most likely next
+// action, and hiding the input behind a back gesture would add a step to it.
+.places__search,
+.place__radius,
+.strongest,
+.recent,
+.faults {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.places__search .c-input {
+  width: 100%;
+}
+
+.places__hint,
+.places__span,
+.reading__family {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+// Figures are monospaced wherever they appear, so columns align and a number reads as a
+// measurement rather than as prose. Declared once for everything that carries one.
+.places__span,
+.tally dd,
+.reading__meta dd,
+.reading__magnitude,
+.reading__count,
+.fault__distance {
+  font-family: var(--font-mono);
+}
+
+// Caution by default, quiet for supporting detail. Grouped rather than repeated per block: the
+// cyclone panel's stylesheet twice hit its size budget through duplicated note rules.
+.places__note {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+}
+
+.places__note cal-icon {
+  margin-top: 1px;
+  flex: none;
+}
+
+.places__note--quiet {
+  color: var(--text-tertiary);
+}
+
+// ---- Results -------------------------------------------------------------
+
+.results,
+.strongest__list,
+.faults__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.results {
+  gap: 1px;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-2);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--motion-quick) var(--ease-out);
+}
+
+.result:hover {
+  border-color: var(--line-strong);
+}
+
+.result__name {
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+// The container, always present. 111 municipality names are shared between places, so this line
+// is what makes a choice between two identical names possible.
+.result__where,
+.place__where,
+.fault {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.fault {
+  gap: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.result__kind,
+.place__kind {
+  color: var(--text-disabled);
+  text-transform: lowercase;
+}
+
+.place__divider,
+.fault__slip {
+  color: var(--text-disabled);
+}
+
+// ---- Chosen place --------------------------------------------------------
+
+.place {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-subtle);
+}
+
+.place__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.place__name {
+  margin: 0 0 2px;
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+// Four equal cells rather than cells sized by digit count, matching the similarity panel's radius
+// control -- the same fix for the same wrapping problem.
+.place__radius .c-segment {
+  display: flex;
+  width: 100%;
+}
+
+.place__radius .c-segment__option {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  white-space: nowrap;
+}
+
+// ---- Figures -------------------------------------------------------------
+// The tally reads raw count / M6.0+ / assigned depths. The second sits beside the first
+// deliberately: a raw count alone invites a comparison the record cannot support.
+
+.tally,
+.reading__meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.tally {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+}
+
+.reading__meta {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+}
+
+.tally dt,
+.reading__meta dt {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+}
+
+.tally dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+.reading__meta dd {
+  margin: 2px 0 0;
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+// ---- Readings and faults -------------------------------------------------
+
+.reading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.reading__head,
+.reading__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.reading__head {
+  align-items: baseline;
+}
+
+.reading__foot {
+  align-items: center;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+}
+
+.reading__magnitude {
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+// How many readings the family holds. The figure that makes the per-family split legible: a
+// surface-wave M6.7 drawn from two readings is not the same claim as a body-wave M6.0 drawn
+// from 228.
+.reading__count {
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+// Provenance recedes without being dropped, as it does on a similarity match card.
+.reading__agency,
+.fault__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reading__agency {
+  font-size: var(--text-micro);
+  color: var(--text-disabled);
+}
+
+.fault__name {
+  flex: 1 1 auto;
+  color: var(--text-primary);
+}
+
+// Marked rather than hidden: a fault beyond the radius is still the nearest one, and suppressing
+// it would imply there is none.
+.fault__outside {
+  font-family: var(--font-sans);
+  font-style: italic;
+  color: var(--text-disabled);
+}

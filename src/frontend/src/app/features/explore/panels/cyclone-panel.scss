@@ -1,0 +1,560 @@
+.cyclones {
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  max-height: 100%;
+  overflow: hidden;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+}
+
+.cyclones__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.cyclones__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cyclones__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// ── QUIET NOTES ──────────────────────────────────────────────────────────
+// Every explanatory note in this panel shares one treatment. Grouped rather than declared six
+// times over: the duplication pushed this stylesheet past its 8 kB budget, and a shared base also
+// stops the notes drifting apart from each other as they are edited.
+.cyclones__state,
+.storm__peer,
+.storm-card__single,
+.storms__coverage,
+.field__note,
+.scale__note {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+// Quieter still. These qualify a drawing or explain an absence rather than stating a measurement,
+// so they sit a step further back without taking the caution treatment.
+.storm-card__single,
+.storms__coverage,
+.field__note,
+.scale__note {
+  color: var(--text-disabled);
+}
+
+.storms__coverage {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-faint);
+}
+
+// ── FILTERS ──────────────────────────────────────────────────────────────
+.filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+// Two equal columns. `minmax(0, 1fr)` rather than `1fr`: a grid track's default minimum is
+// auto-sized to its content, and the select's longest option would otherwise force the column
+// wider than half the panel and push the search field out.
+.filters__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+// The icon sits inside the field rather than beside it, so the two columns keep identical
+// widths. Padding on the input is overridden to leave room for it.
+.filters__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  cal-icon {
+    position: absolute;
+    left: var(--space-2);
+    color: var(--text-tertiary);
+    pointer-events: none;
+  }
+}
+
+.filters__input {
+  padding-left: calc(var(--space-2) + 1.125rem);
+}
+
+/* ── STORM LIST ───────────────────────────────────────────────────────────*/
+.storms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.storm-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.storm-card:hover {
+  border-color: var(--line-strong);
+  background-color: var(--surface-400);
+}
+
+.storm-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.storm-card__name {
+  font-size: var(--text-small);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-primary);
+}
+
+.storm-card__season {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+/* The local name, attributed. Set apart from the international name rather than beside it,
+   so it is clear the two come from different naming authorities. */
+.storm-card__local {
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+/* One entry per averaging period, laid out so the period is never separated from its
+   figure — a bare "170 kt" would be the number this platform exists not to publish. */
+.peaks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.peak {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+}
+
+.peak__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-primary);
+}
+
+.peak__period {
+  font-size: 0.5625rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.storm-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.storm-card__landfall {
+  color: var(--caution);
+}
+
+/* ── ONE STORM ────────────────────────────────────────────────────────────*/
+.storm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.storm__name {
+  margin: 0;
+  font-size: var(--text-title);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-primary);
+}
+
+.storm__dates {
+  margin: 0;
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+/* The PAGASA name with its authority named, because a name without its source is exactly
+   what this platform does not publish. */
+.storm__local {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  max-inline-size: none;
+}
+
+.storm__local-name {
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+}
+
+.storm__local-source {
+  font-size: 0.5625rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+
+.storm__note {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+}
+
+.storm__note cal-icon {
+  margin-top: 1px;
+  flex: none;
+}
+
+/* ── AGENCIES ─────────────────────────────────────────────────────────────
+   Selecting one emphasises its track on the map. The list is the comparison; the map
+   shows one reading of it at a time. */
+.agencies {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agency {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid transparent;
+  border-left: 2px solid var(--line-subtle);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  transition:
+    border-color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.agency:hover {
+  background-color: var(--surface-400);
+}
+
+/* The emphasised agency is marked by a solid left rule in the accent, matching the
+   emphasised track on the map. Luminance, not hue — hue is the depth channel. */
+.agency[aria-pressed='true'] {
+  border-left-color: var(--accent);
+  background-color: var(--accent-wash);
+}
+
+.agency__name {
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+.agency[aria-pressed='true'] .agency__name {
+  color: var(--text-primary);
+}
+
+.agency__reading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  justify-self: end;
+}
+
+.agency__wind {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+/* Always adjacent to the figure it qualifies. */
+.agency__period {
+  font-size: 0.5625rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.agency__missing {
+  font-style: italic;
+  font-size: var(--text-micro);
+  color: var(--text-disabled);
+}
+
+.agency__pressure {
+  grid-column: 1 / -1;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  color: var(--text-disabled);
+}
+
+// ── INTENSITY SCALE ──────────────────────────────────────────────────────
+// The key to the track colour. A continuous strip rather than a labelled list of seven rows:
+// the ramp reads as a gradient on the map, and seven stacked swatches with text beside each
+// would occupy a third of the panel to restate what the strip already shows. Numeric bounds sit
+// at the ends; the per-band figures are on the swatch titles.
+//
+// Line comments rather than block comments throughout this section: Sass strips `//` at compile
+// time, whereas `/* */` is emitted into the served stylesheet and counts against the 8 kB
+// component budget.
+.scale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-faint);
+}
+
+.scale__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.scale__peak,
+.scale__bounds {
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.scale__ramp {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scale__step {
+  flex: 1 1 0;
+}
+
+// Butted together with no gap, so the seven bands read as one scale. These swatches are the only
+// saturated colour in the panel; everything around them stays neutral so they are legible as a
+// key rather than as decoration.
+.scale__swatch {
+  display: block;
+  height: 6px;
+}
+
+.scale__bounds {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── PLAYBACK ─────────────────────────────────────────────────────────────*/
+.playback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-faint);
+}
+
+.playback__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.playback__counter {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+/* Native range input, restyled — same approach as the timeline scrubber, so keyboard,
+   touch and screen-reader behaviour come for free. */
+.playback__scrubber {
+  appearance: none;
+  width: 100%;
+  height: 1rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.playback__scrubber::-webkit-slider-runnable-track {
+  height: 2px;
+  background-color: var(--line-subtle);
+  border-radius: 1px;
+}
+
+.playback__scrubber::-moz-range-track {
+  height: 2px;
+  background-color: var(--line-subtle);
+  border-radius: 1px;
+}
+
+.playback__scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-top: -0.25rem;
+  background-color: var(--accent);
+  border-radius: 50%;
+}
+
+.playback__scrubber::-moz-range-thumb {
+  width: 0.625rem;
+  height: 0.625rem;
+  background-color: var(--accent);
+  border: none;
+  border-radius: 50%;
+}
+
+/* ── CURRENT FIX ──────────────────────────────────────────────────────────*/
+.fix {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+}
+
+.fix dt {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+
+.fix dd {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+/* An absent reading is set in italic sans, never as a figure, so it cannot be mistaken
+   for a measured zero. */
+.fix__missing {
+  font-family: var(--font-sans);
+  font-style: italic;
+  color: var(--text-disabled);
+}
+
+.fix__landfall {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+}
+
+.fix__landfall cal-icon {
+  margin-top: 1px;
+  flex: none;
+}
+
+/* Filter groups stack; the fields within a group may sit abreast. The season select and the name
+   search share `.filters__row` because neither needs full panel width — a four-digit year and a
+   storm name are both short — whereas the Order By segment holds two labelled options and does. */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.filters .c-segment {
+  display: flex;
+  width: 100%;
+}
+
+.filters__option {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+/* ── WIND FIELD READOUT ───────────────────────────────────────────────────
+   A single column, unlike the two-column fix grid above it: quadrant radii are one long
+   value and would wrap badly in half the width. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+}
+
+.field dt {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+
+.field dd {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}
+
+// Treatment for .field__note and .scale__note lives in the quiet-notes group above.

@@ -1,4 +1,5 @@
 using Calametra.Domain.Abstractions;
+using Calametra.Domain.Meteorology;
 using Calametra.Domain.Seismology;
 using NetTopologySuite.Geometries;
 
@@ -9,7 +10,7 @@ namespace Calametra.Domain.Events;
 /// measured it.
 /// </summary>
 /// <remarks>
-/// The split between this aggregate and <see cref="EventObservation"/> is the
+/// The split between this aggregate and <see cref="EarthquakeObservation"/> is the
 /// central modelling decision in Calametra.
 /// <code>
 ///                    HazardEvent
@@ -17,7 +18,7 @@ namespace Calametra.Domain.Events;
 ///                         |
 ///          +--------------+--------------+
 ///          |                             |
-///   EventObservation              EventObservation
+///   EarthquakeObservation        EarthquakeObservation
 ///     PHIVOLCS                        USGS
 ///     Ms 6.7, 10 km                   Mww 6.5, 15 km
 /// </code>
@@ -25,11 +26,18 @@ namespace Calametra.Domain.Events;
 /// place and the timeline has something to sort by. They are a display choice,
 /// not a truth claim, and every panel that shows a number must show the
 /// observation it came from.
+/// <para>
+/// The observation type is named for its hazard, not generically, because everything it
+/// carries is seismological — epicentre, magnitude, scale, hypocentre depth. When a second
+/// hazard family arrives it gets its own observation type rather than inheriting columns it
+/// can never populate. This aggregate is the shared part: identity, canonical time and
+/// place, and the fact that several agencies described the same real-world occurrence.
+/// </para>
 /// </remarks>
 public sealed class HazardEvent : AuditableEntity
 {
-    private readonly List<EventObservation> _observations = [];
-    private readonly List<EventTrackPoint> _trackPoints = [];
+    private readonly List<EarthquakeObservation> _observations = [];
+    private readonly List<CycloneTrackPoint> _trackPoints = [];
 
     private HazardEvent()
     {
@@ -51,6 +59,73 @@ public sealed class HazardEvent : AuditableEntity
     public HazardEventType Type { get; private set; }
 
     /// <summary>
+    /// The name the event is known by, where it has one.
+    /// </summary>
+    /// <remarks>
+    /// Null for most earthquakes, which are identified by time and place rather than a name.
+    /// Populated for cyclones, which are named by the agencies that track them, and available
+    /// for any later hazard that is named — a volcano's eruption, or a historically titled
+    /// earthquake.
+    /// <para>
+    /// Kept on the shared aggregate rather than on an observation type, because unlike
+    /// magnitude or wind a name carries no unit, no scale and no comparability rule. It is one
+    /// string meaning the same thing for every hazard, which is the test for whether something
+    /// belongs here rather than in a hazard-specific table.
+    /// </para>
+    /// <para>
+    /// For Philippine cyclones this holds the <b>international</b> name only. PAGASA assigns a
+    /// separate local name — Haiyan was Yolanda — and the upstream archive does not carry it.
+    /// Storing only one name is a known limitation, not a claim that only one exists.
+    /// </para>
+    /// </remarks>
+    public string? Name { get; private set; }
+
+    /// <summary>
+    /// The name a national authority assigned, where it differs from the international one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// PAGASA names every tropical cyclone that enters the Philippine Area of Responsibility
+    /// from its own rotating list, independently of the international name assigned by the
+    /// Japan Meteorological Agency. Haiyan was Yolanda here; Goni was Rolly; Rai was Odette.
+    /// For a Philippine audience the local name is usually the recognisable one, and in public
+    /// memory it is often the *only* one.
+    /// </para>
+    /// <para>
+    /// Held separately rather than folded into <see cref="Name"/> because the two come from
+    /// different naming authorities. Concatenating them would make it impossible to say which
+    /// body assigned which, and the platform's rule is that no value is shown without its
+    /// source.
+    /// </para>
+    /// <para>
+    /// Null where no mapping is held, which is the common case. The crosswalk is curated rather
+    /// than ingested: PAGASA publishes its name lists as documents rather than as data, and the
+    /// mapping from international to local name requires per-storm knowledge that no machine-
+    /// readable source provides.
+    /// </para>
+    /// </remarks>
+    public string? LocalName { get; private set; }
+
+    /// <summary>
+    /// Records the national authority's name for this event.
+    /// </summary>
+    /// <remarks>
+    /// Separate from creation because the crosswalk is applied after ingestion: the storm has to
+    /// exist before it can be matched, and the mapping is maintained independently of the
+    /// archive the storm came from.
+    /// </remarks>
+    public void AssignLocalName(string localName, DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(localName))
+        {
+            return;
+        }
+
+        LocalName = localName.Trim();
+        Touch(now);
+    }
+
+    /// <summary>
     /// Origin time used for timeline ordering. Taken from the preferred
     /// observation; sources typically agree to within a second or two.
     /// </summary>
@@ -66,11 +141,11 @@ public sealed class HazardEvent : AuditableEntity
     /// </summary>
     public Guid? PreferredObservationId { get; private set; }
 
-    public IReadOnlyCollection<EventObservation> Observations => _observations.AsReadOnly();
+    public IReadOnlyCollection<EarthquakeObservation> Observations => _observations.AsReadOnly();
 
-    public IReadOnlyCollection<EventTrackPoint> TrackPoints => _trackPoints.AsReadOnly();
+    public IReadOnlyCollection<CycloneTrackPoint> TrackPoints => _trackPoints.AsReadOnly();
 
-    public EventObservation? PreferredObservation =>
+    public EarthquakeObservation? PreferredObservation =>
         PreferredObservationId is { } id
             ? _observations.SingleOrDefault(observation => observation.Id == id)
             : _observations.Count == 1 ? _observations[0] : null;
@@ -123,14 +198,20 @@ public sealed class HazardEvent : AuditableEntity
         HazardEventType type,
         DateTimeOffset occurredAt,
         Point epicenter,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        string? name = null)
     {
         if (type == HazardEventType.Unknown)
         {
             return Result<HazardEvent>.Failure(EventErrors.UnknownType);
         }
 
-        var hazardEvent = new HazardEvent(Guid.CreateVersion7(), type, occurredAt, epicenter, now);
+        var hazardEvent = new HazardEvent(Guid.CreateVersion7(), type, occurredAt, epicenter, now)
+        {
+            // Optional and trimmed to null, so an upstream blank never becomes an empty name
+            // that renders as a gap where a name should be.
+            Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
+        };
 
         return Result<HazardEvent>.Success(hazardEvent);
     }
@@ -139,7 +220,7 @@ public sealed class HazardEvent : AuditableEntity
     /// Records what one agency reported. One observation per source per event; a
     /// repeat report from the same source is a revision, not a second observation.
     /// </summary>
-    public Result<EventObservation> AddObservation(
+    public Result<EarthquakeObservation> AddObservation(
         Guid dataSourceId,
         string externalEventId,
         DateTimeOffset observedAt,
@@ -151,10 +232,10 @@ public sealed class HazardEvent : AuditableEntity
     {
         if (_observations.Any(observation => observation.DataSourceId == dataSourceId))
         {
-            return Result<EventObservation>.Failure(EventErrors.DuplicateObservation);
+            return Result<EarthquakeObservation>.Failure(EventErrors.DuplicateObservation);
         }
 
-        var creation = EventObservation.Create(
+        var creation = EarthquakeObservation.Create(
             Id,
             dataSourceId,
             externalEventId,
@@ -183,7 +264,7 @@ public sealed class HazardEvent : AuditableEntity
 
         Touch(now);
 
-        return Result<EventObservation>.Success(created);
+        return Result<EarthquakeObservation>.Success(created);
     }
 
     /// <summary>
@@ -207,32 +288,59 @@ public sealed class HazardEvent : AuditableEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Records one agency's fix on a cyclone's centre.
+    /// </summary>
+    /// <remarks>
+    /// Wind arrives as a <see cref="WindReading"/> rather than a bare number of knots, so a
+    /// caller cannot record a speed without stating the interval it was averaged over. The
+    /// archive holds four agencies reporting the same storm at 30, 35, 34 and 25 knots over
+    /// three different intervals; a plain <c>int?</c> would have flattened that into a single
+    /// unqualified figure.
+    /// </remarks>
     public Result AddTrackPoint(
         Guid dataSourceId,
+        string externalStormId,
         DateTimeOffset capturedAt,
         Point position,
         DateTimeOffset now,
-        int? maxSustainedWindKnots = null,
+        WindReading? wind = null,
         int? minimumPressureMillibars = null,
         string? classification = null,
         double? distanceToLandKm = null,
-        bool isLandfall = false)
+        bool isLandfall = false,
+        double? radiusOfMaximumWindNm = null,
+        double? radiusOutermostIsobarNm = null,
+        WindField galeField = default,
+        WindField stormField = default,
+        WindField hurricaneField = default)
     {
         if (Type != HazardEventType.TropicalCyclone)
         {
             return Result.Failure(EventErrors.TrackPointsNotApplicable);
         }
 
-        _trackPoints.Add(EventTrackPoint.Create(
+        if (string.IsNullOrWhiteSpace(externalStormId))
+        {
+            return Result.Failure(EventErrors.ExternalIdRequired);
+        }
+
+        _trackPoints.Add(CycloneTrackPoint.Create(
             Id,
             dataSourceId,
+            externalStormId,
             capturedAt,
             position,
-            maxSustainedWindKnots,
+            wind,
             minimumPressureMillibars,
             classification,
             distanceToLandKm,
-            isLandfall));
+            isLandfall,
+            radiusOfMaximumWindNm,
+            radiusOutermostIsobarNm,
+            galeField,
+            stormField,
+            hurricaneField));
 
         Touch(now);
 
@@ -242,7 +350,7 @@ public sealed class HazardEvent : AuditableEntity
     /// <summary>The track as an ordered line, derived from stored fixes.</summary>
     public LineString TrackLine() => Wgs84Track(_trackPoints);
 
-    private static LineString Wgs84Track(List<EventTrackPoint> points) =>
+    private static LineString Wgs84Track(List<CycloneTrackPoint> points) =>
         Geospatial.Wgs84.LineString(points
             .OrderBy(point => point.CapturedAt)
             .Select(point => point.Position));

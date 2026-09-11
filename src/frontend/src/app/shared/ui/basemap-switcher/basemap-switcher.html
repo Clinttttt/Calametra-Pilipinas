@@ -1,0 +1,50 @@
+<div class="basemap" (keydown)="onKeydown($event)">
+  <button
+    class="basemap__trigger"
+    type="button"
+    [attr.aria-expanded]="expanded()"
+    aria-haspopup="true"
+    (click)="toggle()"
+  >
+    <cal-icon name="layers" [size]="14" />
+    <span class="basemap__current">{{ selectedLabel() }}</span>
+    <cal-icon [name]="expanded() ? 'collapse' : 'expand'" [size]="12" label="Base layer" />
+  </button>
+
+  @if (expanded()) {
+    <!-- A radio group: exclusive choice among named options, which is the correct semantic and
+         gives arrow-key navigation without any script. -->
+    <div class="basemap__panel" role="radiogroup" aria-label="Base layer">
+      <span class="c-label basemap__heading">Base layer</span>
+
+      @for (option of options; track option.id) {
+        <button
+          class="option"
+          type="button"
+          role="radio"
+          [attr.aria-checked]="selectedId() === option.id"
+          (click)="select(option.id)"
+        >
+          <span class="option__mark" aria-hidden="true"></span>
+
+          <span class="option__body">
+            <span class="option__label">{{ option.label }}</span>
+            <!-- The reason to choose it, not only its name. A base layer is an analytical
+                 decision here, so the control states what each one is for. -->
+            <span class="option__purpose">{{ option.purpose }}</span>
+            <span class="option__attribution">{{ option.attribution }}</span>
+          </span>
+        </button>
+      }
+
+      <!-- Surfaced rather than buried: where a source's terms need confirming, the reader
+           should know before they put the view in a figure. -->
+      @if (licenceCaveat(); as caveat) {
+        <p class="basemap__caveat">
+          <cal-icon name="caution" [size]="13" />
+          <span>{{ caveat }}</span>
+        </p>
+      }
+    </div>
+  }
+</div>

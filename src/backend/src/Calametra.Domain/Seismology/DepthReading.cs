@@ -4,12 +4,14 @@ namespace Calametra.Domain.Seismology;
 /// How much confidence a reported hypocentre depth deserves.
 /// </summary>
 /// <remarks>
-/// This enum exists because of a measured property of the USGS catalogue. For the
-/// CARAGA bounding box (2015-01-01 to 2026-09-01, M4.0+, 1,991 events):
+/// This enum exists because of a measured property of the USGS catalogue. Across the
+/// Philippine archive (1901-2026, 27,241 events) four fixed-depth conventions account
+/// for 11,790 depths — 43.3% of the record:
 /// <list type="bullet">
-///   <item><description>376 events (18.9%) report depth as exactly 10.00 km</description></item>
-///   <item><description>175 events (8.8%) report depth as exactly 35.00 km</description></item>
-///   <item><description>the next most common exact value has 4 events</description></item>
+///   <item><description>33 km × 5,581 — the historical NEIC "normal depth" assumption</description></item>
+///   <item><description>10 km × 4,089 — the modern shallow default</description></item>
+///   <item><description>35 km × 1,794</description></item>
+///   <item><description>15 km × 326 — the historical re-analysis fixed depth</description></item>
 /// </list>
 /// Together that is 27.7% of the catalogue sitting on two values. 10 km and 35 km
 /// are long-standing NEIC default depths, assigned when the depth cannot be

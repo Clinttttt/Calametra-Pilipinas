@@ -27,10 +27,10 @@ public interface IApplicationDbContext
     DbSet<HazardEvent> HazardEvents { get; }
 
     /// <summary>Per-agency readings of those phenomena.</summary>
-    DbSet<EventObservation> EventObservations { get; }
+    DbSet<EarthquakeObservation> EarthquakeObservations { get; }
 
     /// <summary>Positions of events that move through time.</summary>
-    DbSet<EventTrackPoint> EventTrackPoints { get; }
+    DbSet<CycloneTrackPoint> CycloneTrackPoints { get; }
 
     /// <summary>Upstream dataset provenance, licensing and coverage limits.</summary>
     DbSet<DataSource> DataSources { get; }

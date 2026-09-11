@@ -6,7 +6,7 @@ namespace Calametra.Domain.UnitTests.Events;
 
 /// <summary>
 /// Uses the real 10 February 2017 Surigao earthquake as the fixture, because it is
-/// the case that motivated splitting HazardEvent from EventObservation:
+/// the case that motivated splitting HazardEvent from EarthquakeObservation:
 /// PHIVOLCS reports Ms 6.7 at 10 km, USGS reports Mww 6.5 at 15 km
 /// (event id us20008ixa). Both readings are correct.
 /// </summary>
@@ -155,6 +155,7 @@ public sealed class HazardEventTests
 
         var result = hazardEvent.AddTrackPoint(
             UsgsSourceId,
+            "2013306N07162",
             OriginTime,
             Wgs84.Point(9.9d, 125.4d),
             Now);
@@ -163,7 +164,7 @@ public sealed class HazardEventTests
         result.Error.ShouldBe(EventErrors.TrackPointsNotApplicable);
     }
 
-    private static Domain.Events.EventObservation AddUsgsObservation(HazardEvent hazardEvent)
+    private static Domain.Events.EarthquakeObservation AddUsgsObservation(HazardEvent hazardEvent)
     {
         var result = hazardEvent.AddObservation(
             UsgsSourceId,
@@ -180,7 +181,7 @@ public sealed class HazardEventTests
         return result.Value;
     }
 
-    private static Domain.Events.EventObservation AddPhivolcsObservation(HazardEvent hazardEvent)
+    private static Domain.Events.EarthquakeObservation AddPhivolcsObservation(HazardEvent hazardEvent)
     {
         var result = hazardEvent.AddObservation(
             PhivolcsSourceId,

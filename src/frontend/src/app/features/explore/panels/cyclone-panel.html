@@ -1,0 +1,389 @@
+<aside class="cyclones" aria-label="Tropical cyclones">
+  <header class="cyclones__header">
+    <div class="cyclones__title">
+      @if (track()) {
+        <button class="c-icon-button" type="button" (click)="back()">
+          <cal-icon name="chevron-left" [size]="14" label="Back to the storm list" />
+        </button>
+      }
+      <span class="c-label">Cyclones</span>
+    </div>
+    <button class="c-icon-button" type="button" (click)="close()">
+      <cal-icon name="close" [size]="14" label="Close cyclones" />
+    </button>
+  </header>
+
+  <div class="cyclones__body">
+    @if (track(); as storm) {
+      <!-- ── ONE STORM ─────────────────────────────────────────────────── -->
+      <section class="storm">
+        <h3 class="storm__name">{{ storm.name ?? 'Unnamed storm' }}</h3>
+        <!-- The PAGASA name attributed to PAGASA. Both are shown because they come from
+             different naming authorities, and for a Philippine reader the local name is
+             usually the recognisable one. -->
+        @if (storm.localName) {
+          <p class="storm__local">
+            <span class="storm__local-name">{{ storm.localName }}</span>
+            <span class="storm__local-source">PAGASA name</span>
+          </p>
+        }
+        <p class="storm__dates">
+          {{ formatDate(storm.startedAt) }} – {{ formatDate(storm.endedAt) }} · {{ storm.season }}
+          @if (storm.madeLandfall) {
+            · made landfall
+          }
+        </p>
+
+        <!-- Every agency's reading, side by side. Clicking one emphasises its track on the
+             map; the rest stay faint rather than competing with it. -->
+        <ul class="agencies">
+          @for (agency of storm.tracks; track agency.sourceSlug) {
+            <li>
+              <button
+                class="agency"
+                type="button"
+                [attr.aria-pressed]="emphasised()?.sourceSlug === agency.sourceSlug"
+                (click)="emphasise(agency)"
+              >
+                <span class="agency__name">{{ agency.agency }}</span>
+                <span class="agency__reading">
+                  @if (agency.peakWindKnots !== null) {
+                    <span class="agency__wind">{{ agency.peakWindKnots }} kt</span>
+                    <span class="agency__period">{{ agency.averagingPeriod }}</span>
+                  } @else {
+                    <span class="agency__missing">no wind reported</span>
+                  }
+                </span>
+                <span class="agency__pressure">
+                  @if (agency.minimumPressureMillibars !== null) {
+                    {{ agency.minimumPressureMillibars }} mb
+                  }
+                  · {{ agency.fixes.length }} fixes
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+
+        <!-- The server's own wording. Whether two peaks may be compared at all is a domain
+             rule, so the explanation comes from the same place as the rule. -->
+        @if (storm.agreementNote) {
+          <p class="storm__note">
+            <cal-icon name="caution" [size]="13" />
+            <span>{{ storm.agreementNote }}</span>
+          </p>
+        }
+
+        @if (hasComparablePeer()) {
+          <p class="storm__peer">
+            Another agency shares this {{ emphasised()?.averagingPeriod }} average, so those two
+            peaks are directly comparable.
+          </p>
+        }
+      </section>
+
+      <!-- ── INTENSITY SCALE ───────────────────────────────────────────── -->
+      <!-- Present because the track is now coloured, and a colour ramp without a key is a
+           decoration rather than an encoding. Rendered from the same table the map paints from,
+           so the key cannot drift away from the line it describes. -->
+      <section class="scale">
+        <div class="scale__head">
+          <span class="c-label">Intensity</span>
+          @if (emphasisedCategory(); as category) {
+            <span class="scale__peak">peak · {{ category }}</span>
+          }
+        </div>
+
+        <ul class="scale__ramp">
+          @for (row of legend(); track row.label) {
+            <li class="scale__step" [title]="row.label + ' · ' + row.range">
+              <span class="scale__swatch" [style.background]="row.colour"></span>
+            </li>
+          }
+        </ul>
+
+        <div class="scale__bounds">
+          <span>&lt;34 kt</span>
+          <span>137+ kt</span>
+        </div>
+
+        <p class="scale__note">
+          Coloured by reported wind speed, not category — Saffir–Simpson applies only to the
+          one-minute average. Grey marks a fix with no wind reading.
+        </p>
+      </section>
+
+      <!-- ── PLAYBACK ──────────────────────────────────────────────────── -->
+      @if (fixCount() > 0) {
+        <section class="playback">
+          <div class="playback__controls">
+            <button
+              class="c-icon-button"
+              type="button"
+              [disabled]="fixIndex() === 0"
+              (click)="step(-1)"
+            >
+              <cal-icon name="step-back" [size]="14" label="Previous fix" />
+            </button>
+
+            <button class="c-icon-button" type="button" (click)="togglePlayback()">
+              <cal-icon
+                [name]="playing() ? 'pause' : 'play'"
+                [size]="14"
+                [label]="playing() ? 'Pause' : 'Play the track'"
+              />
+            </button>
+
+            <button
+              class="c-icon-button"
+              type="button"
+              [disabled]="fixIndex() >= fixCount() - 1"
+              (click)="step(1)"
+            >
+              <cal-icon name="step-forward" [size]="14" label="Next fix" />
+            </button>
+
+            <span class="playback__counter">{{ fixIndex() + 1 }} / {{ fixCount() }}</span>
+          </div>
+
+          <!-- Indexed by fix, not by clock: agencies report on different schedules, so a
+               shared timeline would leave one track stepping and another still. -->
+          <input
+            class="playback__scrubber"
+            type="range"
+            min="0"
+            [max]="fixCount() - 1"
+            [value]="fixIndex()"
+            [attr.aria-label]="'Position along ' + emphasised()?.agency + ' track'"
+            (input)="scrub($any($event.target).value)"
+          />
+
+          @if (currentFix(); as fix) {
+            <dl class="fix">
+              <div>
+                <dt>When</dt>
+                <dd>{{ formatFixTime(fix.capturedAt) }}</dd>
+              </div>
+              <div>
+                <dt>Wind</dt>
+                <dd [class.fix__missing]="fix.windKnots === null">
+                  @if (fix.windKnots !== null) {
+                    {{ fix.windKnots }} kt · {{ kilometresPerHour(fix.windKnots) }} km/h
+                  } @else {
+                    not reported
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Pressure</dt>
+                <dd [class.fix__missing]="fix.pressureMillibars === null">
+                  {{ fix.pressureMillibars !== null ? fix.pressureMillibars + ' mb' : 'not reported' }}
+                </dd>
+              </div>
+              <div>
+                <dt>Stage</dt>
+                <dd>{{ fix.classification ?? '—' }}</dd>
+              </div>
+            </dl>
+
+            <!-- The measured extent. Shown with its threshold, because JTWC measures the gale
+                 radius at 34 kt and JMA at 30 — a radius without it is not comparable. -->
+            @if (fix.galeGeometry !== 'None') {
+                <dl class="field">
+                  <div>
+                    <dt>Gale radius · {{ fix.galeThresholdKnots }} kt</dt>
+                    <dd>
+                      @if (fix.galeGeometry === 'Quadrants') {
+                        NE {{ fix.galeNorthEastNm ?? 0 }} · SE {{ fix.galeSouthEastNm ?? 0 }} ·
+                        SW {{ fix.galeSouthWestNm ?? 0 }} · NW {{ fix.galeNorthWestNm ?? 0 }} nmi
+                      } @else {
+                        {{ fix.galeLongAxisNm ?? 0 }} × {{ fix.galeShortAxisNm ?? 0 }} nmi
+                      }
+                    </dd>
+                  </div>
+
+                  <!-- The inner bands, where reported. Together with the gale radius these are the
+                       34/50/64 kt rings used in cyclone wind-field products. -->
+                  @if (fix.stormNorthEastNm !== null) {
+                    <div>
+                      <dt>Storm force · 50 kt</dt>
+                      <dd>
+                        NE {{ fix.stormNorthEastNm }} · SE {{ fix.stormSouthEastNm ?? 0 }} ·
+                        SW {{ fix.stormSouthWestNm ?? 0 }} · NW {{ fix.stormNorthWestNm ?? 0 }} nmi
+                      </dd>
+                    </div>
+                  }
+
+                  @if (fix.hurricaneNorthEastNm !== null) {
+                    <div>
+                      <dt>Hurricane force · 64 kt</dt>
+                      <dd>
+                        NE {{ fix.hurricaneNorthEastNm }} · SE {{ fix.hurricaneSouthEastNm ?? 0 }} ·
+                        SW {{ fix.hurricaneSouthWestNm ?? 0 }} · NW {{ fix.hurricaneNorthWestNm ?? 0 }} nmi
+                      </dd>
+                    </div>
+                  }
+
+                  @if (fix.eyewallRadiusNm !== null) {
+                    <div>
+                      <dt>Eyewall · max wind</dt>
+                      <dd>{{ fix.eyewallRadiusNm }} nmi</dd>
+                    </div>
+                  }
+
+                  <!-- The number that justifies drawing a shape rather than a circle. -->
+                  @if (fix.galeAsymmetryRatio !== null && fix.galeAsymmetryRatio > 1.5) {
+                    <div>
+                      <dt>Asymmetry</dt>
+                      <dd>{{ fix.galeAsymmetryRatio }}× widest to narrowest</dd>
+                    </div>
+                  }
+                </dl>
+
+                <p class="field__note">
+                  Contours are interpolated between this agency's reported radii — a reconstructed
+                  profile, not an observation.
+                </p>
+            } @else {
+              <p class="field__note">
+                This agency reported intensity but not extent, so no footprint is drawn.
+              </p>
+            }
+
+            @if (fix.isLandfall) {
+              <p class="fix__landfall">
+                <cal-icon name="caution" [size]="13" />
+                <span>Crosses the coast between this fix and the next.</span>
+              </p>
+            }
+          }
+        </section>
+      }
+    } @else {
+      <!-- ── STORM LIST ────────────────────────────────────────────────── -->
+      <div class="filters">
+        <!-- Season and search share a row. The season select alone spanned the full panel width
+             for a four-character value, which read as an unfinished layout. -->
+        <div class="filters__row">
+          <label class="filters__field">
+            <span class="c-label">Season</span>
+            <select class="c-select" (change)="selectSeason($any($event.target).value)">
+              <option value="all" [selected]="season() === null">All seasons</option>
+              @for (year of seasons(); track year) {
+                <option [value]="year" [selected]="season() === year">{{ year }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="filters__field">
+            <span class="c-label">Name</span>
+            <span class="filters__search">
+              <cal-icon name="search" [size]="13" />
+              <input
+                class="c-input filters__input"
+                type="search"
+                autocomplete="off"
+                placeholder="Haiyan or Yolanda"
+                [value]="query()"
+                (input)="search($any($event.target).value)"
+              />
+            </span>
+          </label>
+        </div>
+
+        <!-- Intensity first by default. Recency surfaces provisional single-agency tracks,
+             which carry neither a cross-agency comparison nor a PAGASA name. -->
+        <div class="filters__field">
+          <span class="c-label">Order by</span>
+          <div class="c-segment">
+            <button
+              class="c-segment__option filters__option"
+              type="button"
+              [attr.aria-pressed]="order() === 'Intensity'"
+              title="Lowest central pressure first"
+              (click)="selectOrder('Intensity')"
+            >
+              Intensity
+            </button>
+            <button
+              class="c-segment__option filters__option"
+              type="button"
+              [attr.aria-pressed]="order() === 'Recent'"
+              title="Most recent first"
+              (click)="selectOrder('Recent')"
+            >
+              Recent
+            </button>
+          </div>
+        </div>
+      </div>
+
+      @if (loadingStorms()) {
+        <p class="cyclones__state">Loading storms…</p>
+      } @else if (storms().length === 0) {
+        <p class="cyclones__state">No storms recorded for this season.</p>
+      } @else {
+        <ul class="storms">
+          @for (storm of storms(); track storm.id) {
+            <li>
+              <button class="storm-card" type="button" (click)="selectStorm(storm)">
+                <div class="storm-card__head">
+                  <span class="storm-card__name">{{ storm.name ?? 'Unnamed' }}</span>
+                  <span class="storm-card__season">{{ storm.season }}</span>
+                </div>
+
+                <!-- The PAGASA name where held. Shown in the list because it is often the name
+                     a Philippine reader is searching for. -->
+                @if (storm.localName) {
+                  <span class="storm-card__local">{{ storm.localName }} · PAGASA</span>
+                }
+
+                <!-- One peak per averaging period. Listing a single "peak wind" would report
+                     whichever agency averages over the shortest interval. -->
+                <ul class="peaks">
+                  @for (peak of storm.peaks; track peak.period) {
+                    <li class="peak">
+                      <span class="peak__value">{{ peak.knots }} kt</span>
+                      <span class="peak__period">{{ peak.period }}</span>
+                    </li>
+                  }
+                </ul>
+
+                <div class="storm-card__meta">
+                  @if (storm.minimumPressureMillibars !== null) {
+                    <span>{{ storm.minimumPressureMillibars }} mb</span>
+                  }
+                  <span>{{ storm.agencyCount }} {{ storm.agencyCount === 1 ? 'agency' : 'agencies' }}</span>
+                  @if (storm.madeLandfall) {
+                    <span class="storm-card__landfall">landfall</span>
+                  }
+                </div>
+
+                <!-- Stated because a single-agency storm has no comparison to offer, and a
+                     reader should know that before drawing conclusions from one number. -->
+                @if (storm.agencyCount === 1) {
+                  <p class="storm-card__single">
+                    One agency only — recent seasons are not yet reanalysed by the others.
+                  </p>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+
+        <!-- Stated once beneath the list rather than as a placeholder on each card. Every storm
+             entering the Philippine Area of Responsibility receives a PAGASA name, so a missing
+             one is a gap in this platform's curated crosswalk — not a storm that had no local
+             name. Saying so prevents the absence being read as a fact about the storm. -->
+        <p class="storms__coverage">
+          PAGASA names are transcribed and cover significant storms, so a missing one is a gap in
+          this platform rather than a storm without a local name.
+        </p>
+      }
+    }
+
+    @if (loadingTrack()) {
+      <p class="cyclones__state">Loading track…</p>
+    }
+  </div>
+</aside>

@@ -40,7 +40,10 @@
   align-items: center;
   gap: var(--space-5);
   padding-inline: var(--space-4);
-  overflow: hidden;
+  /* Visible, not hidden. `overflow: hidden` here was clipping the base layer popover at the
+     bar's lower edge — the panel opens downward, so the bar cut it off entirely. The clipping
+     it was there for belongs to the descriptor text, which is where it now lives. */
+  overflow: visible;
   background-color: var(--surface-100);
   border-bottom: 1px solid var(--line-subtle);
   transition: opacity var(--motion-quick) var(--ease-out);
@@ -99,6 +102,12 @@
   color: var(--text-tertiary);
   white-space: nowrap;
   max-inline-size: none;
+  /* The clipping moved here from the bar. `min-width: 0` is required for a flex child to
+     shrink below its content width at all; without it the ellipsis never engages and the
+     descriptor pushes the controls off the end instead. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── NAVIGATION RAIL ──────────────────────────────────────────────────────*/
@@ -278,4 +287,15 @@
     bottom: 5rem;
     max-width: none;
   }
+}
+
+/* The theme control sits at the trailing edge, pushed there by the descriptor rather than by
+   a spacer element. `margin-inline-start: auto` on the switcher would work too, but claiming
+   the space on the descriptor keeps the growth on the text that can absorb it. */
+cal-basemap-switcher {
+  flex: none;
+  /* On the control itself rather than `margin-inline-end` on the descriptor, because the
+     descriptor is hidden at the mobile breakpoint — pushing from it would leave the control
+     stranded mid-bar on a phone. */
+  margin-inline-start: auto;
 }

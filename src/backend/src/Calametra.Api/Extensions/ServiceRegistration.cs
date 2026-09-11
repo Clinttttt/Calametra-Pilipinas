@@ -81,10 +81,17 @@ internal static class ServiceRegistration
                 permitLimit: 300,
                 window: TimeSpan.FromMinutes(1)));
 
-            // Tight: every one of these becomes an outbound request to a government
-            // map service, so the limit protects them, not us.
+            // Map tiles, sized for how a map actually behaves rather than for how a
+            // user does. MapLibre requests one tile per viewport tile, so a single
+            // view is twenty to forty requests and panning across the archipelago is
+            // several hundred. An earlier limit of 60/min was set as though a request
+            // were a user action, and returned HTTP 429 to our own map within seconds.
+            //
+            // Upstream volume is controlled by the server-side tile cache in
+            // PhivolcsHazardMapService, not here. This limit exists only to stop a
+            // pathological client, so it is set well above legitimate map use.
             options.AddPolicy(RateLimitPolicies.HazardProxy, PartitionByClient(
-                permitLimit: 60,
+                permitLimit: 1_200,
                 window: TimeSpan.FromMinutes(1)));
         });
 

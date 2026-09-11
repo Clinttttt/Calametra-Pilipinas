@@ -130,4 +130,41 @@ internal static partial class WorkerLog
         Message = "Active fault import did not complete: {ErrorCode} — {ErrorDescription}. "
             + "Earthquake ingestion continues; fault geometry will be retried on next start.")]
     public static partial void FaultImportFailed(ILogger logger, string errorCode, string errorDescription);
+
+    [LoggerMessage(
+        EventId = 7006,
+        Level = LogLevel.Information,
+        Message = "Cyclone import complete: {StormsCreated} storms created, {StormsSkipped} already "
+            + "present, {TrackPointsCreated} agency fixes stored, {StormsRejected} rejected")]
+    public static partial void CycloneImportCompleted(
+        ILogger logger,
+        int stormsCreated,
+        int stormsSkipped,
+        int trackPointsCreated,
+        int stormsRejected);
+
+    [LoggerMessage(
+        EventId = 7007,
+        Level = LogLevel.Error,
+        Message = "Cyclone import failed: {ErrorCode} — {ErrorDescription}")]
+    public static partial void CycloneImportFailed(ILogger logger, string errorCode, string errorDescription);
+
+    [LoggerMessage(
+        EventId = 7008,
+        Level = LogLevel.Information,
+        Message = "Place import complete: {Created} created, {Skipped} already present, {Rejected} "
+            + "rejected, {WithoutCode} without a PSGC code, {UnresolvedParents} without a resolved parent")]
+    public static partial void PlaceImportCompleted(
+        ILogger logger,
+        int created,
+        int skipped,
+        int rejected,
+        int withoutCode,
+        int unresolvedParents);
+
+    [LoggerMessage(
+        EventId = 7009,
+        Level = LogLevel.Error,
+        Message = "Place import failed: {ErrorCode} — {ErrorDescription}")]
+    public static partial void PlaceImportFailed(ILogger logger, string errorCode, string errorDescription);
 }

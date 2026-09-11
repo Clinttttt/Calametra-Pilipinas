@@ -24,5 +24,5 @@ public sealed class GemOptions
     /// </summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(5);
 
-    public string UserAgent { get; set; } = "Calametra-CARAGA/0.1 (academic research platform)";
+    public string UserAgent { get; set; } = "Calametra-Pilipinas/0.1 (academic research platform)";
 }

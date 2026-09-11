@@ -6,6 +6,7 @@ import {
   effect,
   inject,
   input,
+  linkedSignal,
   output,
   signal,
 } from '@angular/core';
@@ -67,6 +68,27 @@ export class Timeline {
 
   readonly totalCount = input(0);
 
+  /**
+   * The magnitude floor currently applied to the map, owned by the parent.
+   *
+   * An input rather than internal state, and the distinction is not academic: this component is
+   * rendered inside an `@if` on the open tool, so it is destroyed when the Time Machine is closed
+   * and constructed afresh when it is reopened. A local `comparableOnly` signal therefore reset to
+   * its default on every reopen while the map stayed filtered — the toggle read "off" over a
+   * filtered map, and the next click emitted the value that was already in force. Deriving from the
+   * parent's state makes that class of drift impossible.
+   */
+  readonly magnitudeFloor = input<number | null>(null);
+
+  /**
+   * The instant the map is filtered to, or null for the whole archive. Also parent-owned.
+   *
+   * Same remount problem: the scrubber previously returned to the far right on reopen while the map
+   * remained filtered to an earlier moment, so the control claimed to show the complete archive
+   * while showing a slice of it.
+   */
+  readonly instantMs = input<number | null>(null);
+
   /** Emits the currently selected instant. Null means "show everything". */
   readonly instantChanged = output<number | null>();
 
@@ -76,10 +98,29 @@ export class Timeline {
   protected readonly speeds = SPEEDS;
   protected readonly playing = signal(false);
   protected readonly speed = signal<Speed>(2);
-  protected readonly comparableOnly = signal(false);
 
-  /** Position along the timeline, 0–1. */
-  protected readonly position = signal(1);
+  /** Reflects the parent's floor rather than tracking its own. */
+  protected readonly comparableOnly = computed(() => this.magnitudeFloor() !== null);
+
+  /**
+   * Position along the timeline, 0–1.
+   *
+   * A `linkedSignal` because it is both derived and directly writable: it must start wherever the
+   * parent's instant already is, and the scrubber, the step buttons and playback must all be able
+   * to move it without a round trip through the parent. A plain `computed` could not be written to,
+   * and a plain `signal` could not pick up the parent's state on construction.
+   */
+  protected readonly position = linkedSignal<number>(() => {
+    const instant = this.instantMs();
+    const start = this.startMs();
+    const end = this.endMs();
+
+    if (instant === null || end <= start) {
+      return 1;
+    }
+
+    return Math.min(1, Math.max(0, (instant - start) / (end - start)));
+  });
 
   protected readonly showingAll = computed(() => this.position() >= 1);
 
@@ -264,8 +305,11 @@ export class Timeline {
   }
 
   protected toggleComparable(): void {
-    this.comparableOnly.update((only) => !only);
-    this.magnitudeFloorChanged.emit(this.comparableOnly() ? Timeline.comparableMagnitude : null);
+    // Emits only. The parent owns the floor and feeds it back through `magnitudeFloor`, so there is
+    // one source of truth and the button cannot disagree with the map.
+    this.magnitudeFloorChanged.emit(
+      this.comparableOnly() ? null : Timeline.comparableMagnitude,
+    );
   }
 
   private emit(): void {

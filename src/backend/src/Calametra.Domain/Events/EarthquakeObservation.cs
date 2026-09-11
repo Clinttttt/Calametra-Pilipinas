@@ -5,7 +5,7 @@ using NetTopologySuite.Geometries;
 namespace Calametra.Domain.Events;
 
 /// <summary>
-/// What one agency reports about one real-world event.
+/// What one agency reports about one earthquake.
 /// </summary>
 /// <remarks>
 /// A single earthquake produces several of these. The 10 February 2017 Surigao
@@ -15,6 +15,16 @@ namespace Calametra.Domain.Events;
 /// <para>
 /// Calametra therefore never reduces an event to one magnitude. The UI shows every
 /// observation side by side with its agency and scale, and explains why they differ.
+/// </para>
+/// <para>
+/// <b>On the name.</b> This type is deliberately <i>not</i> called
+/// <c>EventObservation</c>. Every member below is specific to seismology —
+/// <see cref="Epicenter"/>, <see cref="MagnitudeValue"/>, <see cref="MagnitudeScale"/>,
+/// <see cref="DepthKilometres"/>, <see cref="DepthQuality"/> — and none of them means
+/// anything for a landslide polygon or a cyclone track point. A generic name would have
+/// invited the next hazard to reuse this table and carry five columns it can never
+/// populate. Other hazards get their own observation type; what they share is
+/// <see cref="HazardEvent"/>, which holds only what is genuinely common.
 /// </para>
 /// <para>
 /// <b>On the shape of the magnitude and depth members.</b> Each is stored as mapped
@@ -28,13 +38,13 @@ namespace Calametra.Domain.Events;
 /// through the value object, so the two cannot drift.
 /// </para>
 /// </remarks>
-public sealed class EventObservation : Entity
+public sealed class EarthquakeObservation : Entity
 {
-    private EventObservation()
+    private EarthquakeObservation()
     {
     }
 
-    private EventObservation(
+    private EarthquakeObservation(
         Guid id,
         Guid eventId,
         Guid dataSourceId,
@@ -126,7 +136,7 @@ public sealed class EventObservation : Entity
     /// <summary>Deep link to the source's own page for this event.</summary>
     public string? SourceUrl { get; private set; }
 
-    internal static Result<EventObservation> Create(
+    internal static Result<EarthquakeObservation> Create(
         Guid eventId,
         Guid dataSourceId,
         string externalEventId,
@@ -139,15 +149,15 @@ public sealed class EventObservation : Entity
     {
         if (dataSourceId == Guid.Empty)
         {
-            return Result<EventObservation>.Failure(EventErrors.ObservationSourceRequired);
+            return Result<EarthquakeObservation>.Failure(EventErrors.ObservationSourceRequired);
         }
 
         if (string.IsNullOrWhiteSpace(externalEventId))
         {
-            return Result<EventObservation>.Failure(EventErrors.ExternalIdRequired);
+            return Result<EarthquakeObservation>.Failure(EventErrors.ExternalIdRequired);
         }
 
-        var observation = new EventObservation(
+        var observation = new EarthquakeObservation(
             Guid.CreateVersion7(),
             eventId,
             dataSourceId,
@@ -161,7 +171,7 @@ public sealed class EventObservation : Entity
 
         observation.ApplyReadings(depth, magnitude);
 
-        return Result<EventObservation>.Success(observation);
+        return Result<EarthquakeObservation>.Success(observation);
     }
 
     /// <summary>Applies a revised solution from the reporting agency.</summary>

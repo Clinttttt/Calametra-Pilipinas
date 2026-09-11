@@ -14,19 +14,21 @@ namespace Calametra.Infrastructure.Sources.Gem;
 /// <remarks>
 /// <para>
 /// Used because it is openly licensed (CC BY-SA 4.0) and therefore storable,
-/// which the PHIVOLCS service is not. Verified against the live dataset on
-/// 2026-09-04: 13,696 features worldwide, 116 in the <c>philippines</c>
-/// catalogue, 19 intersecting the CARAGA bounding box — including the Surigao,
-/// Offshore Surigao, Lianga, Agusan Marsh, Caraga River, Central Mindanao and
-/// Esperanza faults.
+/// which the PHIVOLCS service is not. Verified against the live dataset: 13,696
+/// features worldwide, 116 in the <c>philippines</c> catalogue, and 155 traces
+/// imported for the national study area — including the East Valley Fault (the
+/// Marikina Valley system), Digdig, Casiguran, Lubang, the Surigao faults, and 25
+/// subduction thrust segments covering the Manila, Philippine, Negros and
+/// Cotabato Trenches.
 /// </para>
 /// <para>
 /// <b>Resolution caveat, which must be surfaced to users.</b> GEM is a regional
-/// compilation: 19 principal named faults across CARAGA, against the PHIVOLCS
-/// service returning over 1,000 trace segments for the same box. GEM is
-/// sufficient to answer "which major fault system is near this event" and is not
-/// a substitute for detailed local mapping. That limitation is recorded in the
-/// data source's coverage notes rather than left for a reader to discover.
+/// compilation of principal named faults. The PHIVOLCS service hits its
+/// 1,000-record cap on a single region's bounding box, so nationally it holds an
+/// order of magnitude more detail. GEM answers "which major fault system is near
+/// this event" and is not a substitute for detailed national mapping. That
+/// limitation is recorded in the data source's coverage notes rather than left for
+/// a reader to discover.
 /// </para>
 /// <para>
 /// <b>Licence caveat.</b> CC BY-SA 4.0 is share-alike. Attribution is mandatory,

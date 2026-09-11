@@ -20,7 +20,7 @@ namespace Calametra.Domain.Sources;
 /// </para>
 /// <para>
 /// Second, honesty about coverage. <see cref="MinimumReliableMagnitude"/> exists
-/// because the USGS catalogue holds no CARAGA events below M3.5 and effectively
+/// because the USGS catalogue holds no Philippine events below M3.5 and effectively
 /// begins at M4.0, whereas the PHIVOLCS local network records M2.x events
 /// routinely. Any "events today" figure is meaningless without stating which
 /// catalogue produced it.

@@ -26,5 +26,5 @@ public sealed class UsgsOptions
     /// Contact string sent as User-Agent. The USGS asks that automated clients
     /// identify themselves so they can reach the operator if a client misbehaves.
     /// </summary>
-    public string UserAgent { get; set; } = "Calametra-CARAGA/0.1 (academic research platform)";
+    public string UserAgent { get; set; } = "Calametra-Pilipinas/0.1 (academic research platform)";
 }

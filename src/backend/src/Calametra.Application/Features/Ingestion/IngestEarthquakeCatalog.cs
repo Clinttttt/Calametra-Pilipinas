@@ -108,7 +108,7 @@ public static class IngestEarthquakeCatalog
             var externalIds = fetched.Select(item => item.ExternalId).ToHashSet(StringComparer.Ordinal);
 
             // One round trip to find everything already known, rather than a query per record.
-            var existing = await context.EventObservations
+            var existing = await context.EarthquakeObservations
                 .Where(observation => observation.DataSourceId == source.Id
                     && externalIds.Contains(observation.ExternalEventId))
                 .ToDictionaryAsync(

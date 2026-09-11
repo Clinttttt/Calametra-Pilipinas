@@ -84,7 +84,7 @@ public static class GetEarthquakeActivity
         {
             var query =
                 from hazardEvent in context.HazardEvents.AsNoTracking()
-                join observation in context.EventObservations.AsNoTracking()
+                join observation in context.EarthquakeObservations.AsNoTracking()
                     on hazardEvent.PreferredObservationId equals observation.Id
                 where hazardEvent.Type == HazardEventType.Earthquake
                 select new { hazardEvent.CanonicalOccurredAt, observation.MagnitudeValue, observation.MagnitudeScale };

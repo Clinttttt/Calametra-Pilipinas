@@ -1,0 +1,231 @@
+<section class="similar" aria-label="Similar earthquakes">
+  <header class="similar__header">
+    <span class="c-label">Similar events</span>
+    <button class="c-icon-button" type="button" (click)="close()">
+      <cal-icon name="close" [size]="14" label="Close similar events" />
+    </button>
+  </header>
+
+  <div class="similar__body">
+    <!-- Criteria first. The result is only interpretable alongside the tolerances that
+         produced it, so they are stated rather than hidden behind a settings icon. -->
+    <div class="criteria">
+      <div class="criteria__field">
+        <!-- Unit in the label, so each option stays a single token and cannot wrap. -->
+        <span class="c-label">Search radius (km)</span>
+        <div class="c-segment">
+          @for (option of distanceOptions; track option) {
+            <button
+              class="c-segment__option"
+              type="button"
+              [attr.aria-pressed]="maxDistanceKm() === option"
+              [attr.aria-label]="option + ' kilometres'"
+              (click)="setDistance(option)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="criteria__checks">
+        <button
+          class="c-checkbox"
+          type="button"
+          [attr.aria-pressed]="requireComparableScale()"
+          (click)="toggleComparableScale()"
+        >
+          <span class="c-checkbox__box" aria-hidden="true">
+            @if (requireComparableScale()) {
+              <svg viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path d="M2 5.2 4 7.2 8 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            }
+          </span>
+          <span>Comparable magnitude scale only</span>
+        </button>
+
+        <button
+          class="c-checkbox"
+          type="button"
+          [attr.aria-pressed]="requireMeasuredDepth()"
+          (click)="toggleMeasuredDepth()"
+        >
+          <span class="c-checkbox__box" aria-hidden="true">
+            @if (requireMeasuredDepth()) {
+              <svg viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path d="M2 5.2 4 7.2 8 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            }
+          </span>
+          <span>Measured depth only</span>
+        </button>
+      </div>
+    </div>
+
+    @if (!hasRun()) {
+      <button class="c-button similar__run" type="button" (click)="search()">Compare</button>
+      <p class="similar__hint">
+        Compares epicentral distance, magnitude difference and hypocentre depth. Each match
+        shows which of the three could actually be measured.
+      </p>
+    } @else if (loading()) {
+      <p class="similar__hint">Comparing…</p>
+    } @else if (failed()) {
+      <p class="similar__hint">The comparison could not be completed.</p>
+    } @else if (result(); as found) {
+      <!-- The counts. Above the matches because they explain the length of the list, and a
+           short list is otherwise read as a fault. -->
+      <dl class="tally">
+        <div>
+          <dt>Within {{ maxDistanceKm() }} km</dt>
+          <dd>{{ found.nearbyEvents }}</dd>
+        </div>
+        <div>
+          <dt>Compared</dt>
+          <dd>{{ found.candidatesConsidered }}</dd>
+        </div>
+        <div>
+          <dt>Set aside</dt>
+          <dd>{{ setAside() }}</dd>
+        </div>
+      </dl>
+
+      @if (found.excludedForIncomparableScale > 0) {
+        <p class="tally__note">
+          <cal-icon name="caution" [size]="13" />
+          <span>
+            {{ found.excludedForIncomparableScale }} nearby
+            {{ found.excludedForIncomparableScale === 1 ? 'event reports' : 'events report' }} a
+            magnitude that cannot be compared with {{ found.referenceMagnitude }} — different
+            scales measure different things, and body-wave magnitude saturates near M6.
+          </span>
+        </p>
+      }
+
+      @if (requireMeasuredDepth() && found.excludedForAssignedDepth > 0) {
+        <p class="tally__note tally__note--quiet">
+          {{ found.excludedForAssignedDepth }} carry a depth the agency assigned rather than
+          measured. These counts overlap; one event can fail both tests.
+        </p>
+      }
+
+      @if (found.admittedWithIncomparableMagnitude > 0) {
+        <p class="tally__note">
+          <cal-icon name="caution" [size]="13" />
+          <span>
+            {{ found.admittedWithIncomparableMagnitude }} of the matches below are ranked on
+            distance and depth alone, because their magnitude cannot be compared with the
+            reference. Their scores are not equivalent to the others.
+          </span>
+        </p>
+      }
+
+      <!-- Stated once, rather than leaving the reader to infer it from a column of identical
+           "not measured" cells. The cause is the reference event, not the candidates. -->
+      @if (depthNeverComparable()) {
+        <p class="tally__note">
+          <cal-icon name="caution" [size]="13" />
+          <span>
+            No match can be compared on depth. This event's own depth is
+            {{ found.referenceDepth }} — assigned by the agency rather than resolved from the
+            recordings, and an assigned value cannot be differenced. Every score below rests
+            on distance and magnitude only.
+          </span>
+        </p>
+      }
+
+      @if (matches().length === 0) {
+        <p class="similar__hint">
+          @if (emptyByFilter()) {
+            Nothing within {{ maxDistanceKm() }} km passes these criteria. Relaxing either
+            requirement above will widen the search — the matches it admits will be labelled.
+          } @else {
+            No other catalogued earthquakes lie within {{ maxDistanceKm() }} km.
+          }
+        </p>
+      } @else {
+        <!-- Stated once when every match shares an agency, which is the usual case: USGS
+             supplies almost the whole catalogue, and repeating its full name on each card
+             crowds out the figures. -->
+        @if (sharedAgency(); as agency) {
+          <p class="matches__provenance">All readings from {{ agency }}.</p>
+        }
+
+        <ul class="matches">
+          @for (match of matches(); track match.eventId) {
+            <li>
+              <!-- A div, not a button: the card holds two distinct actions, and nesting
+                   buttons is invalid. The server's own wording is the tooltip — more precise
+                   than the compact labels ("Ms measures SurfaceWave while Mb measures
+                   BodyWave") but too long to set in the card. -->
+              <div class="match" [title]="match.explanations.join('\n')">
+                <div class="match__head">
+                  <span class="match__magnitude">{{ match.magnitudeDisplay }}</span>
+                  <span class="match__score" [class.match__score--partial]="!match.magnitudeComparable">
+                    {{ percentage(match.score) }}%
+                  </span>
+                </div>
+
+                <div class="match__meta">
+                  <span class="match__date">{{ formatDate(match.occurredAt) }}</span>
+                  <!-- Only when it varies between matches; otherwise stated once above. -->
+                  @if (!sharedAgency()) {
+                    <span class="match__agency">{{ match.agency }}</span>
+                  }
+                </div>
+
+                <!-- Where it was. Until the place directory existed this row could only show
+                     coordinates, which made a list of matches unreadable as geography. -->
+                @if (match.location; as location) {
+                  <p class="match__location">{{ location }}</p>
+                }
+
+                <!-- The three components. Two are labelled with a delta because they are
+                     differences from the reference, not values — an unprefixed "MAGNITUDE"
+                     above "±0" invites reading it as a magnitude of zero. Each is either a
+                     figure or an explicit statement that it could not be compared; null is
+                     never shown as a number. -->
+                <dl class="match__components">
+                  <div>
+                    <dt>Distance</dt>
+                    <dd>{{ match.distanceKm }} km</dd>
+                  </div>
+                  <div>
+                    <dt>&Delta; Magnitude</dt>
+                    <dd
+                      [class.match__unavailable]="match.magnitudeDelta === null"
+                      [class.match__exact]="match.magnitudeDelta === 0"
+                    >
+                      {{ formatDelta(match.magnitudeDelta, 'not comparable') }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>&Delta; Depth</dt>
+                    <dd
+                      [class.match__unavailable]="match.depthDeltaKm === null"
+                      [class.match__exact]="match.depthDeltaKm === 0"
+                    >
+                      {{ formatDelta(match.depthDeltaKm, 'not measured', ' km') }}
+                    </dd>
+                  </div>
+                </dl>
+
+                <!-- Named actions rather than a whole-card click, so it is unambiguous which
+                     gesture moves the map and which opens the comparison. -->
+                <div class="match__actions">
+                  <button class="c-button c-button--quiet" type="button" (click)="select(match)">
+                    Locate
+                  </button>
+                  <button class="c-button c-button--quiet" type="button" (click)="compare(match)">
+                    Compare
+                  </button>
+                </div>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</section>

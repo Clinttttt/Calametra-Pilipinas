@@ -24,6 +24,9 @@ public static class PlaceErrors
 
     public static readonly Error UnknownKind =
         new(ErrorType.Validation, "place.unknown_kind", "A place requires a known administrative level.");
+
+    public static readonly Error SourceRequired =
+        new(ErrorType.Validation, "place.source_required", "A place requires the gazetteer it came from.");
 }
 
 /// <summary>
@@ -48,17 +51,37 @@ public sealed class Place : AuditableEntity
         string name,
         PlaceKind kind,
         Point centroid,
+        Guid dataSourceId,
         DateTimeOffset createdAt)
         : base(id, createdAt)
     {
         Name = name;
         Kind = kind;
         Centroid = centroid;
+        DataSourceId = dataSourceId;
+
+        // Derived here so the two can never disagree with the geometry, which is the failure mode
+        // a duplicated coordinate invites.
+        Latitude = centroid.Y;
+        Longitude = centroid.X;
     }
 
     public string Name { get; private set; } = string.Empty;
 
     public PlaceKind Kind { get; private set; }
+
+    /// <summary>
+    /// The gazetteer this place came from.
+    /// </summary>
+    /// <remarks>
+    /// Required, for the same reason every reading carries its agency. A place name and a
+    /// coordinate are somebody's published claim about where a boundary lies and what the unit
+    /// is called, and the platform has already had to record that two gazetteers disagree about
+    /// the code for the same province. Kept separate from
+    /// <see cref="PopulationDataSourceId"/> because the point and the population figure can
+    /// legitimately come from different publishers.
+    /// </remarks>
+    public Guid DataSourceId { get; private set; }
 
     /// <summary>Philippine Standard Geographic Code, where known.</summary>
     public string? PsgcCode { get; private set; }
@@ -68,6 +91,26 @@ public sealed class Place : AuditableEntity
 
     /// <summary>Representative point, used for map fly-to and radius searches.</summary>
     public Point Centroid { get; private set; } = default!;
+
+    /// <summary>
+    /// Latitude of <see cref="Centroid"/>, materialised as a column.
+    /// </summary>
+    /// <remarks>
+    /// Duplicated deliberately, matching <c>EarthquakeObservation</c> and <c>CycloneTrackPoint</c>,
+    /// and for two reasons that both bite in practice. The column is <c>geography</c>, and PostGIS
+    /// defines <c>ST_Y</c> and <c>ST_X</c> on <c>geometry</c> only — so projecting
+    /// <c>Centroid.Y</c> in a query compiles and then fails at the database. And naming an
+    /// epicentre after the nearest of 1,647 municipalities means reading the whole gazetteer per
+    /// request: as geometry that is 1,647 point objects to parse, which measured at roughly 55 ms;
+    /// as two doubles it is a flat projection.
+    /// <para>
+    /// Set from the geometry in the constructor, so the two cannot drift.
+    /// </para>
+    /// </remarks>
+    public double Latitude { get; private set; }
+
+    /// <summary>Longitude of <see cref="Centroid"/>. See <see cref="Latitude"/>.</summary>
+    public double Longitude { get; private set; }
 
     /// <summary>
     /// Administrative boundary, where boundary data is available. Null for places
@@ -88,6 +131,7 @@ public sealed class Place : AuditableEntity
         string name,
         PlaceKind kind,
         Point centroid,
+        Guid dataSourceId,
         DateTimeOffset now)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -100,7 +144,13 @@ public sealed class Place : AuditableEntity
             return Result<Place>.Failure(PlaceErrors.UnknownKind);
         }
 
-        return Result<Place>.Success(new Place(Guid.CreateVersion7(), name.Trim(), kind, centroid, now));
+        if (dataSourceId == Guid.Empty)
+        {
+            return Result<Place>.Failure(PlaceErrors.SourceRequired);
+        }
+
+        return Result<Place>.Success(
+            new Place(Guid.CreateVersion7(), name.Trim(), kind, centroid, dataSourceId, now));
     }
 
     public Place WithHierarchy(string? psgcCode, Guid? parentPlaceId)

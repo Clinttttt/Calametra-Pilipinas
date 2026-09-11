@@ -15,7 +15,7 @@ public sealed class MagnitudeTypeTests
     [InlineData("ml", MagnitudeType.Ml)]
     [InlineData("MWW", MagnitudeType.Mww)]
     [InlineData("  mb  ", MagnitudeType.Mb)]
-    public void Parse_ShouldRecogniseTheScalesPresentInTheCaragaCatalogue(string reported, MagnitudeType expected) =>
+    public void Parse_ShouldRecogniseTheScalesPresentInThePhilippineCatalogue(string reported, MagnitudeType expected) =>
         MagnitudeTypeExtensions.Parse(reported).ShouldBe(expected);
 
     [Theory]
@@ -46,7 +46,7 @@ public sealed class MagnitudeTypeTests
     [Fact]
     public void BodyWave_ShouldNotBeComparableWithMoment()
     {
-        // This is the case that matters most: the CARAGA USGS catalogue is 94% mb,
+        // This is the case that matters most: the Philippine USGS catalogue is 93% mb,
         // while every large event is mww. Similarity search that ignored scale
         // would compare the flagship events against a body-wave population.
         MagnitudeType.Mb.IsComparableWith(MagnitudeType.Mww).ShouldBeFalse();

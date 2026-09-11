@@ -1,0 +1,178 @@
+.comparison {
+  display: flex;
+  flex-direction: column;
+  /* Wider than the standard panel: an attribute table needs a label column plus two value
+     columns, and squeezing three into 21rem forces every value to wrap. */
+  width: var(--panel-width-wide);
+  max-height: 100%;
+  overflow: hidden;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+}
+
+.comparison__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.comparison__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.comparison__state {
+  margin: 0;
+  padding: var(--space-4) var(--space-3);
+  font-size: var(--text-small);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+.comparison__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── DELTAS ───────────────────────────────────────────────────────────────
+   The reason both events are on screen. Stacked rather than in a row so each can
+   carry its explanation, which is the part that matters when a comparison fails. */
+.deltas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.delta {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  grid-template-areas:
+    'label value'
+    'note note';
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+}
+
+/* An unavailable comparison keeps its border but loses the caution tint, so the panel
+   does not read as three warnings when two comparisons simply cannot be made. */
+.delta--unavailable {
+  border-color: var(--line-faint);
+}
+
+.delta__label {
+  grid-area: label;
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.delta__value {
+  grid-area: value;
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+/* Set in sans and dimmed: an absent comparison is a statement, not a figure. */
+.delta__missing {
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  font-style: italic;
+  color: var(--caution);
+}
+
+.delta__note {
+  grid-area: note;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+}
+
+/* ── ATTRIBUTE TABLE ──────────────────────────────────────────────────────*/
+.attributes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.attributes thead th {
+  padding: 0 var(--space-2) var(--space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+/* A / B rather than the events' names, which are too long for a column head and would
+   push the value columns out of alignment. The map markers carry the same letters. */
+.attributes__side {
+  display: inline-grid;
+  place-items: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--surface-100);
+  background-color: var(--accent);
+  border-radius: 2px;
+}
+
+.attributes tbody th {
+  padding: var(--space-2);
+  font-size: var(--text-micro);
+  font-weight: 400;
+  text-align: left;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.attributes tbody td {
+  padding: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.attributes tbody tr + tr th,
+.attributes tbody tr + tr td {
+  border-top: 1px solid var(--line-faint);
+}
+
+/* A differing row is brightened rather than tinted: hue is reserved as a data channel, so
+   emphasis in the chrome comes from luminance. */
+.attributes__row--differs td {
+  color: var(--text-primary);
+}
+
+/* ── NOTES ────────────────────────────────────────────────────────────────*/
+.comparison__note {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+}
+
+.comparison__note cal-icon {
+  margin-top: 1px;
+  flex: none;
+}
+
+.comparison__note strong {
+  font-weight: 500;
+}

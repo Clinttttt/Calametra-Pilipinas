@@ -5,7 +5,9 @@ using Calametra.Application.Abstractions.Sources;
 using Calametra.Domain.Abstractions;
 using Calametra.Domain.Hazards;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Calametra.Infrastructure.Sources.Phivolcs;
 
@@ -14,33 +16,50 @@ namespace Calametra.Infrastructure.Sources.Phivolcs;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Why proxy instead of storing geometry. The PHIVOLCS public ArcGIS services
-/// (verified 2026-09-04) expose twelve hazard layers, but the layer-level
-/// <c>query</c> operation returns HTTP 400 "The requested capability is not
-/// supported" for every variant, and <c>generatekml</c> is likewise disabled. What
-/// works is <c>export</c>, WMS <c>GetMap</c>, and <c>identify</c>/
-/// <c>GetFeatureInfo</c>. That access pattern is a deliberate publishing decision:
-/// rendering is offered, bulk data is not. Public reachability is not a licence to
-/// copy and re-serve, so V1 renders the publisher's own imagery and stores nothing.
+/// Why proxy instead of storing geometry. The PHIVOLCS public ArcGIS services expose
+/// twelve hazard layers, but the layer-level <c>query</c> operation returns HTTP 400
+/// "The requested capability is not supported" for every variant, and
+/// <c>generatekml</c> is likewise disabled. What works is <c>export</c>, WMS
+/// <c>GetMap</c>, and <c>identify</c>. That access pattern is a deliberate publishing
+/// decision: rendering is offered, bulk data is not. Public reachability is not a
+/// licence to copy and re-serve, so V1 renders the publisher's own imagery and stores
+/// nothing.
 /// </para>
 /// <para>
 /// Why proxy through the API rather than letting the browser call PHIVOLCS directly.
 /// Three reasons: the upstream service sends no CORS headers, so a direct browser
-/// request fails; attribution and caching need to be applied in one place; and
-/// routing through the API means upstream request volume is ours to shape and cap.
+/// request fails; attribution and caching need to be applied in one place; and routing
+/// through the API means upstream request volume is ours to shape.
+/// </para>
+/// <para>
+/// <b>Why tiles are cached in memory.</b> This is how upstream volume is actually
+/// controlled, and the lesson was learned the hard way. Rate limiting the client was
+/// tried first and was the wrong lever: MapLibre requests one tile per viewport tile,
+/// so a single map view is twenty to forty requests and a few pans is hundreds. A limit
+/// sized for user actions returns HTTP 429 to our own map while doing nothing about the
+/// upstream load, because the requests that do get through still each reach PHIVOLCS.
+/// </para>
+/// <para>
+/// Caching inverts that. A tile is fetched from PHIVOLCS once and then served from
+/// memory to every subsequent request from any user, so upstream sees one request per
+/// distinct tile per cache lifetime regardless of how many people are panning. The
+/// client is free to render as fluidly as it likes, and the agency is genuinely
+/// protected rather than protected-by-proxy-of-degrading-us.
 /// </para>
 /// <para>
 /// On the coordinate system. The capabilities document advertises only EPSG:4326 and
 /// CRS:84, yet the service was verified to serve EPSG:3857 <c>GetMap</c> requests
-/// correctly (HTTP 200, image/png). MapLibre needs Web Mercator, so 3857 is what is
-/// requested. This is the mirror image of the disabled <c>query</c> operation, which
-/// is advertised but absent — the capabilities metadata for this service is
-/// unreliable in both directions, so behaviour was established by probing.
+/// correctly. MapLibre needs Web Mercator, so 3857 is what is requested. This is the
+/// mirror image of the disabled <c>query</c> operation, which is advertised but absent —
+/// the metadata for this service is unreliable in both directions, so behaviour was
+/// established by probing.
 /// </para>
 /// </remarks>
 internal sealed class PhivolcsHazardMapService(
     HttpClient httpClient,
     IApplicationDbContext context,
+    IMemoryCache tileCache,
+    IOptions<PhivolcsOptions> options,
     ILogger<PhivolcsHazardMapService> logger)
     : IHazardMapService
 {
@@ -53,6 +72,38 @@ internal sealed class PhivolcsHazardMapService(
         ErrorType.Validation,
         "hazard_map.not_remotely_delivered",
         "This layer is stored locally and is not served through the map proxy.");
+
+    /// <summary>
+    /// Attributes worth showing a reader, in the order they should appear.
+    /// </summary>
+    /// <remarks>
+    /// A curated list rather than everything the service returns, because an ArcGIS
+    /// <c>identify</c> response carries the layer's full column set — including its
+    /// editing audit trail. Passing that through verbatim showed users
+    /// <c>OBJECTID</c>, <c>GLOBALID</c>, <c>SHAPE</c>, <c>ST_LENGTH(SHAPE)</c>,
+    /// <c>CREATOR: KLPAPIONA</c> and <c>EDITOR: SDE</c> — database housekeeping that
+    /// says nothing about the fault and buries the fields that do.
+    /// <para>
+    /// This does not conflict with presenting the publisher's terminology unaltered.
+    /// The values and the meanings stay exactly as PHIVOLCS records them; the labels
+    /// only expand abbreviations, so <c>fname</c> becomes "Fault system" and never
+    /// something reinterpreted. What is dropped is internal plumbing that was never a
+    /// statement about the fault.
+    /// </para>
+    /// </remarks>
+    private static readonly (string Key, string Label)[] PresentableAttributes =
+    [
+        ("fname", "Fault system"),
+        ("segname", "Segment"),
+        ("Fault Category", "Category"),
+        ("Trace type", "Trace type"),
+        ("Mechanism", "Mechanism"),
+        ("datemapped", "Year mapped"),
+        ("Mapping Scale", "Mapping scale"),
+        ("Project", "Mapping project"),
+        ("Mappers", "Mapped by"),
+        ("Other Information", "Notes"),
+    ];
 
     private static readonly Error FeatureInfoUnsupported = new(
         ErrorType.Validation,
@@ -77,6 +128,50 @@ internal sealed class PhivolcsHazardMapService(
             return Result<HazardMapImage>.Failure(NotRemotelyDelivered);
         }
 
+        var cacheKey = TileCacheKey(request);
+
+        if (tileCache.TryGetValue(cacheKey, out HazardMapImage? cached) && cached is not null)
+        {
+            return Result<HazardMapImage>.Success(cached);
+        }
+
+        var fetched = await FetchTileAsync(layer, request, cancellationToken);
+
+        if (fetched.IsSuccess)
+        {
+            // Hazard layers and fault traces change on a timescale of years, so a long
+            // cache lifetime is both safe and the polite way to consume someone else's
+            // map service. Size is set in bytes against a bounded cache so a wide
+            // browsing session cannot grow the process without limit.
+            tileCache.Set(
+                cacheKey,
+                fetched.Value,
+                new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = options.Value.TileCacheDuration,
+                    Size = fetched.Value.Content.Length,
+                });
+        }
+
+        return fetched;
+    }
+
+    /// <summary>
+    /// Cache key for a tile request.
+    /// </summary>
+    /// <remarks>
+    /// The bounding box is part of the key verbatim. MapLibre requests tiles on a fixed
+    /// grid, so the same view produces byte-identical box strings and the cache hits
+    /// reliably rather than near-missing on floating-point formatting.
+    /// </remarks>
+    private static string TileCacheKey(HazardTileRequest request) =>
+        $"tile:{request.HazardLayerId}:{request.BoundingBox3857}:{request.Width}x{request.Height}";
+
+    private async Task<Result<HazardMapImage>> FetchTileAsync(
+        HazardLayerDefinition layer,
+        HazardTileRequest request,
+        CancellationToken cancellationToken)
+    {
         var requestUri = BuildGetMapUri(layer, request);
 
         try
@@ -92,8 +187,8 @@ internal sealed class PhivolcsHazardMapService(
 
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/png";
 
-            // A WMS error is returned as XML with a 200 status, so the content type
-            // has to be checked rather than the status code alone.
+            // A WMS error is returned as XML with a 200 status, so the content type has
+            // to be checked rather than the status code alone.
             if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             {
                 PhivolcsLog.UnexpectedContentType(logger, contentType, requestUri);
@@ -249,7 +344,7 @@ internal sealed class PhivolcsHazardMapService(
                 continue;
             }
 
-            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var raw = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var property in properties.EnumerateObject())
             {
@@ -264,7 +359,26 @@ internal sealed class PhivolcsHazardMapService(
                 if (!string.IsNullOrWhiteSpace(value)
                     && !value.Equals("Null", StringComparison.OrdinalIgnoreCase))
                 {
-                    attributes[property.Name] = value;
+                    raw[property.Name] = value;
+                }
+            }
+
+            if (raw.Count == 0)
+            {
+                continue;
+            }
+
+            // Curated and ordered. An insertion-ordered dictionary preserves the
+            // sequence declared in PresentableAttributes, so the reader gets fault
+            // system before segment before mapping detail rather than whatever order
+            // the service happened to serialise.
+            var attributes = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            foreach (var (key, label) in PresentableAttributes)
+            {
+                if (raw.TryGetValue(key, out var value))
+                {
+                    attributes[label] = value;
                 }
             }
 
@@ -275,8 +389,9 @@ internal sealed class PhivolcsHazardMapService(
 
             var displayValue = result.TryGetProperty("value", out var valueElement)
                 && valueElement.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(valueElement.GetString())
                     ? valueElement.GetString()
-                    : FirstAvailable(attributes, "segname", "Segment", "fname", "name");
+                    : FirstAvailable(raw, "segname", "Segment", "fname", "name");
 
             features.Add(new HazardFeatureAttributes
             {

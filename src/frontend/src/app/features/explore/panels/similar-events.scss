@@ -1,0 +1,276 @@
+/* A SECTION, not a panel.
+   Rendered inside the event detail panel via content projection, so it carries no surface,
+   border, shadow, width or scroll container of its own — those belong to the panel around
+   it. A separate floating panel competed with the detail for column height and produced two
+   nested scrollbars at two different widths. */
+.similar {
+  display: block;
+  /* No top margin: the parent `.detail__body` is a flex column with its own gap, so a
+     margin here would compound with it. The rule and its padding supply the separation. */
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-subtle);
+}
+
+.similar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.similar__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.similar__run {
+  align-self: flex-start;
+}
+
+.similar__hint {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+/* ── CRITERIA ─────────────────────────────────────────────────────────────
+   Above the results, because a similarity score is meaningless without the
+   tolerances that produced it. */
+.criteria {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+/* Label above the control rather than beside it: side by side left the four radius
+   options too narrow, and "50 KM" wrapped onto two lines. The unit moves into the label
+   so the options stay single tokens. */
+.criteria__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Fills the panel width and divides evenly between the options, so the four cells are
+   equal rather than sized by their digit count. */
+.criteria__field .c-segment {
+  display: flex;
+  width: 100%;
+}
+
+.criteria__field .c-segment__option {
+  flex: 1;
+  /* Centred with justify-content, not text-align: the option is a flex container, so
+     text-align has no effect on its content and the digits sat left of centre. */
+  justify-content: center;
+  /* Horizontal padding removed because flex already distributes the width; min-width
+     lets a cell shrink below its content box rather than forcing the track wider. */
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  white-space: nowrap;
+}
+
+.criteria__checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── TALLY ────────────────────────────────────────────────────────────────
+   Three figures reading nearby / compared / set aside. Monospaced so they align
+   and read as measurements. */
+.tally {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-sm);
+}
+
+.tally dt {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+}
+
+.tally dd {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+.tally__note {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+}
+
+.tally__note cal-icon {
+  margin-top: 1px;
+  flex: none;
+}
+
+/* The overlap caveat is supporting detail, not a warning in its own right. */
+.tally__note--quiet {
+  color: var(--text-tertiary);
+}
+
+/* ── MATCHES ──────────────────────────────────────────────────────────────*/
+
+/* Attribution for the whole list, shown when every match shares one agency. */
+.matches__provenance {
+  margin: 0;
+  font-size: var(--text-micro);
+  color: var(--text-disabled);
+  max-inline-size: none;
+}
+
+.matches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--motion-quick) var(--ease-out);
+}
+
+.match:hover {
+  border-color: var(--line-strong);
+}
+
+/* Named actions rather than a clickable card, so it is clear which gesture moves the map
+   and which opens the comparison. */
+.match__actions {
+  display: flex;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+}
+
+.match__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.match__magnitude {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+.match__score {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+
+/* A score assembled from fewer components is marked, so it is not read as
+   equivalent to a full three-way comparison. */
+.match__score--partial {
+  color: var(--caution);
+}
+
+/* Date and agency. The agency is kept because provenance is a platform invariant, but set
+   to recede: it repeats on nearly every row and would otherwise dominate the card. */
+.match__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.match__date {
+  flex: none;
+}
+
+/* The place, on its own line rather than in the meta row: that row already holds a date and an
+   agency, and a third item would truncate the one a reader actually reads for. */
+.match__location {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+.match__agency {
+  min-width: 0;
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line-faint);
+  color: var(--text-disabled);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match__components {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+}
+
+.match__components dt {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+
+.match__components dd {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+/* An unavailable comparison is set in italic sans and dimmed rather than shown as a
+   number, so it cannot be mistaken for a measured zero. */
+.match__unavailable {
+  font-family: var(--font-sans);
+  font-style: italic;
+  color: var(--text-disabled);
+}
+
+/* An exact match on a component. Set in sans, since "identical" is a word rather than a
+   figure, and brightened because it is the strongest result that component can report —
+   the opposite of the dimmed unavailable state it sits alongside. */
+.match__exact {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}

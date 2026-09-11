@@ -100,6 +100,43 @@ export function markerRadiusFor(magnitude: MagnitudeReading | null): number {
 }
 
 /**
+ * Colour for a depth expressed as plain kilometres.
+ *
+ * A scalar companion to {@link depthColourFor}, for the cross-section, where points
+ * arrive as `{ depthKm, depthMeasured }` rather than as a `DepthReading`. Lives here
+ * rather than in the plot component so the section, the map and the legend cannot drift
+ * apart — `DEPTH_BANDS` stays the one place the ramp is defined.
+ */
+export function depthColourForKilometres(kilometres: number, measured: boolean): string {
+  if (!measured) {
+    return UNMEASURED_DEPTH_COLOUR;
+  }
+
+  const band = DEPTH_BANDS.find(
+    (candidate) =>
+      kilometres >= candidate.fromKm && (candidate.toKm === null || kilometres < candidate.toKm),
+  );
+
+  return band?.colour ?? UNMEASURED_DEPTH_COLOUR;
+}
+
+/**
+ * Marker radius for a magnitude expressed as a plain number.
+ *
+ * Shares {@link markerRadiusFor}'s energy scaling so a magnitude reads as the same size
+ * on the cross-section as it does on the map. Null means the source reported no
+ * magnitude, which still gets a mark: the event has a real depth, and depth is what the
+ * section is about.
+ */
+export function markerRadiusForMagnitude(magnitude: number | null): number {
+  if (magnitude === null) {
+    return 3;
+  }
+
+  return markerRadiusFor({ value: magnitude, scale: 'Mw', scaleFamily: 'Moment', display: '' });
+}
+
+/**
  * MapLibre paint expression for marker radius.
  *
  * Two constraints shape the odd-looking structure here.

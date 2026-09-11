@@ -1,0 +1,227 @@
+<div class="about">
+  <header class="about__header">
+    <h1>About the data</h1>
+    <p>
+      Calametra brings together public hazard datasets from official sources. It does not replace
+      them, and it is not a warning service. Every figure shown in this application names the
+      agency that produced it, because different networks measure the same event differently.
+    </p>
+    <p>
+      This page is generated from the platform's own source records rather than written
+      separately, so it cannot describe a set of sources the system does not read.
+    </p>
+  </header>
+
+  <section class="about__section c-frame">
+    <h2 class="c-label">Scientific boundaries</h2>
+    <ul class="about__bounds">
+      <li>Official warnings come from PHIVOLCS, PAGASA, NDRRMC and your local DRRM office.</li>
+      <li>Calametra does not predict earthquakes. No system does.</li>
+      <li>
+        Historical similarity between events describes the past. It says nothing about what will
+        happen next.
+      </li>
+      <li>
+        Hazard susceptibility means an area has been identified as potentially affected. It does
+        not mean an event will occur there.
+      </li>
+      <li>Population figures are exposure estimates, not predictions of harm.</li>
+      <li>
+        Source datasets differ in scale, age and completeness. Those limits are recorded against
+        each source below.
+      </li>
+    </ul>
+  </section>
+
+  @if (sources(); as catalogue) {
+    <!-- Split by licence position rather than by hazard. Whether the platform holds a source's
+         data decides whether any figure here reflects it, which is the fact a reader needs
+         first and the one a flat list hides. -->
+    <section class="about__section">
+      <h2 class="c-label">Datasets held and queried</h2>
+      <p class="about__lede">
+        {{ stored().length }} sources whose data this platform stores. Every count, search and
+        cross-section is computed from these.
+      </p>
+
+      @for (source of stored(); track sourceKey(source)) {
+        <article class="source c-panel">
+          <header class="source__header">
+            <div>
+              <h3>{{ source.datasetName }}</h3>
+              <p class="source__agency">{{ source.agency }}</p>
+            </div>
+            <div class="source__chips">
+              @if (source.isAuthoritativeForPhilippines) {
+                <span class="c-chip">Philippine authority</span>
+              }
+              <span class="c-chip">Stored</span>
+            </div>
+          </header>
+
+          <p class="source__access">{{ describeAccess(source.accessKind) }}</p>
+
+          @if (source.minimumReliableMagnitude !== null) {
+            <p class="source__floor">
+              Incomplete below <strong>M{{ source.minimumReliableMagnitude }}</strong> for the
+              archipelago. Any count from this catalogue is a count of what was recorded, not of
+              what occurred.
+            </p>
+          }
+
+          @for (note of paragraphs(source.coverageNotes); track note) {
+            <p class="source__text">{{ note }}</p>
+          }
+
+          <footer class="source__footer">
+            <span class="source__attribution">{{ source.attribution }}</span>
+            @if (source.lastRetrievedAt) {
+              <span class="source__retrieved">Last read {{ formatDate(source.lastRetrievedAt) }}</span>
+            }
+            @if (source.sourceUrl) {
+              <a [href]="source.sourceUrl" target="_blank" rel="noopener noreferrer">
+                Official source
+              </a>
+            }
+            @if (source.termsUrl) {
+              <a [href]="source.termsUrl" target="_blank" rel="noopener noreferrer">Terms</a>
+            }
+          </footer>
+        </article>
+      }
+    </section>
+
+    @if (proxied().length > 0) {
+      <section class="about__section">
+        <h2 class="c-label">Displayed, not held</h2>
+        <p class="about__lede">
+          Reachability is not a licence. These sources are shown by proxying the agency's own
+          rendered imagery; Calametra stores none of their geometry, so nothing on this platform
+          is measured against them.
+        </p>
+
+        @for (source of proxied(); track sourceKey(source)) {
+          <article class="source c-panel">
+            <header class="source__header">
+              <div>
+                <h3>{{ source.datasetName }}</h3>
+                <p class="source__agency">{{ source.agency }}</p>
+              </div>
+              <div class="source__chips">
+                @if (source.isAuthoritativeForPhilippines) {
+                  <span class="c-chip">Philippine authority</span>
+                }
+                <span class="c-chip">Proxied</span>
+              </div>
+            </header>
+
+            <p class="source__access">{{ describeAccess(source.accessKind) }}</p>
+
+            @for (note of paragraphs(source.coverageNotes); track note) {
+              <p class="source__text">{{ note }}</p>
+            }
+
+            <footer class="source__footer">
+              <span class="source__attribution">{{ source.attribution }}</span>
+              @if (source.sourceUrl) {
+                <a [href]="source.sourceUrl" target="_blank" rel="noopener noreferrer">
+                  Official source
+                </a>
+              }
+              @if (source.termsUrl) {
+                <a [href]="source.termsUrl" target="_blank" rel="noopener noreferrer">Terms</a>
+              }
+            </footer>
+          </article>
+        }
+      </section>
+    }
+  } @else {
+    <p class="about__empty"><span class="c-label">Loading sources…</span></p>
+  }
+
+  @if (layers(); as catalogue) {
+    <section class="about__section">
+      <h2 class="c-label">Hazard layers in use</h2>
+      <p class="about__lede">
+        What the Layers panel offers, with the reading each layer supports and the conclusion it
+        does not.
+      </p>
+
+      @for (layer of catalogue; track layer.id) {
+        <article class="source c-panel">
+          <header class="source__header">
+            <div>
+              <h3>{{ layer.displayName }}</h3>
+              <p class="source__agency">{{ layer.sourceAgency }} · {{ layer.sourceDatasetName }}</p>
+            </div>
+            <span class="c-chip">{{ layer.deliveryMode === 'RemoteWms' ? 'Proxied' : 'Stored' }}</span>
+          </header>
+
+          @if (layer.explainer) {
+            <p class="source__text">{{ layer.explainer }}</p>
+          }
+
+          @if (layer.interpretationNote) {
+            <p class="source__caveat">
+              <cal-icon name="caution" [size]="14" />
+              <span>{{ layer.interpretationNote }}</span>
+            </p>
+          }
+
+          <footer class="source__footer">
+            <span class="source__attribution">{{ layer.attribution }}</span>
+            @if (layer.sourceUrl) {
+              <a [href]="layer.sourceUrl" target="_blank" rel="noopener noreferrer">
+                Official source
+              </a>
+            }
+            @if (layer.termsUrl) {
+              <a [href]="layer.termsUrl" target="_blank" rel="noopener noreferrer">Terms</a>
+            }
+          </footer>
+        </article>
+      } @empty {
+        <p class="about__empty">
+          No hazard layers are registered yet. Start the API and the ingestion service to seed
+          reference data.
+        </p>
+      }
+    </section>
+  }
+
+  <!-- Credited separately because they are fetched by the reader's browser rather than by this
+       platform, and are therefore not rows in the source table. They are still visibly part of
+       what a reader is looking at. -->
+  <section class="about__section">
+    <h2 class="c-label">Basemaps and terrain</h2>
+    <p class="about__lede">
+      Requested directly by your browser as the map draws. Calametra stores none of these tiles;
+      they carry no hazard information and are context for the data drawn over them.
+    </p>
+
+    <div class="services">
+      @for (service of runtimeServices(); track serviceKey(service)) {
+        <article class="service c-panel">
+          <h3 class="service__name">{{ service.name }}</h3>
+          <p class="source__text">{{ service.role }}</p>
+          <p class="service__attribution">{{ service.attribution }}</p>
+
+          @if (service.caveat) {
+            <p class="source__caveat">
+              <cal-icon name="caution" [size]="14" />
+              <span>{{ service.caveat }}</span>
+            </p>
+          }
+        </article>
+      }
+    </div>
+  </section>
+
+  <footer class="about__footer">
+    <p>
+      Map rendering by MapLibre GL JS. Spatial queries by PostGIS. Both open source, and neither
+      is a source of data.
+    </p>
+  </footer>
+</div>

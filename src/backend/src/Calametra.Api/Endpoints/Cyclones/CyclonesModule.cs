@@ -1,0 +1,144 @@
+using Calametra.Api.Extensions;
+using Calametra.Application.Abstractions.Messaging;
+using Calametra.Application.Features.Cyclones;
+
+namespace Calametra.Api.Endpoints.Cyclones;
+
+/// <summary>
+/// GET /api/cyclones — storms whose track entered the Philippine area.
+/// </summary>
+internal static class SearchCyclonesEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/", async (
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken,
+                int? season = null,
+                string? name = null,
+                bool landfallOnly = false,
+                SearchCyclones.CycloneOrder order = SearchCyclones.CycloneOrder.Intensity,
+                int limit = 60) =>
+            {
+                var query = new SearchCyclones.Query
+                {
+                    Season = season,
+                    Name = name,
+                    LandfallOnly = landfallOnly,
+                    Order = order,
+                    Limit = limit,
+                };
+
+                var result = await dispatcher.Send(query, cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("SearchCyclones")
+            .WithSummary("Tropical cyclones that entered the Philippine area")
+            .WithDescription(
+                "Ordered by intensity — lowest central pressure — by default rather than by date. "
+                + "The most recent storms carry only one agency's provisional track, since the "
+                + "others publish their reanalyses a season or more later, so a recency-ordered "
+                + "default would put the thinnest records first and bury every storm with a "
+                + "multi-agency comparison.\n\n"
+                + "Pressure orders the list, not wind. A maximum wind taken across agencies would "
+                + "rank whichever one uses the shortest averaging interval; minimum central "
+                + "pressure is the same quantity to every agency and is the only intensity "
+                + "measure that can legitimately be compared across them.\n\n"
+                + "Peak intensity is returned once per wind averaging period, never as a single "
+                + "figure.\n\n"
+                + "Agencies average sustained wind over different intervals — one minute for "
+                + "JTWC, ten for JMA and Hong Kong, two for CMA — and a shorter interval "
+                + "preserves brief peaks that a longer one smooths away. Taking the maximum "
+                + "across all agencies would therefore report whichever agency uses the shortest "
+                + "interval and present it as the storm's strength. For Haiyan that is 170 kt "
+                + "from JTWC, while the regional specialised centre for this basin published "
+                + "125 kt. Both are correct.")
+            .Produces<object>(StatusCodes.Status200OK)
+            .ProducesValidationProblem();
+}
+
+/// <summary>
+/// GET /api/cyclones/{eventId} — one storm's track, as each agency drew it.
+/// </summary>
+internal static class GetCycloneTrackEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/{eventId:guid}", async (
+                Guid eventId,
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken) =>
+            {
+                var query = new GetCycloneTrack.Query { EventId = eventId };
+
+                var result = await dispatcher.Send(query, cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("GetCycloneTrack")
+            .WithSummary("One cyclone's track, per agency")
+            .WithDescription(
+                "Returns one track per agency rather than an averaged path. Agencies differ on "
+                + "where the centre was as well as how strong it was, and a mean track would be "
+                + "a line no agency published.\n\n"
+                + "Each track states its averaging period once, because that is a property of the "
+                + "agency's method and cannot vary along the path. The response also carries a "
+                + "plain-language note on how far the agencies diverge, generated from the "
+                + "readings actually present — it distinguishes agencies that share an interval "
+                + "and genuinely disagree from agencies that are not measuring the same thing.")
+            .Produces<object>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+}
+
+/// <summary>
+/// GET /api/cyclones/external/{externalStormId} — one storm by the source archive's identifier.
+/// </summary>
+internal static class GetCycloneByExternalIdEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/external/{externalStormId}", async (
+                string externalStormId,
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken) =>
+            {
+                var query = new GetCycloneByExternalId.Query { ExternalStormId = externalStormId };
+
+                var result = await dispatcher.Send(query, cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("GetCycloneByExternalId")
+            .WithSummary("One cyclone's track, by the IBTrACS storm identifier")
+            .WithDescription(
+                "Resolves an IBTrACS SID — 2013306N07162 for Haiyan — to the storm in this archive, "
+                + "returning the same per-agency tracks as /api/cyclones/{eventId}.\n\n"
+                + "Exists because this platform's primary keys are minted at insert and the IBTrACS "
+                + "import is a re-runnable one-shot, so a storm's internal id changes whenever the "
+                + "basin file is re-imported. Anything durable — curated story content, a citation, "
+                + "a link shared with another institution — must reference the SID instead.\n\n"
+                + "The SID rather than name and season because international names are reused: this "
+                + "archive holds MERANTI in 2010 and 2016, GONI in 2015 and 2020, and MAWAR in "
+                + "2012, 2017 and 2023.")
+            .Produces<object>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+}
+
+/// <summary>Route group for the cyclone endpoints.</summary>
+internal static class CyclonesModule
+{
+    public static void MapCyclones(this IEndpointRouteBuilder app)
+    {
+        var group = app
+            .MapGroup("/api/cyclones")
+            .WithTags("Cyclones")
+            .RequireRateLimiting(RateLimitPolicies.PublicRead);
+
+        SearchCyclonesEndpoint.Map(group);
+
+        // Literal route before the {eventId:guid} route for readability. Ordering is not
+        // load-bearing: the guid constraint means "external" cannot match it.
+        GetCycloneByExternalIdEndpoint.Map(group);
+        GetCycloneTrackEndpoint.Map(group);
+    }
+}

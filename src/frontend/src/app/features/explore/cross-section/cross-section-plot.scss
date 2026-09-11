@@ -1,0 +1,248 @@
+.section-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.section-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.section-panel__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-tertiary);
+}
+
+.section-panel__region {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line-faint);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.section-panel__extent {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.section-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.section-panel__prompt {
+  margin: 0;
+  padding: var(--space-4) var(--space-3);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+.section-panel__prompt strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── PRESETS ──────────────────────────────────────────────────────────────
+   The empty state. Verified profiles as a reflowing grid.
+
+   Bounded and scrollable rather than sized to fit exactly four: the list is a plain
+   array in `section-presets.ts`, so a fifth becomes available the moment the catalogue
+   supports one, and the layout should absorb that instead of growing the panel until it
+   covers the map. */
+.section-panel__start {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3);
+  /* Roughly two rows of cards. Beyond that the grid scrolls. */
+  max-height: 17rem;
+  overflow: hidden;
+}
+
+.presets {
+  display: grid;
+  /* auto-fit with a floor: four across on a wide window, reflowing to three, two, then
+     one as the panel narrows, rather than squeezing four unreadable columns. */
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.preset {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.preset:hover {
+  border-color: var(--line-strong);
+  background-color: var(--surface-400);
+}
+
+.preset__name {
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.preset__region {
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.preset__summary {
+  margin-top: var(--space-1);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}
+
+.section-panel__hint {
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+  /* Held out of the scrolling grid above it. */
+  flex: none;
+}
+
+.section-panel__hint strong {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ── PLOT ─────────────────────────────────────────────────────────────────*/
+.section-panel__plot {
+  /* No horizontal padding: this element is measured by ResizeObserver to size the SVG,
+     and any inset would have to be subtracted back out. Axis room comes from the SVG's
+     own margins instead. Vertical padding is safe — it does not affect the measured
+     width — and separates the axis caption from the footer rule below. */
+  display: block;
+  width: 100%;
+  padding-bottom: var(--space-2);
+}
+
+.section-panel__plot svg {
+  display: block;
+}
+
+.plot__grid {
+  stroke: var(--line-faint);
+  stroke-width: 1;
+}
+
+.plot__surface-line {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.plot__tick {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--text-disabled);
+}
+
+.plot__tick--depth {
+  text-anchor: end;
+}
+
+.plot__tick--distance {
+  text-anchor: middle;
+}
+
+.plot__axis-caption {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  fill: var(--text-disabled);
+}
+
+.plot__points circle {
+  stroke-width: 1;
+  cursor: pointer;
+  transition: opacity var(--motion-quick) var(--ease-out);
+}
+
+/* Dashed edge as well as hollow fill. The distinction between measured and assigned
+   must survive greyscale printing in a thesis, so it cannot rest on colour. */
+.plot__point--assigned {
+  stroke-dasharray: 2 1.5;
+  stroke-width: 1.2;
+}
+
+.plot__point--hovered {
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 1 !important;
+}
+
+/* ── CAVEAT ───────────────────────────────────────────────────────────────*/
+.section-panel__caveat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-top: 1px solid var(--line-faint);
+}
+
+.section-panel__warning {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+}
+
+.section-panel__warning cal-icon {
+  margin-top: 1px;
+  flex: none;
+}
+
+.section-panel__note {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}

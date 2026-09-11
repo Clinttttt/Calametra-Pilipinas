@@ -28,5 +28,5 @@ public sealed class PhivolcsOptions
     /// </summary>
     public TimeSpan TileCacheDuration { get; set; } = TimeSpan.FromDays(7);
 
-    public string UserAgent { get; set; } = "Calametra-CARAGA/0.1 (academic research platform)";
+    public string UserAgent { get; set; } = "Calametra-Pilipinas/0.1 (academic research platform)";
 }

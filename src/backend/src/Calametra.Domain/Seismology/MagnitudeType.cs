@@ -5,12 +5,12 @@ namespace Calametra.Domain.Seismology;
 /// </summary>
 /// <remarks>
 /// This exists because magnitude is not a single quantity. Measured against the
-/// USGS catalogue for the CARAGA bounding box (2015-01-01 to 2026-09-01, M4.0+,
-/// 1,991 events) the distribution is:
+/// USGS catalogue for the Philippine bounding box (2015-01-01 to 2026-09-01, M4.0+,
+/// 8,715 events) the distribution is:
 /// <list type="bullet">
-///   <item><description><c>mb</c> — 1,874 events (94.1%)</description></item>
-///   <item><description><c>mww</c> — 116 events (5.8%)</description></item>
-///   <item><description><c>mwb</c> — 1 event</description></item>
+///   <item><description><c>mb</c> — 8,089 events (92.8%)</description></item>
+///   <item><description><c>mww</c> — 608 events (7.0%)</description></item>
+///   <item><description><c>mwr</c> / <c>mwb</c> — 18 events between them</description></item>
 /// </list>
 /// <c>mb</c> saturates around M6.0–6.5 and diverges systematically from moment
 /// magnitude, so comparing an <c>mb</c> value against an <c>mww</c> value as
@@ -24,7 +24,7 @@ public enum MagnitudeType
     /// <summary>Scale not reported by the source. Never comparable to anything.</summary>
     Unknown = 0,
 
-    /// <summary>Short-period body-wave magnitude. Dominant in the CARAGA catalogue.</summary>
+    /// <summary>Short-period body-wave magnitude. Dominant throughout the archive.</summary>
     Mb = 1,
 
     /// <summary>Short-period body-wave magnitude, Lg phase.</summary>

@@ -56,19 +56,26 @@ export type IconName =
   | 'radius'
   // Controls
   | 'search'
+  | 'hazards'
   | 'play'
   | 'pause'
   | 'step-back'
   | 'step-forward'
   | 'close'
   | 'chevron-right'
+  | 'chevron-left'
   | 'chevron-down'
+  | 'chevron-up'
   | 'expand'
   | 'collapse'
   | 'download'
   | 'legend'
   | 'info'
-  | 'caution';
+  | 'caution'
+  // Interface theme
+  | 'theme-dark'
+  | 'theme-light'
+  | 'theme-system';
 
 /**
  * Path geometry per glyph. Multiple subpaths are separate strings so that
@@ -223,9 +230,26 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
 
   close: ['M6 6l12 12M18 6L6 18'],
 
+  /**
+   * Hazard selection. A diamond — the cartographic hazard-marker shape — with a single centre dot.
+   * Distinct from `layers`, which switches published overlays on and off within a hazard, and from
+   * the lens glyphs, which each name one hazard.
+   *
+   * The dot is one subpath. It was briefly two, at 10.5 and 12.5, which drew two marks a pixel
+   * apart and read as a duplicated glyph.
+   */
+  hazards: ['M12 3.5 20.5 12 12 20.5 3.5 12 12 3.5Z', 'M12 11.75v.01'],
+
   'chevron-right': ['M9.5 5.5 16 12l-6.5 6.5'],
 
+  /** Mirror of chevron-right. Present as its own path rather than a CSS rotation so that a
+      back affordance is a distinct glyph in the set and cannot be confused with the
+      expand/collapse corner marks, which is exactly what happened before. */
+  'chevron-left': ['M14.5 5.5 8 12l6.5 6.5'],
+
   'chevron-down': ['M5.5 9.5 12 16l6.5-6.5'],
+
+  'chevron-up': ['M5.5 14.5 12 8l6.5 6.5'],
 
   /** Enter presentation view: corner marks opening outward. */
   expand: ['M4 9.5V4h5.5M20 14.5V20h-5.5M14.5 4H20v5.5M9.5 20H4v-5.5'],
@@ -248,6 +272,26 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
    * read, never an alarm.
    */
   caution: ['M12 4.5 21 19.5H3L12 4.5Z', 'M12 10v4.25', 'M12 17h.01'],
+
+  // ── INTERFACE THEME ────────────────────────────────────────────────────
+  // Three glyphs sharing one circular footprint, so the segmented control reads as one
+  // object with a moving state rather than three unrelated marks.
+
+  /** A crescent. The conventional dark-mode mark, and its recognition is worth more here
+   *  than novelty — the same reasoning that keeps search and play conventional. */
+  'theme-dark': ['M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z'],
+
+  /** A disc with rays. Drawn on the same circle as the crescent so the two align exactly
+   *  when the control switches between them. */
+  'theme-light': [
+    'M15.5 12a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z',
+    'M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2',
+    'M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18',
+  ],
+
+  /** A display outline: the machine decides, so the mark is the machine rather than a
+   *  half-lit sun that would read as a third brightness. */
+  'theme-system': ['M3.5 5.5h17v10h-17v-10Z', 'M9 19.5h6', 'M12 15.5v4'],
 };
 
 /** Compile-time guarantee that the union and the registry cannot drift apart. */

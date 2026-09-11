@@ -1,0 +1,207 @@
+<section class="section-panel" aria-label="Depth cross-section">
+  <header class="section-panel__header">
+    <div class="section-panel__title">
+      <cal-icon name="depth-section" [size]="14" />
+      @if (activePreset(); as preset) {
+        <span class="c-label">{{ preset.name }}</span>
+        <span class="section-panel__region">{{ preset.region }}</span>
+      } @else {
+        <span class="c-label">Cross-section</span>
+      }
+      @if (profile(); as loaded) {
+        <span class="section-panel__extent">
+          {{ loaded.lengthKm }} km · ±{{ loaded.corridorKm }} km corridor · {{ loaded.totalCount }} plotted
+        </span>
+      }
+    </div>
+
+    <div class="section-panel__actions">
+      <!-- Only offered once there is something to clear. -->
+      @if (phase() !== 'awaiting-start') {
+        <button class="c-button c-button--quiet" type="button" (click)="reset()">Redraw</button>
+      }
+      <button class="c-icon-button" type="button" (click)="close()">
+        <cal-icon name="close" [size]="14" label="Close the cross-section" />
+      </button>
+    </div>
+  </header>
+
+  <!-- Nothing drawn yet. Rather than only inviting a click, offer the verified profiles:
+       drawing a useful section requires knowing where the trenches are and which way they
+       dip, and without that the natural instinct is to draw along the seismicity instead
+       of across it — which yields flat bands and makes a working tool look broken. -->
+  @if (phase() === 'awaiting-start') {
+    <div class="section-panel__start">
+      <ul class="presets">
+        @for (preset of presets; track preset.id) {
+          <li>
+            <button class="preset" type="button" (click)="applyPreset(preset)">
+              <span class="preset__name">{{ preset.name }}</span>
+              <span class="preset__region">{{ preset.region }}</span>
+              <span class="preset__summary">{{ preset.summary }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+
+      <p class="section-panel__hint">
+        These are the profiles this catalogue supports: the USGS archive holds almost nothing
+        below M4.0 here, so only the most active slabs carry enough events along a line to
+        plot. Click two points to draw your own — cut <strong>across</strong> a trench rather
+        than along it, since a section parallel to the seismicity shows flat bands instead of
+        the descending slab.
+      </p>
+    </div>
+  } @else if (phase() === 'awaiting-end') {
+    <p class="section-panel__prompt">
+      Now click the <strong>end</strong> point.
+    </p>
+  } @else if (loading()) {
+    <p class="section-panel__prompt">Computing the profile…</p>
+  } @else if (profile(); as loaded) {
+    @if (loaded.points.length === 0) {
+      <p class="section-panel__prompt">
+        No events with measured depths fall within this corridor.
+        @if (excludedCount() > 0) {
+          {{ excludedCount() }} nearby
+          {{ excludedCount() === 1 ? 'event was' : 'events were' }} set aside because the depth
+          was assigned rather than measured — include them below to see where they sit.
+        } @else {
+          Try a longer line, or one crossing a more active region.
+        }
+      </p>
+    } @else {
+      <!-- Measured to size the SVG in real pixels. Scaling a fixed viewBox to fit would
+           stretch every hypocentre into an ellipse. -->
+      <div class="section-panel__plot" #surface>
+        <svg
+          [attr.viewBox]="viewBox()"
+          [attr.width]="plotWidth()"
+          [attr.height]="height"
+          role="img"
+          aria-label="Hypocentre depth plotted against distance along the section"
+        >
+          <!-- Depth grid. Horizontal only: depth is the axis being read, and vertical
+               rules would compete with the hypocentres. -->
+          @for (tick of depthTicks(); track tick.position) {
+            <line
+              class="plot__grid"
+              [attr.x1]="margin.left"
+              [attr.x2]="plotWidth() - margin.right"
+              [attr.y1]="tick.position"
+              [attr.y2]="tick.position"
+            />
+            <text class="plot__tick plot__tick--depth" [attr.x]="margin.left - 8" [attr.y]="tick.position + 3">
+              {{ tick.label }}
+            </text>
+          }
+
+          @for (tick of distanceTicks(); track tick.position) {
+            <text
+              class="plot__tick plot__tick--distance"
+              [attr.x]="tick.position"
+              [attr.y]="tickBaseline"
+            >
+              {{ tick.label }}
+            </text>
+          }
+
+          <!-- Surface line, solid: zero depth is a real boundary, unlike the grid above. -->
+          <line
+            class="plot__surface-line"
+            [attr.x1]="margin.left"
+            [attr.x2]="plotWidth() - margin.right"
+            [attr.y1]="margin.top"
+            [attr.y2]="margin.top"
+          />
+
+          <g class="plot__points">
+            @for (plotted of points(); track plotted.point.eventId) {
+              <!-- Unmeasured depths get a hollow mark with a dashed edge; measured ones
+                   are filled. Shape and fill, not colour alone, so the distinction
+                   survives greyscale printing in a thesis. -->
+              <circle
+                [class.plot__point--assigned]="!plotted.point.depthMeasured"
+                [class.plot__point--hovered]="hoveredEventId() === plotted.point.eventId"
+                [attr.cx]="plotted.x"
+                [attr.cy]="plotted.y"
+                [attr.r]="plotted.radius"
+                [attr.fill]="plotted.point.depthMeasured ? plotted.colour : 'none'"
+                [attr.stroke]="plotted.colour"
+                [attr.opacity]="plotted.opacity"
+                (mouseenter)="onHover(plotted)"
+                (mouseleave)="onHover(null)"
+              >
+                <title>{{ tooltip(plotted.point) }}</title>
+              </circle>
+            }
+          </g>
+
+          <!-- Captions inside the SVG, so they share the plot's coordinate space and
+               cannot drift out of position the way absolutely-placed HTML did. -->
+          <text
+            class="plot__axis-caption"
+            [attr.x]="distanceLabelX()"
+            [attr.y]="captionBaseline"
+            text-anchor="middle"
+          >
+            DISTANCE ALONG SECTION (KM)
+          </text>
+
+          <text
+            class="plot__axis-caption"
+            [attr.transform]="'rotate(-90 12 ' + depthLabelY() + ')'"
+            [attr.x]="12"
+            [attr.y]="depthLabelY()"
+            text-anchor="middle"
+          >
+            DEPTH (KM)
+          </text>
+        </svg>
+      </div>
+
+      <!-- The caveat that makes this view defensible. Under the plot rather than in a
+           panel elsewhere, because it is about what is on screen right now. -->
+      <footer class="section-panel__caveat">
+        <button
+          class="c-checkbox"
+          type="button"
+          [attr.aria-pressed]="includeAssignedDepths()"
+          (click)="toggleAssignedDepths()"
+        >
+          <span class="c-checkbox__box" aria-hidden="true">
+            @if (includeAssignedDepths()) {
+              <svg viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path
+                  d="M2 5.2 4 7.2 8 3"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            }
+          </span>
+          <span>Include depths the agency assigned</span>
+        </button>
+
+        @if (includeAssignedDepths()) {
+          <p class="section-panel__warning">
+            <cal-icon name="caution" [size]="13" />
+            <span>
+              {{ assignedShown() }} of {{ loaded.totalCount }} points, drawn as hollow rings, have a
+              depth that was never measured — fixed at 10, 15, 33 or 35&nbsp;km by convention. The
+              flat bands they form are an artefact of that convention, not structure in the crust.
+            </span>
+          </p>
+        } @else if (excludedCount() > 0) {
+          <p class="section-panel__note">
+            {{ excludedCount() }} further
+            {{ excludedCount() === 1 ? 'event was' : 'events were' }} excluded because the reporting
+            agency assigned the depth rather than measuring it.
+          </p>
+        }
+      </footer>
+    }
+  }
+</section>

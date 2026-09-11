@@ -18,6 +18,22 @@
   color: var(--text-secondary);
 }
 
+.about__header p + p {
+  margin-top: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--text-tertiary);
+}
+
+// Introduces a section and states what the group of sources beneath it has in common. The
+// licence split is the load-bearing distinction on this page, so it is stated in words rather
+// than left to a chip.
+.about__lede {
+  max-inline-size: 66ch;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-small);
+  color: var(--text-tertiary);
+}
+
 .about__section {
   max-inline-size: 62rem;
   margin-bottom: var(--space-6);
@@ -82,6 +98,77 @@
 .source__text {
   font-size: var(--text-small);
   color: var(--text-secondary);
+}
+
+// Coverage notes arrive as several paragraphs and are rendered as several, because the platform's
+// statements about a source's limits are separate claims rather than one block of prose.
+.source__text + .source__text {
+  margin-top: var(--space-2);
+}
+
+.source__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+// How the data is obtained, in words. Sits directly under the heading because it is the answer
+// to "where does this actually come from", which the dataset name alone does not give.
+.source__access {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+// The completeness floor. Bordered rather than tinted: it is a property of the catalogue, not a
+// warning about how to read one figure, so it should not take the caution hue that means "read
+// the caveat".
+.source__floor {
+  margin-bottom: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--line-strong);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+
+.source__retrieved {
+  font-family: var(--font-mono);
+  color: var(--text-disabled);
+}
+
+// ---- Runtime services ----------------------------------------------------
+// Two columns, because each entry is short: a name, a purpose and a credit. Rendering them as
+// full-width panels like the datasets would overstate them — they carry no hazard information.
+
+.services {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-3);
+}
+
+.service {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.service__name {
+  font-size: var(--text-body);
+}
+
+.service__attribution {
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.about__footer {
+  max-inline-size: 62rem;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-faint);
+  font-size: var(--text-micro);
+  color: var(--text-disabled);
 }
 
 /* Caveats use the caution hue and nothing else does, so this block is

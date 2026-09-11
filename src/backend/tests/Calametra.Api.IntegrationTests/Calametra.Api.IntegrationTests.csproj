@@ -2,7 +2,7 @@
 
   <!--
     Integration tests run against real PostgreSQL + PostGIS via Testcontainers.
-    The EF Core in-memory provider is never used here (design_3 §21):
+    The EF Core in-memory provider is never used here (design_3 section 21):
     it does not translate LINQ the way Postgres does, and it has no PostGIS at all,
     so every spatial query in this project would be untested by construction.
   -->

@@ -4,13 +4,17 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Calametra.Infrastructure.Persistence.Configurations;
 
-internal sealed class EventObservationConfiguration : IEntityTypeConfiguration<EventObservation>
+internal sealed class EarthquakeObservationConfiguration
+    : IEntityTypeConfiguration<EarthquakeObservation>
 {
-    public void Configure(EntityTypeBuilder<EventObservation> builder)
+    public void Configure(EntityTypeBuilder<EarthquakeObservation> builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.ToTable("event_observations");
+        // Named for the hazard, matching the entity. The generic `event_observations`
+        // would have invited a second hazard family to share this table and inherit five
+        // seismological columns it can never populate.
+        builder.ToTable("earthquake_observations");
 
         builder.HasKey(observation => observation.Id);
 

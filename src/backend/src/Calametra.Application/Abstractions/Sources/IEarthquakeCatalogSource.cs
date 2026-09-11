@@ -60,7 +60,7 @@ public sealed record EarthquakeCatalogQuery
 /// Declared here, by the consumer, in the consumer's vocabulary. Implemented in
 /// Calametra.Infrastructure by one adapter per catalogue. Modelled as a port rather
 /// than a concrete client because the platform is expected to gain a second
-/// catalogue: USGS provides global coverage but holds no CARAGA events below M3.5,
+/// catalogue: USGS provides global coverage but holds no Philippine events below M3.5,
 /// so a PHIVOLCS local-catalogue adapter is a planned addition and must slot in
 /// without changing any handler.
 /// </remarks>

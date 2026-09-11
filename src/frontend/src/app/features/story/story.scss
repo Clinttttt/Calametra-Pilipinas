@@ -1,0 +1,410 @@
+/* Story mode.
+
+   One layout for both states: the map holds the stage, the panel on the right holds either the
+   index or the story. Choosing a story swaps the panel's contents rather than navigating, so the
+   reader stays in place and the map stays live. */
+.story {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.story__map {
+  position: absolute;
+  inset: 0;
+}
+
+/* ── PANEL ────────────────────────────────────────────────────────────────
+   A fixed reading column on the right. Wide enough for a comfortable measure and no wider: the
+   map is the other half of the argument and must keep the space to show it. */
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  width: min(30rem, 42vw);
+  background-color: var(--surface-000);
+  border-left: 1px solid var(--line-subtle);
+}
+
+.panel__head {
+  flex: none;
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.panel__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.panel__back:hover {
+  color: var(--text-primary);
+}
+
+.panel__title {
+  margin: 0 0 var(--space-3);
+  font-size: 1.4375rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.panel__standfirst {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+.panel__byline {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+
+/* ── SNAPPED SCROLLING ────────────────────────────────────────────────────
+   `mandatory` rather than `proximity`: a beat drives the camera, so resting between two of them
+   would leave the map describing one section while the reader is looking at another. Mandatory
+   snapping makes "which beat is current" unambiguous, which is the same reason the observer band
+   is narrow.
+
+   The scrollbar is hidden but scrolling is not disabled — the panel has its own stepper and
+   progress bar, and a native bar beside a progress indicator reads as two answers to one
+   question. */
+.panel__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.panel__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* The index is a list, not a sequence, so it scrolls normally. */
+.panel__scroll--list {
+  scroll-snap-type: none;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+/* Each beat fills the panel and snaps to its start, so exactly one is readable at a time and a
+   scroll gesture lands on the next rather than halfway between two. */
+.beat {
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+  padding: var(--space-5);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.beat__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.beat__index {
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-disabled);
+}
+
+.beat__heading {
+  margin: 0;
+  font-size: 1.1875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+/* Beats fade when they are not the current one. The map is showing the current beat's place, so a
+   fully-lit paragraph the map is not describing competes with the one it is. */
+.beat__paragraph {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  max-inline-size: none;
+  opacity: 0.55;
+  transition: opacity var(--motion-considered) var(--ease-out);
+}
+
+.beat--active .beat__paragraph {
+  opacity: 1;
+}
+
+.beat__caveat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  background-color: var(--caution-wash);
+  border-left: 2px solid var(--caution-line);
+  border-radius: var(--radius-sm);
+  max-inline-size: none;
+}
+
+.beat__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.beat--sources .beat__heading {
+  margin-bottom: var(--space-2);
+}
+
+/* ── PANEL FOOT ───────────────────────────────────────────────────────────
+   Stepper and progress. Present because scroll-snapping is a gesture and some readers would
+   rather press a button, and because a reader needs to know how much of the story is left. */
+.panel__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--line-faint);
+}
+
+.panel__progress {
+  flex: 1;
+  height: 2px;
+  background-color: var(--line-faint);
+}
+
+.panel__progress-fill {
+  display: block;
+  height: 100%;
+  background-color: var(--text-secondary);
+  transition: width var(--motion-considered) var(--ease-out);
+}
+
+/* ── INDEX ────────────────────────────────────────────────────────────────*/
+.index__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-4);
+  text-align: left;
+  background-color: var(--surface-100);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.story-card:hover {
+  background-color: var(--surface-200);
+  border-color: var(--line-strong);
+}
+
+.story-card:focus-visible {
+  border-color: var(--accent);
+}
+
+.story-card__meta {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+
+.story-card__title {
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.story-card__standfirst {
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}
+
+/* What the story demonstrates about the record. The line that tells a reader which one to pick. */
+.story-card__shows {
+  padding-top: var(--space-2);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+}
+
+.story-card__foot {
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+  font-size: var(--text-micro);
+  color: var(--text-disabled);
+}
+
+/* ── SOURCES ──────────────────────────────────────────────────────────────*/
+.sources__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.source {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.source__title {
+  align-self: flex-start;
+  font-size: var(--text-small);
+  color: var(--text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.source__title:hover {
+  border-bottom-color: var(--accent);
+}
+
+.source__publisher {
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+/* What the source was used for, so a reader can tell which sentence rests on which reference. */
+.source__note {
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-disabled);
+}
+
+/* ── READINGS ─────────────────────────────────────────────────────────────
+   Over the map, bottom left. The figures the prose quotes, live from the archive. */
+.readings {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  z-index: var(--z-map-overlay);
+  min-width: 15rem;
+  padding: var(--space-3);
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-md);
+}
+
+/* The unresolved-reference variant. Takes the caution treatment rather than the neutral panel
+   chrome, because it is a caveat about what the reader is being told, not a reading. */
+.readings--unavailable {
+  max-width: 22rem;
+  color: var(--caution);
+  border-color: var(--caution-line);
+}
+
+.readings__note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.readings__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reading + .reading {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-faint);
+}
+
+.reading__agency {
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.reading__values {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+.reading__depth {
+  color: var(--text-secondary);
+}
+
+/* An assigned depth is marked here as everywhere else, so a story about assigned depths has
+   something to point at. */
+.reading__depth--assigned {
+  color: var(--caution);
+}
+
+/* The averaging period, always beside the wind speed it qualifies. Quieter than the figure but
+   never omitted: four peak winds over different intervals are not four measurements of one thing. */
+.reading__period {
+  margin-left: var(--space-1);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+
+@media (max-width: 60rem) {
+  .panel {
+    width: 100%;
+    border-left: none;
+  }
+
+  .readings {
+    display: none;
+  }
+}

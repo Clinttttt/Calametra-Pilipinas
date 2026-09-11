@@ -12,11 +12,12 @@ namespace Calametra.Api.Extensions;
 /// </para>
 /// <para>
 /// Because there is no authentication, rate limiting is the only thing standing
-/// between the service and abuse, which makes it load-bearing rather than
-/// decorative. <see cref="HazardProxy"/> is deliberately much tighter than
-/// <see cref="PublicRead"/>: those requests are forwarded to a government map
-/// service, so a client hammering Calametra would otherwise become Calametra
-/// hammering PHIVOLCS.
+/// between the service and abuse. But it protects <i>this</i> service, not upstream
+/// ones — that distinction was learned by getting it wrong. Throttling tile requests
+/// to protect PHIVOLCS returned HTTP 429 to our own map without reducing upstream
+/// load, because every request that did get through still reached them. Upstream
+/// volume is controlled by caching in <c>PhivolcsHazardMapService</c>; these limits
+/// exist to stop a pathological client and are set above legitimate use.
 /// </para>
 /// <para>
 /// Any future write endpoint — curated story content, administrative data

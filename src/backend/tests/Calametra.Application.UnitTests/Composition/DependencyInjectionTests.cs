@@ -1,9 +1,12 @@
 using Calametra.Application.Abstractions.Data;
 using Calametra.Application.Abstractions.Messaging;
 using Calametra.Application.Abstractions.Sources;
+using Calametra.Application.Features.Cyclones;
 using Calametra.Application.Features.Earthquakes;
 using Calametra.Application.Features.HazardLayers;
 using Calametra.Application.Features.Ingestion;
+using Calametra.Application.Features.Places;
+using Calametra.Application.Features.Sources;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -46,6 +49,8 @@ public sealed class DependencyInjectionTests
         services.AddScoped(_ => Substitute.For<IEarthquakeCatalogSource>());
         services.AddScoped(_ => Substitute.For<IActiveFaultSource>());
         services.AddScoped(_ => Substitute.For<IHazardMapService>());
+        services.AddScoped(_ => Substitute.For<ICycloneTrackSource>());
+        services.AddScoped(_ => Substitute.For<IPlaceDirectorySource>());
 
         return services.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -115,6 +120,30 @@ public sealed class DependencyInjectionTests
                 Features.Earthquakes.Shared.EarthquakeSummaryResponse>>)
         },
         {
+            typeof(SearchCyclones.Query),
+            typeof(Domain.Abstractions.Result<IReadOnlyList<SearchCyclones.CycloneSummaryResponse>>)
+        },
+        {
+            typeof(GetCycloneTrack.Query),
+            typeof(Domain.Abstractions.Result<GetCycloneTrack.CycloneTrackResponse>)
+        },
+        {
+            typeof(IngestCycloneTracks.Command),
+            typeof(Domain.Abstractions.Result<IngestCycloneTracks.IngestionSummary>)
+        },
+        {
+            typeof(CompareEarthquakes.Query),
+            typeof(Domain.Abstractions.Result<CompareEarthquakes.ComparisonResponse>)
+        },
+        {
+            typeof(GetSimilarEarthquakes.Query),
+            typeof(Domain.Abstractions.Result<GetSimilarEarthquakes.SimilarEarthquakesResponse>)
+        },
+        {
+            typeof(GetCrossSection.Query),
+            typeof(Domain.Abstractions.Result<GetCrossSection.CrossSectionResponse>)
+        },
+        {
             typeof(GetEarthquakeMapData.Query),
             typeof(Domain.Abstractions.Result<GetEarthquakeMapData.MapDataResponse>)
         },
@@ -125,6 +154,14 @@ public sealed class DependencyInjectionTests
         {
             typeof(GetEarthquakeDetail.Query),
             typeof(Domain.Abstractions.Result<Features.Earthquakes.Shared.EarthquakeDetailResponse>)
+        },
+        {
+            typeof(GetEarthquakeByExternalId.Query),
+            typeof(Domain.Abstractions.Result<Features.Earthquakes.Shared.EarthquakeDetailResponse>)
+        },
+        {
+            typeof(GetCycloneByExternalId.Query),
+            typeof(Domain.Abstractions.Result<GetCycloneTrack.CycloneTrackResponse>)
         },
         {
             typeof(ListHazardLayers.Query),
@@ -150,5 +187,59 @@ public sealed class DependencyInjectionTests
             typeof(ImportActiveFaults.Command),
             typeof(Domain.Abstractions.Result<ImportActiveFaults.FaultImportSummary>)
         },
+        {
+            typeof(ImportPlaces.Command),
+            typeof(Domain.Abstractions.Result<ImportPlaces.PlaceImportSummary>)
+        },
+        {
+            typeof(SearchPlaces.Query),
+            typeof(Domain.Abstractions.Result<IReadOnlyList<SearchPlaces.PlaceMatch>>)
+        },
+        {
+            typeof(GetPlaceContext.Query),
+            typeof(Domain.Abstractions.Result<GetPlaceContext.PlaceContextResponse>)
+        },
+        {
+            typeof(ListDataSources.Query),
+            typeof(Domain.Abstractions.Result<IReadOnlyList<ListDataSources.DataSourceResponse>>)
+        },
     };
+
+    /// <summary>
+    /// Asserts the list above is complete.
+    /// </summary>
+    /// <remarks>
+    /// The list is deliberately hand-written, so that reading it tells you what the application can
+    /// dispatch. But "adding a slice and forgetting this list is a visible omission" was not true
+    /// until this test existed: an unlisted request was simply never exercised, and the suite stayed
+    /// green. Two requests had in fact gone unlisted — both external-identifier lookups — which is
+    /// what prompted this.
+    /// <para>
+    /// So reflection is used to police the list rather than to replace it.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheRequestList_ShouldCoverEveryRequestInTheApplication()
+    {
+        var listed = EveryRequestType()
+            .Select(row => (Type)row[0]!)
+            .ToHashSet();
+
+        var declared = typeof(SearchEarthquakes.Query).Assembly
+            .GetTypes()
+            .Where(type => type is { IsAbstract: false, IsInterface: false })
+            .Where(type => Array.Exists(
+                type.GetInterfaces(),
+                contract => contract.IsGenericType
+                    && contract.GetGenericTypeDefinition() == typeof(IRequest<>)))
+            .ToArray();
+
+        var missing = Array.FindAll(declared, type => !listed.Contains(type))
+            .Select(type => type.FullName!)
+            .ToArray();
+
+        missing.ShouldBeEmpty(
+            "these requests are absent from EveryRequestType(), so nothing verifies they can be "
+            + "dispatched: " + string.Join(", ", missing));
+    }
 }

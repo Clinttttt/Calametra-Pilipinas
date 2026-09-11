@@ -75,7 +75,7 @@ public static class GetEarthquakeMapData
             // Projected in the database so the wide entity rows are never materialised.
             var rows = await (
                 from hazardEvent in context.HazardEvents.AsNoTracking()
-                join observation in context.EventObservations.AsNoTracking()
+                join observation in context.EarthquakeObservations.AsNoTracking()
                     on hazardEvent.PreferredObservationId equals observation.Id
                 where hazardEvent.Type == HazardEventType.Earthquake
                 orderby hazardEvent.CanonicalOccurredAt

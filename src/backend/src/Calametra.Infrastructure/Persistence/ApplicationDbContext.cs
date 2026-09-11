@@ -19,9 +19,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<HazardEvent> HazardEvents => Set<HazardEvent>();
 
-    public DbSet<EventObservation> EventObservations => Set<EventObservation>();
+    public DbSet<EarthquakeObservation> EarthquakeObservations => Set<EarthquakeObservation>();
 
-    public DbSet<EventTrackPoint> EventTrackPoints => Set<EventTrackPoint>();
+    public DbSet<CycloneTrackPoint> CycloneTrackPoints => Set<CycloneTrackPoint>();
 
     public DbSet<DataSource> DataSources => Set<DataSource>();
 

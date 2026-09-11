@@ -179,7 +179,7 @@ public sealed class BulletinObservationSeeder(
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var alreadyRecorded = await context.EventObservations.AnyAsync(
+        var alreadyRecorded = await context.EarthquakeObservations.AnyAsync(
             observation => observation.DataSourceId == source.Id
                 && observation.ExternalEventId == bulletin.BulletinId,
             cancellationToken);

@@ -36,6 +36,14 @@
             as reported by <strong>{{ lead.agency }}</strong>
           </p>
           <p class="detail__time">{{ formattedTime() }}</p>
+
+          <!-- Where it was, in words. Stated after the time because it is the second thing a
+               reader asks and the first thing coordinates fail to answer. The distance is to the
+               town's representative point rather than to its edge, which the Sources page
+               explains — the phrasing follows the convention agency bulletins already use. -->
+          @if (detail.location; as location) {
+            <p class="detail__location">{{ location }}</p>
+          }
         </section>
       }
 
@@ -141,6 +149,22 @@
           agencies commonly differ by tens of kilometres.
         </p>
       }
+
+      <!-- Opens the similarity search. A separate action rather than loading with the
+           panel, because it is a follow-up question and a spatial query. Hidden once the
+           section below is showing, since it would then do nothing. -->
+      @if (!similarOpen()) {
+        <footer class="detail__actions">
+          <button class="c-button" type="button" (click)="requestSimilar()">
+            Find similar events
+          </button>
+        </footer>
+      }
+
+      <!-- Projected content: the similarity search, rendered inside this panel's single
+           scroll area rather than as a second floating panel. Two panels stacked in one
+           column fought for the height and collapsed the reading above. -->
+      <ng-content />
     </div>
   }
 </aside>
