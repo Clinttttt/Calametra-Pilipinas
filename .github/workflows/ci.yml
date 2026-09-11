@@ -1,0 +1,96 @@
+# Build and test on every push and pull request.
+#
+# Two jobs rather than one, run in parallel: the backend and the frontend fail for unrelated
+# reasons, and a single job would hide the second failure behind the first.
+#
+# `TreatWarningsAsErrors` is already set in Directory.Build.props, so a warning fails the build
+# here without the workflow having to ask for it.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A second push supersedes the first. Nothing is gained by finishing a run against a commit
+# that is already behind.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (.NET 10, PostGIS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Restore separately so a dependency failure is distinguishable from a compile failure.
+      - name: Restore
+        run: dotnet restore src/backend/Calametra.slnx
+
+      - name: Build
+        run: dotnet build src/backend/Calametra.slnx --no-restore --configuration Release
+
+      # The integration suite starts postgis/postgis:17-3.5 through Testcontainers, which needs a
+      # Docker daemon. The GitHub-hosted Ubuntu runner provides one, so no service container is
+      # declared: Testcontainers manages the lifecycle itself, including the wait strategy.
+      #
+      # First run on a cold runner pulls that image, which takes a minute or so. Later runs hit
+      # the runner's image cache.
+      - name: Test
+        run: >
+          dotnet test src/backend/Calametra.slnx
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=results.trx"
+          --results-directory artifacts/test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: artifacts/test-results
+          if-no-files-found: warn
+
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the local toolchain. Angular's build requires a current LTS or newer.
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      # `npm ci` rather than `npm install`: it installs exactly the lockfile and fails if
+      # package.json and the lock have drifted, which is a defect worth failing on.
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Vitest in a headless browser. The stylesheet budget overruns this project carries are
+      # warnings rather than errors, so they do not fail the build — they are tracked in
+      # docs/ROADMAP.md instead.
+      - name: Test
+        run: npm test
