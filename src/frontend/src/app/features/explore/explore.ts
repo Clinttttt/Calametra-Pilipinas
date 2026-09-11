@@ -22,6 +22,7 @@ import { CycloneStore } from '../../core/cyclones/cyclone-store';
 import { EventComparison } from './panels/event-comparison';
 import { EventDetail } from './panels/event-detail';
 import { HazardLayerStore, type LayerState } from '../../core/layers/hazard-layer-store';
+import { hazardRasterSource } from '../../core/layers/hazard-tile-source';
 import { Icon } from '../../shared/ui/icon/icon';
 import { LayersPanel } from './panels/layers-panel';
 import { MapLegend } from './map/map-legend';
@@ -1861,24 +1862,15 @@ export class Explore {
     const rasterId = `${sourceId}-raster`;
 
     if (!map.getSource(sourceId)) {
-      // Two templates, chosen by what the publisher offers. A cached layer is addressed on the
-      // standard {z}/{x}/{y} grid at 256 px, which is the tile size the cache was built at;
-      // asking for 512 would make MapLibre request one tile where the cache holds four and the
-      // proxy would return a quarter of the area stretched. A rendered layer takes a bounding
-      // box, where 512 is a deliberate saving — one request covers four tiles' worth of ground.
-      const cached = layer.supportsCachedTiles;
+      // The template and the tile size are chosen together, in a pure function that is unit-tested:
+      // the two must agree or MapLibre requests the wrong tiles, and that is not a fault a map
+      // makes obvious. See core/layers/hazard-tile-source.ts.
+      const raster = hazardRasterSource(layer, this.config.apiBaseUrl);
 
       map.addSource(sourceId, {
         type: 'raster',
-        // MapLibre substitutes {z}/{x}/{y} or the bbox per tile. EPSG:3857 because that is what
-        // a raster source speaks, and the upstream service serves it despite not advertising it
-        // (ADR-003).
-        tiles: [
-          cached
-            ? this.api.cachedHazardTileTemplate(this.config.apiBaseUrl, layer.id)
-            : this.api.hazardTileTemplate(this.config.apiBaseUrl, layer.id, 512),
-        ],
-        tileSize: cached ? 256 : 512,
+        tiles: [...raster.tiles],
+        tileSize: raster.tileSize,
         attribution: layer.attribution,
       });
     }

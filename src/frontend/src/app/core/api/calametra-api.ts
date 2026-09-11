@@ -210,33 +210,14 @@ export class CalametraApi {
   }
 
   /**
-   * Builds the raster tile template for a proxied hazard layer.
+   * Fetches the publisher's own attributes for the feature at a position.
    *
-   * Returns a URL template rather than fetching anything: MapLibre performs the
-   * requests itself, and `{bbox-epsg-3857}` is substituted by the renderer per
-   * tile. This is why the API accepts EPSG:3857 despite the upstream service
-   * advertising only EPSG:4326 — MapLibre raster sources speak Web Mercator.
+   * Tile URL templates are deliberately *not* built here. MapLibre fetches tiles itself and never
+   * passes through `HttpClient`, so a template is not an API call — it is configuration for a
+   * third-party renderer, and the choice between a cached and a rendered template has to agree
+   * with the declared tile size. That decision lives in `core/layers/hazard-tile-source.ts`, where
+   * it is unit-tested rather than only observable by looking at a map.
    */
-  hazardTileTemplate(baseUrl: string, layerId: string, tileSize = 256): string {
-    return (
-      `${baseUrl}/api/hazard-layers/${layerId}/tile` +
-      `?bbox={bbox-epsg-3857}&width=${tileSize}&height=${tileSize}`
-    );
-  }
-
-  /**
-   * Builds the tile template for a layer whose publisher exposes a pre-rendered cache.
-   *
-   * Preferred wherever `supportsCachedTiles` is set on the catalogue entry. For the DOST-MGB
-   * susceptibility maps the same tile takes 60–120 ms from the agency's cache against 18.8–19.4
-   * seconds rendered through WMS — the difference between a layer a reader can pan and one that
-   * appears to hang. It is also considerably kinder to the agency's server.
-   */
-  cachedHazardTileTemplate(baseUrl: string, layerId: string): string {
-    return `${baseUrl}/api/hazard-layers/${layerId}/tile/{z}/{x}/{y}`;
-  }
-
-  /** Fetches the publisher's own attributes for the feature at a position. */
   identifyHazardFeature(
     layerId: string,
     latitude: number,
