@@ -117,6 +117,31 @@ public sealed class HazardLayerDefinition : AuditableEntity
 
     public int SortOrder { get; private set; }
 
+    /// <summary>
+    /// Zoom below which this layer must not be requested at all, or null for no limit.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A property of the publisher's service rather than a rendering preference, which is why it is
+    /// stored per layer. A service that renders every tile on demand costs time proportional to the
+    /// polygons intersecting the view, so the same layer can be instant close in and unusable at
+    /// national zoom. Measured on 2026-09-12 against PHIVOLCS: ground shaking renders a 400 km extent
+    /// in 2.9 s and a 1,300 km one — a single tile at the opening view — in 19.1 s, and
+    /// earthquake-induced landslide takes 32.8 s at a 78 km tile against 8.1 s at 39 km.
+    /// </para>
+    /// <para>
+    /// Enforced by the client, which is the only place it can be: a bounding-box request carries no
+    /// zoom, so the proxy cannot tell a national tile from a local one. MapLibre honours it by not
+    /// issuing the request, so a layer below its minimum costs the publisher nothing.
+    /// </para>
+    /// <para>
+    /// <b>Not a substitute for refusing a layer outright.</b> The tsunami inundation service takes
+    /// 139-143 s reproducibly for a 20 km tile over Manila Bay — dense mapping rather than a wide
+    /// view — so no minimum zoom makes it usable, and it stays out of the catalogue.
+    /// </para>
+    /// </remarks>
+    public int? MinimumZoom { get; private set; }
+
     public static Result<HazardLayerDefinition> CreateRemote(
         Guid dataSourceId,
         HazardType hazardType,
@@ -214,6 +239,20 @@ public sealed class HazardLayerDefinition : AuditableEntity
         IsEnabledByDefault = isEnabledByDefault;
         SortOrder = sortOrder;
         SupportsFeatureInfo = supportsFeatureInfo;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the zoom below which the layer must not be requested.
+    /// </summary>
+    /// <remarks>
+    /// Additive and separate from <see cref="WithPresentation"/>, matching
+    /// <see cref="WithCachedTiles"/>: both record a measured property of the publisher's service
+    /// rather than a choice about how this platform presents it, and most layers need neither.
+    /// </remarks>
+    public HazardLayerDefinition WithMinimumZoom(int minimumZoom)
+    {
+        MinimumZoom = minimumZoom;
         return this;
     }
 

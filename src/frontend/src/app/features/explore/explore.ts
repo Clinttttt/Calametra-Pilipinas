@@ -272,6 +272,15 @@ export class Explore {
   readonly epicentresVisible = signal(true);
 
   /**
+   * The map's current zoom, tracked so the layers panel can say why a ticked layer is not drawing.
+   *
+   * Some layers carry a publisher-measured minimum zoom, and MapLibre honours it silently — the tick
+   * stays on and nothing appears, which is indistinguishable from the bug fixed earlier unless the
+   * interface explains it.
+   */
+  protected readonly mapZoom = signal(0);
+
+  /**
    * Origin time and magnitude of every loaded event.
    *
    * Kept so the visible count can be recomputed without re-querying the map or the
@@ -1486,7 +1495,12 @@ export class Explore {
       // position is the one thing that must stay visible while the track animates.
       map.moveLayer(Explore.cyclonePositionLayerId);
       this.ready.set(true);
+      this.mapZoom.set(map.getZoom());
 
+      // Kept current so the layers panel can explain a layer that is switched on but below its
+      // publisher-measured minimum zoom. `zoomend` rather than `zoom`: the latter fires per frame
+      // during a pinch, and nothing here needs that resolution.
+      map.on('zoomend', () => this.mapZoom.set(map.getZoom()));
       // The earthquake archive is deliberately *not* fetched here. Nothing is plotted until the
       // reader picks a hazard, so the request is issued on that choice instead — see
       // `applyHazardToMap`.
@@ -2100,6 +2114,10 @@ export class Explore {
         id: rasterId,
         type: 'raster',
         source: sourceId,
+        // Honoured by MapLibre by not issuing the request at all, which is the point: a layer below
+        // its minimum costs the publisher nothing rather than costing it a national render. Null for
+        // most layers, and spread rather than set to 0 so "no limit" stays absent from the style.
+        ...(layer.minimumZoom === null ? {} : { minzoom: layer.minimumZoom }),
         // Below full opacity so the coastline underneath stays readable; the overlay is
         // context, not a replacement basemap.
         paint: { 'raster-opacity': 0.85 },
@@ -2348,6 +2366,16 @@ export class Explore {
    */
   protected onFilterChanged(): void {
     this.applyFilters();
+  }
+
+  /**
+   * Zooms to the scale a layer's publisher can serve, keeping the centre.
+   *
+   * The reader asked for a layer and was told to come closer; taking them there is the useful
+   * response. The centre is kept because they were already looking at the area they care about.
+   */
+  protected zoomTo(zoom: number): void {
+    this.map?.easeTo({ zoom, duration: 900, essential: true });
   }
 
   protected onMagnitudeFloorChanged(floor: number | null): void {

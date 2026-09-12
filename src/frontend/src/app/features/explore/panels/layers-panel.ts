@@ -1,6 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, model, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  model,
+  output,
+  signal,
+} from '@angular/core';
 
-import { HazardLayerStore } from '../../../core/layers/hazard-layer-store';
+import { HazardLayerStore, type LayerState } from '../../../core/layers/hazard-layer-store';
 import { HazardModeStore } from '../../../core/hazards/hazard-mode-store';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { type HazardLayer } from '../../../core/api/contracts';
@@ -51,6 +60,17 @@ export class LayersPanel {
    * offered here because this panel is where a reader already comes to decide what is drawn.
    */
   readonly epicentresVisible = model(true);
+
+  /**
+   * The map's current zoom.
+   *
+   * Needed because MapLibre honours a layer's minimum zoom silently: the tick stays on and nothing
+   * appears. Without this the panel would present that as a layer that does not work.
+   */
+  readonly zoom = input(0);
+
+  /** Emitted when the reader asks to zoom in far enough for a layer to draw. */
+  readonly zoomRequested = output<number>();
 
   /** Shown only under the earthquake view, where the markers exist to be hidden. */
   protected readonly showsEpicentreControl = computed(
@@ -110,6 +130,25 @@ export class LayersPanel {
 
   protected toggle(layerId: string): void {
     this.store.toggle(layerId);
+  }
+
+  /**
+   * Whether a layer is switched on but below the zoom its publisher's service can serve.
+   *
+   * Reported rather than prevented: the reader's intent is recorded, the layer appears as soon as they
+   * are close enough, and the reason is stated in place. Blocking the tick would be worse — it would
+   * present a publisher's rendering cost as a broken control.
+   */
+  protected isBelowMinimumZoom(entry: LayerState): boolean {
+    return (
+      entry.visible && entry.layer.minimumZoom !== null && this.zoom() < entry.layer.minimumZoom
+    );
+  }
+
+  protected requestZoom(entry: LayerState): void {
+    if (entry.layer.minimumZoom !== null) {
+      this.zoomRequested.emit(entry.layer.minimumZoom);
+    }
   }
 
   protected toggleEpicentres(): void {

@@ -41,6 +41,7 @@ public sealed class ReferenceDataSeeder(
         var trenches = await EnsurePhivolcsTrenchesAsync(now, cancellationToken);
         var groundShaking = await EnsurePhivolcsGroundShakingAsync(now, cancellationToken);
         var liquefaction = await EnsurePhivolcsLiquefactionAsync(now, cancellationToken);
+        var earthquakeLandslide = await EnsurePhivolcsEarthquakeLandslideAsync(now, cancellationToken);
         var mgb = await EnsureMgbAsync(now, cancellationToken);
 
         await EnsureCycloneAgenciesAsync(now, cancellationToken);
@@ -52,7 +53,12 @@ public sealed class ReferenceDataSeeder(
 
         await EnsureFaultLayerAsync(activeFault, now, cancellationToken);
         await EnsureTrenchLayerAsync(trenches, now, cancellationToken);
-        await EnsurePhivolcsHazardLayersAsync(groundShaking, liquefaction, now, cancellationToken);
+        await EnsurePhivolcsHazardLayersAsync(
+            groundShaking,
+            liquefaction,
+            earthquakeLandslide,
+            now,
+            cancellationToken);
         await EnsureMgbLayersAsync(mgb, now, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
@@ -887,6 +893,68 @@ public sealed class ReferenceDataSeeder(
     }
 
     /// <summary>
+    /// DOST-PHIVOLCS earthquake-induced landslide — displayed and never stored.
+    /// </summary>
+    /// <remarks>
+    /// Held out of the catalogue when these layers were first registered, on measurement: the service
+    /// took 81 s to render a 400 km extent and 32.8 s at 78 km, which is unusable per tile. Re-measured
+    /// on 2026-09-12 at a 39 km extent — one tile at zoom 10 — it returns in 8.1 s, so it is admitted
+    /// with a minimum zoom rather than left out. The tsunami inundation service, measured the same way,
+    /// still takes 139-143 s for a 20 km tile over Manila Bay and remains uncatalogued.
+    /// </remarks>
+    private async Task<DataSource> EnsurePhivolcsEarthquakeLandslideAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(
+                source => source.Slug == PhivolcsOptions.EarthquakeInducedLandslideSlug,
+                cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                PhivolcsOptions.EarthquakeInducedLandslideSlug,
+                agency: "DOST-PHIVOLCS",
+                datasetName: "Earthquake-induced landslide susceptibility maps",
+                SourceAccessKind.WmsProxy,
+                attribution:
+                    "Earthquake-induced landslide data © DOST-PHIVOLCS. Displayed via the official "
+                    + "public map service.",
+                now)
+            .Value;
+
+        created
+            .WithLinks(
+                sourceUrl:
+                    "https://gisweb.phivolcs.dost.gov.ph/arcgis/rest/services/PHIVOLCSPublic/"
+                    + "EarthquakeInducedLandslide/MapServer",
+                termsUrl: "https://www.phivolcs.dost.gov.ph/")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "Slopes expected to fail under earthquake shaking. A different hazard from the "
+                    + "rain-induced landslide susceptibility published by DOST-MGB: the trigger is "
+                    + "ground motion rather than rainfall, so the two maps identify different "
+                    + "slopes and neither supersedes the other.\n\n"
+                    + "Drawn only when zoomed in. PHIVOLCS renders every tile of this service on "
+                    + "demand and publishes no tile cache, and render time scales with the polygons "
+                    + "in view: measured 8.1 s for a 39 km tile, 32.8 s at 78 km and 81 s across "
+                    + "400 km. Requesting it at national zoom would spend a minute of the agency's "
+                    + "server time per tile, so the platform does not ask.\n\n"
+                    + "Displayed by proxying the agency's own rendered imagery. Calametra stores "
+                    + "none of this geometry and computes no figure from it: bulk vector query is "
+                    + "disabled on the service and release requires a signed Data User Agreement, "
+                    + "which is pending.")
+            .WithPermissions(isRedistributable: false, isAuthoritativeForPhilippines: true);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
+
+        return created;
+    }
+
+    /// <summary>
     /// The two PHIVOLCS earthquake-hazard layers that can be served interactively.
     /// </summary>
     /// <remarks>
@@ -937,15 +1005,16 @@ public sealed class ReferenceDataSeeder(
     private async Task EnsurePhivolcsHazardLayersAsync(
         DataSource groundShaking,
         DataSource liquefaction,
+        DataSource earthquakeLandslide,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
         var phivolcs = new PhivolcsOptions();
 
         var definitions = new (DataSource Source, HazardType Type, string Service,
-            string DisplayName, int SortOrder, string Explainer, string Note)[]
+            string DisplayName, int SortOrder, int? MinimumZoom, string Explainer, string Note)[]
         {
-            (groundShaking, HazardType.GroundShaking, "GroundShaking", "Ground Shaking", 21,
+            (groundShaking, HazardType.GroundShaking, "GroundShaking", "Ground Shaking", 21, 6,
                 "How strongly the ground is expected to shake, on the PHIVOLCS Earthquake "
                 + "Intensity Scale. PHIVOLCS publishes this layer at Intensity VI (very strong), "
                 + "VII (destructive) and VIII (very destructive to devastating), and its records "
@@ -955,7 +1024,7 @@ public sealed class ReferenceDataSeeder(
                 + "period. It is not a forecast and says nothing about when such an earthquake will "
                 + "occur."),
 
-            (liquefaction, HazardType.Liquefaction, "Liquefaction", "Liquefaction", 22,
+            (liquefaction, HazardType.Liquefaction, "Liquefaction", "Liquefaction", 22, null,
                 "Where saturated loose ground may lose strength and behave as a liquid during "
                 + "shaking, which can sink or tilt structures whose foundations were sound. "
                 + "PHIVOLCS records a class per area and names the project that mapped it.",
@@ -964,6 +1033,17 @@ public sealed class ReferenceDataSeeder(
                 + "Generally and Least Susceptible — because areas were mapped by different "
                 + "studies. Calametra shows whichever class the agency recorded for an area and "
                 + "does not merge the two into one scale."),
+
+            (earthquakeLandslide, HazardType.EarthquakeInducedLandslide,
+                "EarthquakeInducedLandslide", "Earthquake-induced Landslide", 23, 10,
+                "Where shaking is expected to bring slopes down. A separate hazard from the "
+                + "rain-induced landslide susceptibility DOST-MGB publishes: the trigger here is "
+                + "ground motion rather than rainfall, and the two maps disagree about which slopes "
+                + "matter because the mechanisms differ.",
+                "A susceptibility class is not a forecast, and it does not say which earthquake "
+                + "would trigger the slope. This layer draws only when zoomed in — PHIVOLCS renders "
+                + "it on demand, and a national view of it takes over a minute of the agency's "
+                + "server time per tile."),
         };
 
         foreach (var definition in definitions)
@@ -987,6 +1067,14 @@ public sealed class ReferenceDataSeeder(
                     existing.WithFeatureInfo(identifyEndpoint);
                 }
 
+                // The minimum zoom arrived after these rows were first written, and without this a
+                // database seeded yesterday would keep asking a government server for a national
+                // render of a layer measured at 19 s per tile.
+                if (definition.MinimumZoom is not null && existing.MinimumZoom is null)
+                {
+                    existing.WithMinimumZoom(definition.MinimumZoom.Value);
+                }
+
                 continue;
             }
 
@@ -1007,6 +1095,11 @@ public sealed class ReferenceDataSeeder(
                     isEnabledByDefault: false,
                     sortOrder: definition.SortOrder,
                     supportsFeatureInfo: true);
+
+            if (definition.MinimumZoom is not null)
+            {
+                layer.WithMinimumZoom(definition.MinimumZoom.Value);
+            }
 
             context.HazardLayers.Add(layer);
         }

@@ -239,6 +239,15 @@ export interface HazardLayer {
   readonly isEnabledByDefault: boolean;
   readonly sortOrder: number;
 
+  /**
+   * Zoom below which this layer must not be requested, or null for no limit.
+   *
+   * A measured property of the publisher's service, not a styling choice: PHIVOLCS renders every tile
+   * on demand, and the same layer costs 2.9 s at 400 km and 19.1 s across a national view. Enforced
+   * here because a bounding-box request carries no zoom, so only the client can tell the difference.
+   */
+  readonly minimumZoom: number | null;
+
   /** Plain-language explanation of what the layer shows. */
   readonly explainer: string | null;
 

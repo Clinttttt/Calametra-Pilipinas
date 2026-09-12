@@ -201,7 +201,12 @@
   <!-- Hazard layer controls, grouped by lens. -->
   @if (hasHazardLayers() && openTool() === 'layers') {
     <div class="explore__side-panel">
-      <cal-layers-panel [(epicentresVisible)]="epicentresVisible" (closed)="closeTool()" />
+      <cal-layers-panel
+        [(epicentresVisible)]="epicentresVisible"
+        [zoom]="mapZoom()"
+        (zoomRequested)="zoomTo($event)"
+        (closed)="closeTool()"
+      />
     </div>
   }
 

@@ -41,6 +41,25 @@ describe('hazard class scale', () => {
     expect(placeOnScale('Susceptibility', 'Very High')?.stepIndex).toBe(3);
   });
 
+  it('keeps two agencies apart under the one Susceptibility label', () => {
+    // Read from each service's own renderer on 2026-09-12: PHIVOLCS publishes three
+    // earthquake-induced classes worded "Low Susceptibility", MGB four rainfall classes worded "Low".
+    // The wording is what distinguishes them.
+    const phivolcs = placeOnScale('Susceptibility', 'Low Susceptibility');
+    const mgb = placeOnScale('Susceptibility', 'Low');
+
+    expect(phivolcs?.scale.steps).toHaveLength(3);
+    expect(phivolcs?.meaning).toContain('earthquake shaking');
+    expect(mgb?.scale.steps).toHaveLength(4);
+    expect(mgb?.meaning).toContain('ordinary rainfall');
+  });
+
+  it('leaves the depositional zone off the landslide ladder', () => {
+    // PHIVOLCS's fourth published class names where debris comes to rest, not how prone the ground is
+    // — a process rather than an intensity, so it has no rung.
+    expect(placeOnScale('Susceptibility', 'Depositional Zone')).toBeNull();
+  });
+
   it('leaves an unrecognised class unplaced rather than guessing at a step', () => {
     // MGB's landslide legend also carries a debris-flow class, which is not a rung on the ordinal
     // ladder — it describes a process, not an intensity, so it belongs off the scale.

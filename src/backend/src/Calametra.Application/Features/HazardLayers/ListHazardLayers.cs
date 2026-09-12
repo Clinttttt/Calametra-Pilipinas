@@ -33,6 +33,17 @@ public static class ListHazardLayers
         bool SupportsCachedTiles,
         bool IsEnabledByDefault,
         int SortOrder,
+
+        /// <summary>
+        /// Zoom below which the client must not request this layer, or null for no limit.
+        /// </summary>
+        /// <remarks>
+        /// Served to the client because only the client knows the zoom: a bounding-box tile request
+        /// carries none, so the proxy cannot distinguish a national tile from a local one. It is a
+        /// measured property of the publisher's service — ground shaking renders a national-scale tile
+        /// in 19.1 s against 2.9 s at 400 km — rather than a presentation preference.
+        /// </remarks>
+        int? MinimumZoom,
         string? Explainer,
         string? InterpretationNote,
         string SourceAgency,
@@ -74,6 +85,7 @@ public static class ListHazardLayers
                     row.Layer.CachedTileEndpoint != null,
                     row.Layer.IsEnabledByDefault,
                     row.Layer.SortOrder,
+                    row.Layer.MinimumZoom,
                     row.Layer.Explainer,
                     row.Layer.InterpretationNote,
                     row.Source.Agency,

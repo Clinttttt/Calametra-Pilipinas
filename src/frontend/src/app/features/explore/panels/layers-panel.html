@@ -124,6 +124,19 @@
                   }
                 </div>
 
+                <!-- Switched on, but the publisher's service cannot serve this scale. Stated in place
+                     rather than left as a tick with nothing drawn, which is indistinguishable from a
+                     broken control. -->
+                @if (isBelowMinimumZoom(entry)) {
+                  <button class="layer__zoom" type="button" (click)="requestZoom(entry)">
+                    <cal-icon name="caution" [size]="13" />
+                    <span>
+                      Zoom in to draw this layer. {{ entry.layer.sourceAgency }} renders it on
+                      request, and a wider view costs about a minute of their server time per tile.
+                    </span>
+                  </button>
+                }
+
                 @if (isExpanded(entry.layer.id)) {
                   <div class="layer__detail">
                     @if (entry.layer.explainer) {

@@ -39,6 +39,27 @@
   max-inline-size: none;
 }
 
+/* The caution hue, because this is a limit on what can be shown rather than a preference. Rendered as
+   a button: the useful response to "zoom in" is to be taken there. */
+.layer__zoom {
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  text-align: left;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--surface-raised);
+  }
+}
+
 /* ── LENS GROUP ───────────────────────────────────────────────────────────*/
 
 /* The platform's own rendering, above the published layers. Separated by a rule rather than a

@@ -107,6 +107,30 @@ const PEIS: OrdinalScale = {
   },
 };
 
+/**
+ * PHIVOLCS earthquake-induced landslide.
+ *
+ * Three steps, read from the service's own renderer (`eilclass`, codes 01-03) rather than assumed to
+ * match MGB's four-step rainfall scale. The fourth published class, `Depositional Zone`, is
+ * deliberately absent: it names where debris comes to rest rather than how prone the ground is, so it
+ * is not a rung on this ladder and appears as a value with no scale.
+ */
+const EARTHQUAKE_LANDSLIDE: OrdinalScale = {
+  name: 'Earthquake-induced landslide susceptibility',
+  steps: ['Low Susceptibility', 'Moderate Susceptibility', 'High Susceptibility'],
+  meanings: {
+    'Low Susceptibility':
+      'Slopes here are not expected to fail under earthquake shaking — typically gentle ground or '
+      + 'competent rock.',
+    'Moderate Susceptibility':
+      'Slope failure is possible under strong shaking, in the steeper or weaker parts of this area.',
+    'High Susceptibility':
+      'Slopes prone to failing when shaken — steep, weathered or fractured ground. This is a different '
+      + 'hazard from rainfall-triggered landsliding, and the two maps do not agree on which slopes '
+      + 'matter.',
+  },
+};
+
 /** DOST-MGB susceptibility, shared wording for the landslide and flood maps. */
 const MGB_SUSCEPTIBILITY: OrdinalScale = {
   name: 'MGB susceptibility rating',
@@ -131,7 +155,11 @@ const MGB_SUSCEPTIBILITY: OrdinalScale = {
 const SCALES_BY_LABEL: Readonly<Record<string, readonly OrdinalScale[]>> = {
   'Liquefaction potential': [LIQUEFACTION_SUSCEPTIBILITY, LIQUEFACTION_POTENTIAL],
   'Intensity (PEIS)': [PEIS],
-  Susceptibility: [MGB_SUSCEPTIBILITY],
+  // Two agencies answer under this one label and their ladders differ: PHIVOLCS publishes three
+  // earthquake-induced classes worded "Low Susceptibility", MGB four rainfall classes worded "Low".
+  // Both are offered and exact matching keeps them apart — the wording is what distinguishes them, so
+  // trimming it to "Low" would merge two agencies' scales.
+  Susceptibility: [EARTHQUAKE_LANDSLIDE, MGB_SUSCEPTIBILITY],
 };
 
 /**

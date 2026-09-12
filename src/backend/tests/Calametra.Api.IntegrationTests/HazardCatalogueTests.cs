@@ -111,32 +111,48 @@ public sealed class HazardCatalogueTests(PostgisApiFixture fixture)
         // proxied per tile.
         seismic.ShouldContain(layer => layer.HazardType == "GroundShaking");
         seismic.ShouldContain(layer => layer.HazardType == "Liquefaction");
-        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+
+        // Earthquake-induced landslide was held back at 32.8 s for a 78 km tile and returns with a
+        // minimum zoom, where the same tile at 39 km takes 8.1 s.
+        seismic.ShouldContain(layer => layer.HazardType == "EarthquakeInducedLandslide");
+
+        seismic
+            .Where(layer =>
+                layer.HazardType is "GroundShaking" or "Liquefaction" or "EarthquakeInducedLandslide")
             .ShouldAllBe(layer => layer.Lens == "Seismic");
 
-        // The other two earthquake-hazard services PHIVOLCS publishes are deliberately absent, on
-        // measurement: the same extent takes 81 s for earthquake-induced landslide and 140 s for
-        // tsunami inundation, and tsunami failed with HTTP 500 through this platform's own proxy
-        // after 91 s on the Luzon coast. Asserted rather than only commented, so re-adding either
-        // is a deliberate act — it needs a path that avoids a national-extent render, either a
-        // minimum zoom per layer or stored geometry once the Data User Agreement is granted.
+        // Tsunami inundation stays out, and no minimum zoom would rescue it: measured reproducibly at
+        // 139-143 s for a 20 km tile over Manila Bay, so the cost follows the density of the mapping
+        // rather than the width of the view. Asserted rather than only commented, so admitting it is a
+        // deliberate act supported by a new measurement.
         layers.ShouldNotContain(layer => layer.HazardType == "Tsunami");
-        layers.ShouldNotContain(layer => layer.HazardType == "EarthquakeInducedLandslide");
+
+        // The two whose cost scales with the view carry a floor; liquefaction, which does not, has
+        // none. A blanket minimum would hide a layer that works.
+        seismic.First(layer => layer.HazardType == "GroundShaking").MinimumZoom.ShouldBe(6);
+        seismic.First(layer => layer.HazardType == "EarthquakeInducedLandslide").MinimumZoom.ShouldBe(10);
+        seismic.First(layer => layer.HazardType == "Liquefaction").MinimumZoom.ShouldBeNull();
 
         // Off by default. The fault traces are the layer a reader opens the earthquake view for;
         // these are dense polygon fills that would cover them.
-        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+        seismic
+            .Where(layer =>
+                layer.HazardType is "GroundShaking" or "Liquefaction" or "EarthquakeInducedLandslide")
             .ShouldAllBe(layer => !layer.IsEnabledByDefault);
 
         // Both are the platform's most easily misread kind of layer — a modelled scenario and a
         // susceptibility class — so the note is required rather than optional.
-        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+        seismic
+            .Where(layer =>
+                layer.HazardType is "GroundShaking" or "Liquefaction" or "EarthquakeInducedLandslide")
             .ShouldAllBe(layer => layer.InterpretationNote != null
                 && layer.InterpretationNote.Contains("not a forecast"));
 
         // Feature inspection is by ArcGIS REST identify, as for the fault traces: WMS
         // GetFeatureInfo on these services advertises GeoJSON and returns an empty collection.
-        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+        seismic
+            .Where(layer =>
+                layer.HazardType is "GroundShaking" or "Liquefaction" or "EarthquakeInducedLandslide")
             .ShouldAllBe(layer => layer.SupportsFeatureInfo);
     }
 
@@ -213,6 +229,7 @@ public sealed class HazardCatalogueTests(PostgisApiFixture fixture)
         bool SupportsFeatureInfo,
         bool SupportsCachedTiles,
         bool IsEnabledByDefault,
+        int? MinimumZoom,
         string? InterpretationNote,
         string SourceAgency,
         string Attribution);

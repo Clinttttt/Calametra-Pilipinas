@@ -24,6 +24,16 @@ public sealed class PhivolcsOptions
     public const string LiquefactionSlug = "phivolcs-liquefaction";
 
     /// <summary>
+    /// Slug of the <c>DataSource</c> row for the earthquake-induced landslide maps.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from DOST-MGB's rain-induced landslide susceptibility, and deliberately so: the
+    /// trigger is ground motion rather than rainfall, the mapping is a different agency's, and the two
+    /// disagree about which slopes matter because the mechanisms differ.
+    /// </remarks>
+    public const string EarthquakeInducedLandslideSlug = "phivolcs-earthquake-induced-landslide";
+
+    /// <summary>
     /// Base path of the public ArcGIS OGC services. Individual layer endpoints are
     /// stored per layer in the hazard catalogue rather than here, so adding a layer
     /// is a data change and not a configuration change.
