@@ -51,7 +51,18 @@ var isCoordinateRefinement = bool.TryParse(
     builder.Configuration["Ingestion:Places:RefineCoordinates"],
     out var refineFlag) && refineFlag;
 
-if (!isBackfill && !isCycloneImport && !isPlaceImport && !isCoordinateRefinement)
+// Applying Philippine local names is its own mode too:
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Cyclones:ApplyNames=true
+//
+// It runs at the end of the cyclone import as well, because a storm must exist before it can be
+// matched. But the crosswalk is curated and grows as pairings are researched, and re-streaming a
+// 100 MB basin file to apply a name nobody's track data changed would be pointless traffic against
+// a public archive.
+var isNameApplication = bool.TryParse(
+    builder.Configuration["Ingestion:Cyclones:ApplyNames"],
+    out var nameFlag) && nameFlag;
+
+if (!isBackfill && !isCycloneImport && !isPlaceImport && !isCoordinateRefinement && !isNameApplication)
 {
     builder.Services.AddHostedService<EarthquakeIngestionWorker>();
 }
@@ -148,8 +159,18 @@ if (isPlaceImport)
     return 0;
 }
 
-if (isCoordinateRefinement)
+if (isNameApplication)
 {
+    await using var scope = host.Services.CreateAsyncScope();
+
+    // Idempotent: the seeder matches on international name and season and leaves a storm that
+    // already carries its local name untouched, so re-running after adding pairings is safe.
+    await scope.ServiceProvider.GetRequiredService<PagasaNameSeeder>().SeedAsync();
+
+    return 0;
+}
+
+if (isCoordinateRefinement){
     // Separate from the place import, and rightly so: the import decides which places exist and is
     // driven by legislation, while this corrects where they are and is driven by a volunteer map
     // that improves continuously. Re-running it is cheap and idempotent — a place already on its

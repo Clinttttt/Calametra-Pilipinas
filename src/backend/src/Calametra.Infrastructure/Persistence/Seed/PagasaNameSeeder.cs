@@ -117,6 +117,58 @@ public sealed class PagasaNameSeeder(
         new("NEPARTAK", 2016, "Butchoy", false),
         new("CHANTHU", 2021, "Kiko", false),
         new("YAGI", 2024, "Enteng", false),
+
+        // Researched against sources on 2026-09-13, targeting the thirty strongest storms in the
+        // archive that still resolved to no local name. Ordered by peak wind, so this group is the
+        // storms a reader is most likely to look for and least likely to know by their international
+        // name.
+        //
+        // Five carry `true` because a PAGASA-authored document pairs both names in its own text — a
+        // tropical cyclone bulletin or a preliminary report on pubfiles.pagasa.dost.gov.ph, or the
+        // agency's Typhoon Committee member report.
+        new("HINNAMNOR", 2022, "Henry", true),
+        new("SAOLA", 2023, "Goring", true),
+        new("MAN-YI", 2024, "Pepito", true),
+        new("RAGASA", 2025, "Nando", true),
+        new("BAVI", 2026, "Inday", true),
+
+        // The remainder are held with less certainty by the same rule as the group above: the
+        // pairings come from seasonal summaries and retired-name lists that do not themselves cite
+        // PAGASA. They are seeded because a sourced pairing shown with a caveat is more useful than
+        // an unnamed storm, and the flag is what tells a reviewer where to start.
+        //
+        // Season was verified per storm rather than per name, which matters more here than anywhere
+        // else in this table: NANMADOL is Mina in 2011 and Josie in 2022, NOUL is Dodong in 2015 and
+        // Kiyapo in 2026, SAOLA is Goring in 2023 and Gener in 2012, and BAVI is Inday in 2026 and
+        // Betty in 2015. A join on name alone would have written five wrong names.
+        // Recorded as Warling, which is what the 1979 season list gives. PAGASA's own decommissioned-
+        // name table spells the same replacement Waling, so the two conflict in the agency's own
+        // records; the variant is noted here rather than silently normalised to one spelling.
+        new("TIP", 1979, "Warling", false),
+        new("VERA", 1979, "Yayang", false),
+        new("RITA", 1978, "Kading", false),
+        new("DOT", 1985, "Saling", false),
+        new("PEGGY", 1986, "Gading", false),
+        new("NINA", 1987, "Sisang", false),
+        new("BETTY", 1987, "Herming", false),
+        new("LYNN", 1987, "Pepang", false),
+        new("NELSON", 1988, "Paring", false),
+        new("GORDON", 1989, "Goring", false),
+        new("ELSIE", 1989, "Tasing", false),
+        new("PAGE", 1990, "Tering", false),
+        new("RUTH", 1991, "Trining", false),
+        new("WALT", 1991, "Karing", false),
+        new("YVETTE", 1992, "Ningning", false),
+        new("DOUG", 1994, "Ritang", false),
+        new("HERB", 1996, "Huaning", false),
+        new("IVAN", 1997, "Narsing", false),
+        new("ZEB", 1998, "Iliang", false),
+        new("NANMADOL", 2011, "Mina", false),
+        new("SONGDA", 2011, "Chedeng", false),
+        new("JELAWAT", 2012, "Lawin", false),
+        new("NEOGURI", 2014, "Florita", false),
+        new("NOUL", 2015, "Dodong", false),
+        new("KONG-REY", 2024, "Leon", false),
     ];
 
     /// <summary>Slug of the curated local-name crosswalk.</summary>
