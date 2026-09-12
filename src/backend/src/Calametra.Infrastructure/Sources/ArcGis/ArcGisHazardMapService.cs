@@ -113,6 +113,21 @@ internal sealed class ArcGisHazardMapService(
         ("Mappers", "Mapped by"),
         ("Other Information", "Notes"),
 
+        // PHIVOLCS earthquake-hazard services. Verified against the live identify responses on
+        // 2026-09-12, and the keys are inconsistent between services from the same agency on the
+        // same server: ground shaking, liquefaction and tsunami return spaced Title Case aliases
+        // with an editing audit trail, while earthquake-induced landslide returns the bare column
+        // name `eilclass` and nothing else at all. Both forms are listed rather than normalised,
+        // because guessing at a convention is what produces an empty inspector.
+        ("PEIS", "Intensity (PEIS)"),
+        ("PEIS Description", "Expected shaking"),
+        ("Liquefaction Class", "Liquefaction potential"),
+        ("eilclass", "Susceptibility"),
+        ("Inundation Height", "Modelled inundation"),
+        ("Date Mapped", "Year mapped"),
+        ("Date Published", "Published"),
+        ("Province", "Province"),
+
         // DOST-MGB susceptibility. ArcGIS `identify` returns field *aliases* rather than
         // column names, so these are the aliases the live service answers with — verified
         // 2026-09-11 against both layers, where the underlying columns are LndslideSusc and

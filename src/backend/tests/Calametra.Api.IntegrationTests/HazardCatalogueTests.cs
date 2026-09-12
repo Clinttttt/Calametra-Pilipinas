@@ -99,6 +99,48 @@ public sealed class HazardCatalogueTests(PostgisApiFixture fixture)
     }
 
     [Fact]
+    public async Task ThePhivolcsEarthquakeHazardLayers_ShouldBeCataloguedUnderTheEarthquakeViewWithoutTheTwoThatCannotBeRendered()
+    {
+        await SeedReferenceDataAsync();
+
+        var layers = await GetLayersAsync();
+
+        var seismic = layers.Where(layer => layer.SourceAgency == "DOST-PHIVOLCS").ToList();
+
+        // Ground shaking and liquefaction render a 400 km extent in 2.9 s and 1.6 s, so they can be
+        // proxied per tile.
+        seismic.ShouldContain(layer => layer.HazardType == "GroundShaking");
+        seismic.ShouldContain(layer => layer.HazardType == "Liquefaction");
+        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+            .ShouldAllBe(layer => layer.Lens == "Seismic");
+
+        // The other two earthquake-hazard services PHIVOLCS publishes are deliberately absent, on
+        // measurement: the same extent takes 81 s for earthquake-induced landslide and 140 s for
+        // tsunami inundation, and tsunami failed with HTTP 500 through this platform's own proxy
+        // after 91 s on the Luzon coast. Asserted rather than only commented, so re-adding either
+        // is a deliberate act — it needs a path that avoids a national-extent render, either a
+        // minimum zoom per layer or stored geometry once the Data User Agreement is granted.
+        layers.ShouldNotContain(layer => layer.HazardType == "Tsunami");
+        layers.ShouldNotContain(layer => layer.HazardType == "EarthquakeInducedLandslide");
+
+        // Off by default. The fault traces are the layer a reader opens the earthquake view for;
+        // these are dense polygon fills that would cover them.
+        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+            .ShouldAllBe(layer => !layer.IsEnabledByDefault);
+
+        // Both are the platform's most easily misread kind of layer — a modelled scenario and a
+        // susceptibility class — so the note is required rather than optional.
+        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+            .ShouldAllBe(layer => layer.InterpretationNote != null
+                && layer.InterpretationNote.Contains("not a forecast"));
+
+        // Feature inspection is by ArcGIS REST identify, as for the fault traces: WMS
+        // GetFeatureInfo on these services advertises GeoJSON and returns an empty collection.
+        seismic.Where(layer => layer.HazardType is "GroundShaking" or "Liquefaction")
+            .ShouldAllBe(layer => layer.SupportsFeatureInfo);
+    }
+
+    [Fact]
     public async Task TheCreditsEndpoint_ShouldSeparateStoredSourcesFromDisplayedOnes()
     {
         await SeedReferenceDataAsync();

@@ -126,7 +126,31 @@ public static class DependencyInjection
                 client.Timeout = options.Timeout;
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
             })
-            .AddStandardResilienceHandler();
+            // Retries transient failures and trips a circuit breaker on sustained ones, which is
+            // worth having for a proxy — but the defaults had to be widened, and the numbers come
+            // from measurement.
+            //
+            // The standard handler's per-attempt timeout defaults to 10 seconds, and a national
+            // polygon layer legitimately takes longer: measured 18.8-19.4 s for MGB's rain-induced
+            // landslide render and 14.4 s for the PHIVOLCS earthquake-induced landslide service. At
+            // 10 seconds those return HTTP 500 to our own map while the publisher is still working,
+            // which looks like an upstream fault rather than a timeout of ours. This is the same
+            // trap the GEM and IBTrACS adapters avoid by refusing the handler outright; here retry
+            // is worth keeping, so the timeout moves instead.
+            //
+            // 30 seconds is not enough for everything, and deliberately so. The PHIVOLCS tsunami
+            // service takes 140 s to render a 400 km extent, and no timeout makes that a usable
+            // layer — so it is not catalogued, rather than catalogued with a timeout sized to hide
+            // the problem. See ReferenceDataSeeder.EnsurePhivolcsHazardLayersAsync.
+            //
+            // The library requires the total to be at least the attempt timeout and the circuit
+            // breaker's sampling window to be at least twice it, so all three move together.
+            .AddStandardResilienceHandler(resilience =>
+            {
+                resilience.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
+                resilience.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(90);
+                resilience.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            });
 
         services.AddHttpClient<IActiveFaultSource, GemActiveFaultSource>((provider, client) =>
             {

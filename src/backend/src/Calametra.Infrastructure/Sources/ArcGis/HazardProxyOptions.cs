@@ -18,7 +18,23 @@ public sealed class HazardProxyOptions
 {
     public const string SectionName = "Sources:HazardProxy";
 
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
+    /// <summary>
+    /// How long to allow a single proxied request, end to end.
+    /// </summary>
+    /// <remarks>
+    /// Generous, and sized from measurement rather than taste. National polygon layers are slow to
+    /// render: measured on 2026-09-11 and 2026-09-12, DOST-MGB renders a rain-induced landslide
+    /// tile in 18.8-19.4 s and a flood tile in 9.2-9.4 s, and PHIVOLCS renders
+    /// earthquake-induced landslide in 14.4 s against 0.95 s for liquefaction. This has to exceed
+    /// the resilience handler's total request timeout or the client cancels first and the retry
+    /// policy never gets to run.
+    /// <para>
+    /// The reader does not usually pay this. A tile is fetched from the publisher once and then
+    /// served from memory for <see cref="TileCacheDuration"/>, so a slow layer is slow on its first
+    /// view of an area and instant afterwards, for every user.
+    /// </para>
+    /// </remarks>
+    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(120);
 
     /// <summary>
     /// How long a proxied tile may be cached.

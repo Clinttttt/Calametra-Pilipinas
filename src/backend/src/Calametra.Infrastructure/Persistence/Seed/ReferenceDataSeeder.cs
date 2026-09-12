@@ -38,6 +38,8 @@ public sealed class ReferenceDataSeeder(
         var gem = await EnsureGemAsync(now, cancellationToken);
         var activeFault = await EnsurePhivolcsActiveFaultAsync(now, cancellationToken);
         var trenches = await EnsurePhivolcsTrenchesAsync(now, cancellationToken);
+        var groundShaking = await EnsurePhivolcsGroundShakingAsync(now, cancellationToken);
+        var liquefaction = await EnsurePhivolcsLiquefactionAsync(now, cancellationToken);
         var mgb = await EnsureMgbAsync(now, cancellationToken);
 
         await EnsureCycloneAgenciesAsync(now, cancellationToken);
@@ -48,6 +50,7 @@ public sealed class ReferenceDataSeeder(
 
         await EnsureFaultLayerAsync(activeFault, now, cancellationToken);
         await EnsureTrenchLayerAsync(trenches, now, cancellationToken);
+        await EnsurePhivolcsHazardLayersAsync(groundShaking, liquefaction, now, cancellationToken);
         await EnsureMgbLayersAsync(mgb, now, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
@@ -581,6 +584,120 @@ public sealed class ReferenceDataSeeder(
         return created;
     }
 
+    /// <summary>
+    /// DOST-PHIVOLCS deterministic ground shaking — displayed and never stored.
+    /// </summary>
+    /// <remarks>
+    /// A separate source row from the fault and trench datasets, and from liquefaction, because
+    /// each is a separately published dataset with its own mapping projects and vintage, and the
+    /// Sources page lists what the platform reads dataset by dataset. This is the opposite choice
+    /// from <see cref="EnsureMgbAsync"/>, where two layers share one source: those come from one
+    /// programme under one licence, whereas these were mapped by different studies.
+    /// </remarks>
+    private async Task<DataSource> EnsurePhivolcsGroundShakingAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(source => source.Slug == PhivolcsOptions.GroundShakingSlug, cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                PhivolcsOptions.GroundShakingSlug,
+                agency: "DOST-PHIVOLCS",
+                datasetName: "Ground shaking hazard maps (deterministic)",
+                SourceAccessKind.WmsProxy,
+                attribution:
+                    "Ground shaking hazard data © DOST-PHIVOLCS. Displayed via the official public "
+                    + "map service.",
+                now)
+            .Value;
+
+        // Reconciled on every run rather than only at creation, as the MGB and USGS entries are:
+        // these notes record what was measured of the service, and a create-only seeder would
+        // leave an existing database describing itself as it was first understood.
+        created
+            .WithLinks(
+                sourceUrl:
+                    "https://gisweb.phivolcs.dost.gov.ph/arcgis/rest/services/PHIVOLCSPublic/GroundShaking/MapServer",
+                termsUrl: "https://www.phivolcs.dost.gov.ph/")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "Expected shaking on the PHIVOLCS Earthquake Intensity Scale, published as "
+                    + "areas of Intensity VI (very strong), VII (destructive) and VIII (very "
+                    + "destructive to devastating). Records carry the scale they were mapped at — "
+                    + "1:50,000 for the areas checked — and the year of mapping and publication "
+                    + "where the agency recorded them.\n\n"
+                    + "PHIVOLCS labels this dataset deterministic: it is the shaking expected from "
+                    + "a specific modelled earthquake scenario, not the probability of shaking over "
+                    + "any period, and it says nothing about when such an earthquake will occur.\n\n"
+                    + "Displayed by proxying the agency's own rendered imagery. Calametra stores "
+                    + "none of this geometry and computes no figure from it: bulk vector query is "
+                    + "disabled on the service and release requires a signed Data User Agreement, "
+                    + "which is pending.")
+            // False until PHIVOLCS grants written permission, exactly as for the fault traces.
+            .WithPermissions(isRedistributable: false, isAuthoritativeForPhilippines: true);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
+
+        return created;
+    }
+
+    /// <summary>
+    /// DOST-PHIVOLCS liquefaction susceptibility — displayed and never stored.
+    /// </summary>
+    private async Task<DataSource> EnsurePhivolcsLiquefactionAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(source => source.Slug == PhivolcsOptions.LiquefactionSlug, cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                PhivolcsOptions.LiquefactionSlug,
+                agency: "DOST-PHIVOLCS",
+                datasetName: "Liquefaction susceptibility maps",
+                SourceAccessKind.WmsProxy,
+                attribution:
+                    "Liquefaction susceptibility data © DOST-PHIVOLCS. Displayed via the official "
+                    + "public map service.",
+                now)
+            .Value;
+
+        created
+            .WithLinks(
+                sourceUrl:
+                    "https://gisweb.phivolcs.dost.gov.ph/arcgis/rest/services/PHIVOLCSPublic/Liquefaction/MapServer",
+                termsUrl: "https://www.phivolcs.dost.gov.ph/")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "Where saturated loose ground may lose strength during shaking. The published "
+                    + "legend carries two vocabularies — High, Moderate and Low Potential alongside "
+                    + "Highly, Moderately, Generally and Least Susceptible — because areas were "
+                    + "mapped by different studies, and the agency names the project per area. "
+                    + "Calametra shows whichever class PHIVOLCS recorded and does NOT merge the two "
+                    + "into a single scale.\n\n"
+                    + "A susceptibility class describes the ground's tendency to liquefy given "
+                    + "sufficient shaking. It is not a forecast, and it does not indicate when "
+                    + "shaking will occur.\n\n"
+                    + "Displayed by proxying the agency's own rendered imagery. Calametra stores "
+                    + "none of this geometry and computes no figure from it: bulk vector query is "
+                    + "disabled on the service and release requires a signed Data User Agreement, "
+                    + "which is pending.")
+            .WithPermissions(isRedistributable: false, isAuthoritativeForPhilippines: true);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
+
+        return created;
+    }
+
     private async Task EnsureFaultLayerAsync(
         DataSource source,
         DateTimeOffset now,
@@ -688,6 +805,132 @@ public sealed class ReferenceDataSeeder(
             .WithPresentation(isEnabledByDefault: false, sortOrder: 20, supportsFeatureInfo: true);
 
         context.HazardLayers.Add(layer);
+    }
+
+    /// <summary>
+    /// The two PHIVOLCS earthquake-hazard layers that can be served interactively.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Re-probed on 2026-09-12 rather than taken from the September note recording twelve services.
+    /// All four earthquake-hazard services are live, expose <c>WMSServer</c>, publish a legend and
+    /// answer <c>identify</c>. None publishes a fused tile cache, so every tile is rendered on
+    /// demand — and that is what decided which two are registered here.
+    /// </para>
+    /// <para>
+    /// <b>Two are deliberately left out, on measurement.</b> Render time scales with the number of
+    /// polygons intersecting the view, and for two of the four it is prohibitive:
+    /// </para>
+    /// <list type="table">
+    ///   <item><description>Ground shaking — 2.9 s over a 400 km extent, 0.2-3.9 s elsewhere</description></item>
+    ///   <item><description>Liquefaction — 1.6 s over the same extent, 0.95 s elsewhere</description></item>
+    ///   <item><description>Earthquake-induced landslide — 81 s over 400 km, 7.3 s over 10 km</description></item>
+    ///   <item><description>Tsunami inundation — <b>140 s</b> over 400 km, 6.1 s over 10 km</description></item>
+    /// </list>
+    /// <para>
+    /// Ground shaking follows the same curve further along and is admitted rather than excused: at a
+    /// 1300 km extent — one tile at the national zoom — it takes 19.1 s through this platform's own
+    /// proxy against 2.2 s for liquefaction. It succeeds inside the attempt timeout, it is off by
+    /// default, and a fetched tile is cached for seven days, so the cost is paid once per area. A
+    /// per-layer minimum zoom would improve it as well as admitting the two held back below.
+    /// </para>
+    /// <para>
+    /// The tsunami layer failed with HTTP 500 through this platform's own proxy after 91 s on the
+    /// Luzon coast, where far more polygons intersect than in the Mindanao extent it was first
+    /// measured in. A layer that fails on the most populated coastline in the country is not a
+    /// layer, and raising the timeout further would only trade a visible failure for a minute-long
+    /// hang while holding a connection open on an agency's server per tile. Both are catalogued only
+    /// once there is a path that does not require a national-extent render — a minimum zoom per
+    /// layer, or stored geometry if the Data User Agreement is granted. Recorded in
+    /// <c>docs/ROADMAP.md</c> and asserted by <c>HazardCatalogueTests</c>, so re-adding either is a
+    /// deliberate act rather than an oversight.
+    /// </para>
+    /// <para>
+    /// Both registered layers belong to the <see cref="HazardLens.Seismic"/> lens, which the
+    /// earthquake view already reaches — unlike the volcanic services on the same server, which
+    /// have no hazard a reader can select and are therefore deliberately not catalogued.
+    /// </para>
+    /// <para>
+    /// <b>Every explainer states the vocabulary the agency actually publishes</b>, read from each
+    /// service's own legend rather than described generically.
+    /// </para>
+    /// </remarks>
+    private async Task EnsurePhivolcsHazardLayersAsync(
+        DataSource groundShaking,
+        DataSource liquefaction,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var phivolcs = new PhivolcsOptions();
+
+        var definitions = new (DataSource Source, HazardType Type, string Service,
+            string DisplayName, int SortOrder, string Explainer, string Note)[]
+        {
+            (groundShaking, HazardType.GroundShaking, "GroundShaking", "Ground Shaking", 21,
+                "How strongly the ground is expected to shake, on the PHIVOLCS Earthquake "
+                + "Intensity Scale. PHIVOLCS publishes this layer at Intensity VI (very strong), "
+                + "VII (destructive) and VIII (very destructive to devastating), and its records "
+                + "carry the mapping scale — 1:50,000 for the areas checked.",
+                "PHIVOLCS labels this layer deterministic: it maps the shaking expected from a "
+                + "specific modelled earthquake scenario, not the probability of shaking over any "
+                + "period. It is not a forecast and says nothing about when such an earthquake will "
+                + "occur."),
+
+            (liquefaction, HazardType.Liquefaction, "Liquefaction", "Liquefaction", 22,
+                "Where saturated loose ground may lose strength and behave as a liquid during "
+                + "shaking, which can sink or tilt structures whose foundations were sound. "
+                + "PHIVOLCS records a class per area and names the project that mapped it.",
+                "A susceptibility class is not a forecast. The published legend also carries two "
+                + "vocabularies — High, Moderate and Low Potential alongside Highly, Moderately, "
+                + "Generally and Least Susceptible — because areas were mapped by different "
+                + "studies. Calametra shows whichever class the agency recorded for an area and "
+                + "does not merge the two into one scale."),
+        };
+
+        foreach (var definition in definitions)
+        {
+            // Scoped by data source as well as hazard type, for the reason the fault layer
+            // records: one hazard type may be published by more than one agency.
+            var existing = await context.HazardLayers
+                .FirstOrDefaultAsync(
+                    layer => layer.DataSourceId == definition.Source.Id
+                        && layer.HazardType == definition.Type,
+                    cancellationToken);
+
+            var identifyEndpoint =
+                $"{phivolcs.RestServicesRoot}/{definition.Service}/MapServer/identify";
+
+            if (existing is not null)
+            {
+                // Reconciled rather than skipped, as the fault and MGB layers are.
+                if (string.IsNullOrWhiteSpace(existing.FeatureInfoEndpoint))
+                {
+                    existing.WithFeatureInfo(identifyEndpoint);
+                }
+
+                continue;
+            }
+
+            var layer = HazardLayerDefinition.CreateRemote(
+                    definition.Source.Id,
+                    definition.Type,
+                    HazardLens.Seismic,
+                    displayName: definition.DisplayName,
+                    wmsEndpoint: $"{phivolcs.ServicesRoot}/{definition.Service}/MapServer/WMSServer",
+                    wmsLayerName: "0",
+                    now)
+                .Value
+                .WithExplainer(definition.Explainer, definition.Note)
+                .WithFeatureInfo(identifyEndpoint)
+                // No cached tile endpoint: neither service publishes a fused cache, unlike MGB's
+                // two. Deliberately absent rather than guessed — a wrong template 404s per tile.
+                .WithPresentation(
+                    isEnabledByDefault: false,
+                    sortOrder: definition.SortOrder,
+                    supportsFeatureInfo: true);
+
+            context.HazardLayers.Add(layer);
+        }
     }
 
     /// <summary>
