@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
 
 import { PLACE_RADII, PlaceStore } from '../../../core/places/place-store';
-import type { PlaceEvent, PlaceMatch } from '../../../core/api/contracts';
+import type { EarthquakeSummary, PlaceEvent, PlaceMatch } from '../../../core/api/contracts';
 import { Icon } from '../../../shared/ui/icon/icon';
 
 /**
@@ -38,7 +38,7 @@ export class PlacePanel {
   readonly placeSelected = output<PlaceMatch>();
 
   /** Raised when one of the listed earthquakes is chosen. */
-  readonly eventSelected = output<PlaceEvent>();
+  readonly eventSelected = output<{ readonly latitude: number; readonly longitude: number }>();
 
   readonly closed = output<void>();
 
@@ -51,6 +51,19 @@ export class PlacePanel {
   protected readonly loadingContext = this.store.loadingContext;
   protected readonly failed = this.store.failed;
   protected readonly radiusKm = this.store.radiusKm;
+
+  /**
+   * The full list of events in the radius, which the summary cards deliberately do not show.
+   *
+   * The cards answer "what is the strongest and the most recent". They were the whole panel, and a
+   * reader seeing "443 within 50 km, catalogued 1913-2026" and three cards is right to ask where the
+   * rest are. Paged rather than complete, with the total always stated so a page never reads as the
+   * record.
+   */
+  protected readonly events = this.store.events;
+  protected readonly eventsTotal = this.store.eventsTotal;
+  protected readonly loadingEvents = this.store.loadingEvents;
+  protected readonly hasMoreEvents = this.store.hasMoreEvents;
 
   protected readonly radii = PLACE_RADII;
 
@@ -88,6 +101,21 @@ export class PlacePanel {
 
   protected locate(event: PlaceEvent): void {
     this.eventSelected.emit(event);
+  }
+
+  /**
+   * Locates a row from the full list.
+   *
+   * Emits the same shape as the summary cards' Locate, because the map only needs the position —
+   * widening the output to the two fields it reads is cheaper and clearer than a second event for
+   * the same action.
+   */
+  protected locateSummary(event: EarthquakeSummary): void {
+    this.eventSelected.emit(event);
+  }
+
+  protected loadMore(): void {
+    this.store.loadMoreEvents();
   }
 
   protected back(): void {

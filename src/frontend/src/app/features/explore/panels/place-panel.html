@@ -188,8 +188,55 @@
             </div>
           }
 
-          @if (found.nearestFaults.length > 0) {
-            <div class="faults">
+          <!-- The full record, not a summary of it. The cards above answer "strongest" and "most
+               recent"; this answers "show me them", which is what a reader looking at a count of
+               443 is actually asking. -->
+          @if (events().length > 0) {
+            <div class="catalogue">
+              <span class="c-label">
+                Catalogued earthquakes · {{ events().length }} of {{ eventsTotal() }}
+              </span>
+
+              <ul class="catalogue__list">
+                @for (event of events(); track event.id) {
+                  <li class="catalogue__row">
+                    <button
+                      class="catalogue__locate"
+                      type="button"
+                      [title]="'Locate this earthquake'"
+                      (click)="locateSummary(event)"
+                    >
+                      <span class="catalogue__magnitude">
+                        {{ event.magnitude?.display ?? '—' }}
+                      </span>
+                      <span class="catalogue__meta">
+                        <span class="catalogue__date">{{ formatDate(event.occurredAt) }}</span>
+                        <!-- Depth carries its own qualification, because a third of these were
+                             assigned by the agency rather than measured. -->
+                        <span class="catalogue__depth">{{ event.depth.display }}</span>
+                      </span>
+                      <span class="reading__agency">{{ event.sourceAgency }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+
+              @if (hasMoreEvents()) {
+                <button
+                  class="c-button c-button--quiet catalogue__more"
+                  type="button"
+                  [disabled]="loadingEvents()"
+                  (click)="loadMore()"
+                >
+                  {{ loadingEvents() ? 'Loading…' : 'Show more' }}
+                </button>
+              }
+            </div>
+          } @else if (loadingEvents()) {
+            <p class="places__note places__note--quiet">Loading the catalogue for this radius…</p>
+          }
+
+          @if (found.nearestFaults.length > 0) {            <div class="faults">
               <span class="c-label">Nearest mapped faults</span>
 
               <ul class="faults__list">

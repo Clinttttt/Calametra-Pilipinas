@@ -50,6 +50,7 @@ import {
   faultLineWidthExpression,
   faultWidthMultiplierExpression,
 } from '../../core/visual/fault-style';
+import { HIGHLIGHT_COLOUR } from '../../core/visual/highlight-style';
 import { firstValueFrom } from 'rxjs';
 import { toEarthquakeGeoJson } from '../../core/visual/earthquake-geojson';
 import { toCycloneGeoJson } from '../../core/visual/cyclone-track';
@@ -142,6 +143,23 @@ export class Explore {
   private static readonly earthquakeSourceId = 'calametra-earthquakes';
   private static readonly earthquakeLayerId = 'calametra-earthquakes-circles';
   private static readonly earthquakeHaloLayerId = 'calametra-earthquakes-halo';
+
+  /**
+   * The epicentre markers alone, separate from the rest of the seismic group.
+   *
+   * Separate because they are the one part of the earthquake view a reader may want out of the way:
+   * 27,241 markers is the archive being honest about its own density, and it is also a lot to read a
+   * hazard overlay or a fault trace through. The place ring is deliberately *not* here — it is drawn
+   * only while a place is selected, and hiding the markers should not hide the search result.
+   */
+  private static readonly epicentreLayerIds = [
+    Explore.earthquakeLayerId,
+    Explore.earthquakeHaloLayerId,
+  ] as const;
+
+  private static readonly highlightSourceId = 'calametra-highlight';
+  private static readonly highlightRingLayerId = 'calametra-highlight-ring';
+  private static readonly highlightCentreLayerId = 'calametra-highlight-centre';
   private static readonly sectionSourceId = 'calametra-section';
   private static readonly sectionLineLayerId = 'calametra-section-line';
   private static readonly sectionEndpointLayerId = 'calametra-section-endpoints';
@@ -177,8 +195,7 @@ export class Explore {
    * outlive the switch to earthquakes if any link in that chain did not fire.
    */
   private static readonly earthquakeLayerIds = [
-    Explore.earthquakeLayerId,
-    Explore.earthquakeHaloLayerId,
+    ...Explore.epicentreLayerIds,
     // The place ring belongs to this group because the context it illustrates is seismic: the
     // panel counts earthquakes and names fault traces. Listed here rather than left to the
     // store's own clearing, which is the mistake the cyclone geometry made.
@@ -228,6 +245,24 @@ export class Explore {
    * reflecting declarative state onto it means diffing against what is already there.
    */
   private readonly attachedLayers = new Map<string, readonly string[]>();
+
+  /**
+   * Whether a hazard layer sync is already waiting for the style to settle.
+   *
+   * One deferral at a time. Without the guard, every toggle made during a basemap change would
+   * register its own `idle` handler and they would all run the same pass.
+   */
+  private hazardSyncQueued = false;
+
+  /**
+   * Whether the epicentre markers are drawn.
+   *
+   * Reader-controlled, and on by default because the archive is what this view is for. Held here
+   * rather than in `HazardLayerStore` because it is not a catalogued layer — nobody publishes it,
+   * it has no attribution and no licence position, and putting it in that store would make the
+   * platform's own rendering look like somebody's dataset.
+   */
+  readonly epicentresVisible = signal(true);
 
   /**
    * Origin time and magnitude of every loaded event.
@@ -386,6 +421,17 @@ export class Explore {
 
       if (this.map) {
         void this.syncHazardLayers(layers);
+      }
+    });
+
+    // The reader's choice to hide the epicentres, applied the same way and for the same reason.
+    effect(() => {
+      this.epicentresVisible();
+
+      const map = this.map;
+
+      if (map) {
+        this.applyEpicentreVisibility(map);
       }
     });
 
@@ -586,6 +632,9 @@ export class Explore {
   protected togglePlaces(): void {
     if (this.placesOpen()) {
       this.placeStore.closePanel();
+      // The mark belongs to the list the reader was reading. Left behind, it would sit on the map
+      // with nothing on screen explaining which earthquake it points at.
+      this.clearHighlight();
     } else {
       // Shares the right-hand slot with the rail's other panels, so whichever of those is open
       // gives way rather than stacking behind it.
@@ -606,6 +655,9 @@ export class Explore {
   protected locatePlace(place: PlaceMatch): void {
     const radiusKm = this.placeStore.radiusKm();
 
+    // A new place means the previous place's located earthquake is no longer the subject.
+    this.clearHighlight();
+
     this.map?.flyTo({
       center: [place.longitude, place.latitude],
       zoom: Explore.zoomForRadius(radiusKm),
@@ -615,12 +667,16 @@ export class Explore {
   }
 
   /**
-   * Moves the camera to one of the earthquakes listed for a place.
+   * Moves the camera to one of the earthquakes listed for a place, and marks it.
    *
    * Deliberately does not select the event: the place, its ring and its counts are the subject,
-   * and opening the detail panel over them would replace the thing being read.
+   * and opening the detail panel over them would replace the thing being read. The mark is what
+   * makes the move legible — at these zooms the epicentre is one marker among many, and a camera
+   * move alone leaves the reader guessing which one was meant.
    */
-  protected locatePlaceEvent(event: PlaceEvent): void {
+  protected locatePlaceEvent(event: { readonly latitude: number; readonly longitude: number }): void {
+    this.highlightPosition(event.longitude, event.latitude);
+
     this.map?.flyTo({
       center: [event.longitude, event.latitude],
       zoom: Math.max(this.map.getZoom(), 8),
@@ -1570,6 +1626,74 @@ export class Explore {
     });
 
     this.wireEarthquakeInteraction(map);
+    this.addHighlightLayers(map);
+  }
+
+  /**
+   * The mark placed on one located earthquake.
+   *
+   * Registered with the earthquake layers and drawn above them, because its whole purpose is to
+   * survive being surrounded: at national zoom an epicentre is a few pixels among thousands, so
+   * flying the camera to one without marking it leaves the reader to guess which marker was meant.
+   *
+   * A ring and a centre dot rather than a filled shape. The event's own marker keeps its depth
+   * colour and magnitude size — the encoding is the data, so the highlight must not overwrite it —
+   * and a ring around it points without hiding it.
+   */
+  private addHighlightLayers(map: MapLibreMap): void {
+    map.addSource(Explore.highlightSourceId, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    map.addLayer({
+      id: Explore.highlightRingLayerId,
+      type: 'circle',
+      source: Explore.highlightSourceId,
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 11, 8, 16, 12, 22],
+        'circle-color': 'transparent',
+        'circle-stroke-width': 1.75,
+        // The interaction accent, not the caution hue: this marks what the reader asked for rather
+        // than warning about it, and caution has to keep meaning exactly one thing.
+        'circle-stroke-color': HIGHLIGHT_COLOUR,
+        'circle-stroke-opacity': 0.95,
+      },
+    });
+
+    map.addLayer({
+      id: Explore.highlightCentreLayerId,
+      type: 'circle',
+      source: Explore.highlightSourceId,
+      paint: {
+        'circle-radius': 2.2,
+        'circle-color': HIGHLIGHT_COLOUR,
+        'circle-opacity': 0.95,
+      },
+    });
+  }
+
+  /** Marks one position, replacing any previous mark. */
+  private highlightPosition(longitude: number, latitude: number): void {
+    const source = this.map?.getSource(Explore.highlightSourceId) as GeoJSONSource | undefined;
+
+    source?.setData({
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: [longitude, latitude] },
+        },
+      ],
+    });
+  }
+
+  /** Removes the mark. Called when the subject changes, so a stale mark cannot mislead. */
+  private clearHighlight(): void {
+    const source = this.map?.getSource(Explore.highlightSourceId) as GeoJSONSource | undefined;
+
+    source?.setData({ type: 'FeatureCollection', features: [] });
   }
 
   /**
@@ -1711,6 +1835,10 @@ export class Explore {
     Explore.setLayerGroupVisible(map, Explore.earthquakeLayerIds, showEarthquakes);
     Explore.setLayerGroupVisible(map, Explore.cycloneLayerIds, showCyclones);
 
+    // The epicentres are a function of the hazard *and* the reader's own choice, applied after the
+    // group so that hiding them cannot survive a switch to cyclones and back.
+    this.applyEpicentreVisibility(map);
+
     if (showEarthquakes) {
       // Fetched on first selection and kept thereafter. One request for the whole archive, so
       // re-requesting it on every switch would be wasteful and visibly slower.
@@ -1730,8 +1858,22 @@ export class Explore {
     }
   }
 
-  /** Sets one hazard's layers visible or hidden, skipping any the style has not registered. */
-  private static setLayerGroupVisible(
+  /**
+   * Applies the reader's epicentre choice, subject to the hazard being earthquakes.
+   *
+   * Both conditions, every time, for the reason `applyHazardToMap` records: computing visibility
+   * from state rather than toggling it means no sequence of choices can leave markers drawn over a
+   * storm track.
+   */
+  private applyEpicentreVisibility(map: MapLibreMap): void {
+    Explore.setLayerGroupVisible(
+      map,
+      Explore.epicentreLayerIds,
+      this.hazardStore.isEarthquakes() && this.epicentresVisible(),
+    );
+  }
+
+  /** Sets one hazard's layers visible or hidden, skipping any the style has not registered. */  private static setLayerGroupVisible(
     map: MapLibreMap,
     layerIds: readonly string[],
     visible: boolean,
@@ -1755,7 +1897,26 @@ export class Explore {
   private async syncHazardLayers(entries: readonly LayerState[]): Promise<void> {
     const map = this.map;
 
-    if (!map || !map.isStyleLoaded()) {
+    if (!map) {
+      return;
+    }
+
+    // A tick made while the style is busy used to be dropped here, and nothing brought it back:
+    // the effect only re-runs when store state changes, so the checkbox stayed on with no layer
+    // drawn until the reader reloaded the page. That is the "I checked it and nothing happened"
+    // bug. The request is now deferred to the next idle — which is the event that guarantees the
+    // style has settled — and re-read from the store at that point rather than captured here, so
+    // several toggles made during a basemap change collapse into one correct pass.
+    if (!map.isStyleLoaded()) {
+      if (!this.hazardSyncQueued) {
+        this.hazardSyncQueued = true;
+
+        map.once('idle', () => {
+          this.hazardSyncQueued = false;
+          void this.syncHazardLayers(this.layerStore.layers());
+        });
+      }
+
       return;
     }
 

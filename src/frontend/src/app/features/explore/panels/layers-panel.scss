@@ -40,6 +40,15 @@
 }
 
 /* ── LENS GROUP ───────────────────────────────────────────────────────────*/
+
+/* The platform's own rendering, above the published layers. Separated by a rule rather than a
+   heading: it carries no publisher, so a title styled like a lens would imply one. */
+.lens--own {
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+}
+
 .lens__title {
   display: flex;
   align-items: center;

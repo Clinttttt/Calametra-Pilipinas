@@ -7,6 +7,49 @@
   </header>
 
   <div class="layers__body">
+    <!-- The platform's own rendering, not a catalogued layer, so it sits above the lens groups and
+         is labelled by what it is rather than by a publisher. Offered here because this is where a
+         reader comes to decide what is drawn, and 27,241 markers is a great deal to read a hazard
+         overlay or a fault trace through. -->
+    @if (showsEpicentreControl()) {
+      <section class="lens lens--own">
+        <ul class="lens__layers">
+          <li class="layer-row">
+            <div class="layer-row__main">
+              <button
+                class="layer"
+                type="button"
+                [attr.aria-pressed]="epicentresVisible()"
+                (click)="toggleEpicentres()"
+              >
+                <span class="layer__indicator" aria-hidden="true">
+                  @if (epicentresVisible()) {
+                    <svg viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                      <path
+                        d="M2 5.2 4 7.2 8 3"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  }
+                </span>
+
+                <span class="layer__text">
+                  <span class="layer__name">Epicentres</span>
+                  <span class="layer__meta">
+                    <span>USGS catalogue</span>
+                    <span class="layer__delivery">stored</span>
+                  </span>
+                </span>
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
+    }
+
     @if (!loaded()) {
       <p class="layers__empty"><span class="c-label">Loading catalogue</span></p>
     } @else if (groups().length === 0) {

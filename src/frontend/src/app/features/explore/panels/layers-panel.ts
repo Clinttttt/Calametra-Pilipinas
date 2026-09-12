@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, model, output, signal } from '@angular/core';
 
 import { HazardLayerStore } from '../../../core/layers/hazard-layer-store';
 import { HazardModeStore } from '../../../core/hazards/hazard-mode-store';
@@ -41,6 +41,21 @@ export class LayersPanel {
   private readonly hazardStore = inject(HazardModeStore);
 
   readonly closed = output<void>();
+
+  /**
+   * Whether the epicentre markers are drawn.
+   *
+   * A two-way binding to the map component rather than a store entry: this is the platform's own
+   * rendering of the earthquake archive, not a catalogued layer with a publisher, an attribution and
+   * a licence position, and listing it in `HazardLayerStore` would blur that distinction. It is
+   * offered here because this panel is where a reader already comes to decide what is drawn.
+   */
+  readonly epicentresVisible = model(true);
+
+  /** Shown only under the earthquake view, where the markers exist to be hidden. */
+  protected readonly showsEpicentreControl = computed(
+    () => this.hazardStore.active()?.lens === 'Seismic',
+  );
 
   /**
    * Layer groups for the hazard on screen, not the whole catalogue.
@@ -95,6 +110,10 @@ export class LayersPanel {
 
   protected toggle(layerId: string): void {
     this.store.toggle(layerId);
+  }
+
+  protected toggleEpicentres(): void {
+    this.epicentresVisible.update((visible) => !visible);
   }
 
   protected close(): void {

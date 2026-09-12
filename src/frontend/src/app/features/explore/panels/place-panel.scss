@@ -41,10 +41,57 @@
 .place__radius,
 .strongest,
 .recent,
+.catalogue,
 .faults {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* ── CATALOGUED EARTHQUAKES ───────────────────────────────────────────────
+   The full record for the radius. Rows are dense on purpose: this is a list to scan for a date or a
+   magnitude, and card padding would put four events in the space that holds twelve. */
+.catalogue__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catalogue__row + .catalogue__row {
+  border-top: 1px solid var(--line-faint);
+}
+
+.catalogue__locate {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: background var(--motion-quick) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--surface-raised);
+  }
+}
+
+.catalogue__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.catalogue__more {
+  align-self: flex-start;
 }
 
 .places__search .c-input {
@@ -68,6 +115,9 @@
 .reading__meta dd,
 .reading__magnitude,
 .reading__count,
+.catalogue__magnitude,
+.catalogue__date,
+.catalogue__depth,
 .fault__distance {
   font-family: var(--font-mono);
 }
@@ -276,6 +326,20 @@
 .reading__magnitude {
   font-size: var(--text-small);
   color: var(--text-primary);
+}
+
+/* Magnitude leads the row because it is what a reader scans for, and it is fixed-width so the
+   column of figures aligns down the list. */
+.catalogue__magnitude {
+  min-width: 3.5rem;
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+.catalogue__date,
+.catalogue__depth {
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
 }
 
 // How many readings the family holds. The figure that makes the per-family split legible: a
