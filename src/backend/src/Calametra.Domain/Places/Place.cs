@@ -113,6 +113,18 @@ public sealed class Place : AuditableEntity
     public double Longitude { get; private set; }
 
     /// <summary>
+    /// Which source supplied <see cref="Centroid"/>, when it is not the source that named the
+    /// place.
+    /// </summary>
+    /// <remarks>
+    /// Null means the coordinate came with the place from <see cref="DataSourceId"/>. Set when a
+    /// better-located point replaces it, so the interface can state whose coordinate a distance was
+    /// measured from — the platform's rule that no value is shown without its source applies to a
+    /// position as much as to a magnitude.
+    /// </remarks>
+    public Guid? CoordinateDataSourceId { get; private set; }
+
+    /// <summary>
     /// Administrative boundary, where boundary data is available. Null for places
     /// known only as a point.
     /// </summary>
@@ -171,6 +183,37 @@ public sealed class Place : AuditableEntity
         PopulationEstimate = estimate;
         PopulationDataSourceId = dataSourceId;
         PopulationAsOf = asOf;
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Replaces the representative point with a better-located one, naming the source that
+    /// supplied it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The coordinate carries its own source because it need not come from the source that named
+    /// the place. The gazetteer behind the directory publishes administrative points that are
+    /// frequently a table-rounded value some kilometres from the town: measured across this
+    /// archive, 1,090 of 1,647 cities and municipalities carry a coordinate rounded to the nearest
+    /// arc-minute, five are rounded to a quarter of a degree, and the mean distance to the mapped
+    /// town centre is 5.2 km. That is the same reasoning as <see cref="SetPopulation"/> — a figure
+    /// from elsewhere is attributed to elsewhere, rather than silently inheriting the row's source.
+    /// </para>
+    /// <para>
+    /// Every consequence of the point moves with it. The epicentre naming, the radius search and
+    /// the place context all measure from this coordinate, so a point that is 14 km from the town
+    /// puts an earthquake 14 km wrong in every one of them.
+    /// </para>
+    /// </remarks>
+    public void SetCoordinate(Point centroid, Guid dataSourceId, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(centroid);
+
+        Centroid = centroid;
+        Latitude = centroid.Y;
+        Longitude = centroid.X;
+        CoordinateDataSourceId = dataSourceId;
         Touch(now);
     }
 }

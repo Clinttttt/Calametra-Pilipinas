@@ -45,7 +45,13 @@ var isPlaceImport = bool.TryParse(
     builder.Configuration["Ingestion:Places:Import"],
     out var placeFlag) && placeFlag;
 
-if (!isBackfill && !isCycloneImport && !isPlaceImport)
+// Correcting where the places are is its own mode, separate from deciding which exist:
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Places:RefineCoordinates=true
+var isCoordinateRefinement = bool.TryParse(
+    builder.Configuration["Ingestion:Places:RefineCoordinates"],
+    out var refineFlag) && refineFlag;
+
+if (!isBackfill && !isCycloneImport && !isPlaceImport && !isCoordinateRefinement)
 {
     builder.Services.AddHostedService<EarthquakeIngestionWorker>();
 }
@@ -138,6 +144,40 @@ if (isPlaceImport)
         result.Value.RejectedCount,
         result.Value.WithoutPsgcCodeCount,
         result.Value.UnresolvedParentCount);
+
+    return 0;
+}
+
+if (isCoordinateRefinement)
+{
+    // Separate from the place import, and rightly so: the import decides which places exist and is
+    // driven by legislation, while this corrects where they are and is driven by a volunteer map
+    // that improves continuously. Re-running it is cheap and idempotent — a place already on its
+    // town centre is left alone.
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var logger = host.Services.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Calametra.Ingestion.PlaceCoordinates");
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new RefinePlaceCoordinates.Command());
+
+    if (result.IsFailure)
+    {
+        WorkerLog.CoordinateRefinementFailed(logger, result.Error!.Code, result.Error.Description);
+
+        return 1;
+    }
+
+    WorkerLog.CoordinateRefinementCompleted(
+        logger,
+        result.Value.MovedCount,
+        result.Value.PlaceCount,
+        result.Value.MeanMoveKilometres,
+        result.Value.LargestMoveKilometres,
+        result.Value.UnmatchedCount,
+        result.Value.AmbiguousCount);
 
     return 0;
 }

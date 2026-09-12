@@ -174,6 +174,9 @@ public static class GetPlaceContext
                     // The geometry is still needed: it is the parameter PostGIS filters the
                     // archive against, and only the coordinate read is materialised.
                     candidate.Centroid,
+                    // Which source supplied the point, so the note can credit it. Null when the
+                    // gazetteer's own coordinate is still in place.
+                    candidate.CoordinateDataSourceId,
                 })
                 .SingleOrDefaultAsync(cancellationToken);
 
@@ -214,6 +217,15 @@ public static class GetPlaceContext
                 .ToListAsync(cancellationToken);
 
             var agencyNames = agencies.ToDictionary(source => source.Id, source => source.Agency);
+
+            // The coordinate need not come from the source that named the place, so its attribution
+            // is looked up separately. Null when the place still carries the gazetteer's own point —
+            // the note then says so rather than crediting a source that supplied nothing.
+            var coordinateAttribution = place.CoordinateDataSourceId is null
+                ? null
+                : agencies
+                    .FirstOrDefault(source => source.Id == place.CoordinateDataSourceId)
+                    ?.Attribution;
 
             var faults = await LoadNearestFaultsAsync(
                 place.Centroid,
@@ -268,7 +280,14 @@ public static class GetPlaceContext
                 strongest,
                 described.Count == 0 ? null : described.MaxBy(row => row.OccurredAt),
                 faults,
-                BuildNotes(place.Name, request.RadiusKm, nearby.Count, comparable, assignedDepths, faults));
+                BuildNotes(
+                    place.Name,
+                    request.RadiusKm,
+                    nearby.Count,
+                    comparable,
+                    assignedDepths,
+                    faults,
+                    coordinateAttribution));
 
             return Result<PlaceContextResponse>.Success(response);
         }
@@ -365,14 +384,24 @@ public static class GetPlaceContext
             int eventCount,
             int comparableCount,
             int assignedDepths,
-            List<NearbyFault> faults)
+            List<NearbyFault> faults,
+            string? coordinateAttribution)
         {
             var notes = new List<string>
             {
-                $"Distances are measured from a representative point for {name}, not from its "
-                + "boundary. No boundary is stored for Philippine local government units, so for "
-                + "a large municipality the edge of the built-up area may be tens of kilometres "
-                + "from this point.",
+                // Stated as the town centre now rather than a bare "representative point", because
+                // that is what it is: 1,520 of 1,647 cities and municipalities were moved onto their
+                // mapped poblacion, a mean correction of 5.3 km and up to 31.6 km. The remaining
+                // caveat is the one that still holds — a point is not a boundary.
+                coordinateAttribution is null
+                    ? $"Distances are measured from a representative point for {name}, not from its "
+                        + "boundary. No boundary is stored for Philippine local government units, so "
+                        + "for a large municipality the edge of the built-up area may be tens of "
+                        + "kilometres from this point."
+                    : $"Distances are measured from the mapped town centre of {name}, not from its "
+                        + "boundary. No boundary is stored for Philippine local government units, so "
+                        + "for a large municipality its edge may be tens of kilometres from this "
+                        + $"point. {coordinateAttribution}",
             };
 
             if (eventCount > 0)

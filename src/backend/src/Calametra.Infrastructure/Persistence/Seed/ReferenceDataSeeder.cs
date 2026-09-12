@@ -4,6 +4,7 @@ using Calametra.Infrastructure.Sources.Gem;
 using Calametra.Infrastructure.Sources.GeoNames;
 using Calametra.Infrastructure.Sources.Ibtracs;
 using Calametra.Infrastructure.Sources.Mgb;
+using Calametra.Infrastructure.Sources.OpenStreetMap;
 using Calametra.Infrastructure.Sources.Phivolcs;
 using Calametra.Infrastructure.Sources.Usgs;
 using Microsoft.EntityFrameworkCore;
@@ -44,6 +45,7 @@ public sealed class ReferenceDataSeeder(
 
         await EnsureCycloneAgenciesAsync(now, cancellationToken);
         await EnsureGeoNamesAsync(now, cancellationToken);
+        await EnsureOpenStreetMapAsync(now, cancellationToken);
         await EnsurePagasaNamesAsync(now, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
@@ -585,6 +587,79 @@ public sealed class ReferenceDataSeeder(
     }
 
     /// <summary>
+    /// OpenStreetMap — where the towns actually are.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Registered as its own source, and read for exactly one field. The gazetteer behind the place
+    /// directory remains the authority for names, provinces and codes; this supplies the coordinate,
+    /// because measured on 2026-09-12 the gazetteer's own points are not good enough for the
+    /// distances this platform states from them — 1,090 of 1,647 are rounded to the nearest
+    /// arc-minute, five to a quarter of a degree, and the mean distance to the mapped town centre is
+    /// 5.2 km.
+    /// </para>
+    /// <para>
+    /// <b>ODbL 1.0 is share-alike.</b> Attribution to OpenStreetMap contributors is mandatory and a
+    /// derived database inherits the licence — the GEM position exactly, and the reason this is a
+    /// separate row rather than a footnote on the gazetteer's. The basemap the browser draws is also
+    /// OpenStreetMap, and that is credited separately from the client, because nothing of it is
+    /// stored.
+    /// </para>
+    /// </remarks>
+    private async Task<DataSource> EnsureOpenStreetMapAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(source => source.Slug == OpenStreetMapOptions.Slug, cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                OpenStreetMapOptions.Slug,
+                agency: "OpenStreetMap contributors",
+                datasetName: "Philippine city and town centres, via the Overpass API",
+                SourceAccessKind.RestApi,
+                attribution:
+                    "Town centre coordinates © OpenStreetMap contributors, available under the Open "
+                    + "Database Licence (ODbL) 1.0.",
+                now)
+            .Value;
+
+        created
+            .WithLinks(
+                sourceUrl: "https://www.openstreetmap.org/",
+                termsUrl: "https://opendatacommons.org/licenses/odbl/1-0/")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "Read to place each city and municipality at its town centre — the poblacion, "
+                    + "where the built-up area and the municipal hall are — rather than at the "
+                    + "administrative point published by the gazetteer. 1,695 mapped centres were "
+                    + "returned nationally on 2026-09-12: 155 tagged city and 1,540 tagged town, "
+                    + "against 1,647 cities and municipalities in this directory.\n\n"
+                    + "A volunteer map, and treated as one. It is not an authority on what a place "
+                    + "is called, which province contains it, or whether it is a city — city status "
+                    + "is conferred by law and read here from the official name in the PSGC "
+                    + "register. Nothing but the coordinate is taken from it.\n\n"
+                    + "A place is matched to a centre only when the names agree after folding and "
+                    + "one candidate is clearly the closest. Philippine municipality names repeat "
+                    + "across provinces, so where two same-named candidates are comparably close "
+                    + "the place keeps its original coordinate and is counted as ambiguous rather "
+                    + "than assigned the nearer one.\n\n"
+                    + "Still a point and not a boundary. A radius is measured from the town centre, "
+                    + "which for a large municipality is not its edge.")
+            // Storable, and share-alike: any derived database Calametra publishes carries ODbL 1.0
+            // and the attribution above is mandatory.
+            .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: false);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
+
+        return created;
+    }
+
+    /// <summary>
     /// DOST-PHIVOLCS deterministic ground shaking — displayed and never stored.
     /// </summary>
     /// <remarks>
@@ -753,7 +828,11 @@ public sealed class ReferenceDataSeeder(
             // returns an empty collection for every request; identify returns the
             // fault system, segment name and mapping year. Verified 2026-09-04.
             .WithFeatureInfo(identifyEndpoint)
-            .WithPresentation(isEnabledByDefault: true, sortOrder: 10, supportsFeatureInfo: true);
+            // Off by default. It is proxied imagery rendered on demand, so it arrives seconds after
+            // the map does — switched on automatically that looks like a stall, and the reader never
+            // asked for it. Every layer in the catalogue now starts off, and the panel is where a
+            // reader turns one on.
+            .WithPresentation(isEnabledByDefault: false, sortOrder: 10, supportsFeatureInfo: true);
 
         context.HazardLayers.Add(layer);
     }

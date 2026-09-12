@@ -200,7 +200,12 @@ public static class ImportActiveFaults
                         + "faults at regional scale. They are not a substitute for detailed national "
                         + "hazard mapping, and an earthquake near a mapped fault does not establish that "
                         + "this fault produced it.")
-                .WithPresentation(isEnabledByDefault: true, sortOrder: 15, supportsFeatureInfo: true);
+                // Off by default, like every other overlay. An overlay switched on before the reader
+                // asks for it competes with the events, which are the subject of the view — and this
+                // one is drawn from stored geometry that has to be fetched first, so it appears a
+                // moment after the map settles, which reads as the map glitching rather than as a
+                // layer arriving.
+                .WithPresentation(isEnabledByDefault: false, sortOrder: 15, supportsFeatureInfo: true);
 
             context.HazardLayers.Add(layer);
 

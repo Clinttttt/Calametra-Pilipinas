@@ -51,6 +51,7 @@ public sealed class DependencyInjectionTests
         services.AddScoped(_ => Substitute.For<IHazardMapService>());
         services.AddScoped(_ => Substitute.For<ICycloneTrackSource>());
         services.AddScoped(_ => Substitute.For<IPlaceDirectorySource>());
+        services.AddScoped(_ => Substitute.For<ISettlementCoordinateSource>());
 
         return services.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -190,6 +191,10 @@ public sealed class DependencyInjectionTests
         {
             typeof(ImportPlaces.Command),
             typeof(Domain.Abstractions.Result<ImportPlaces.PlaceImportSummary>)
+        },
+        {
+            typeof(RefinePlaceCoordinates.Command),
+            typeof(Domain.Abstractions.Result<RefinePlaceCoordinates.CoordinateRefinementSummary>)
         },
         {
             typeof(SearchPlaces.Query),

@@ -6,6 +6,7 @@ using Calametra.Infrastructure.Sources.Gem;
 using Calametra.Infrastructure.Sources.GeoNames;
 using Calametra.Infrastructure.Sources.Ibtracs;
 using Calametra.Infrastructure.Sources.Mgb;
+using Calametra.Infrastructure.Sources.OpenStreetMap;
 using Calametra.Infrastructure.Sources.Phivolcs;
 using Calametra.Infrastructure.Sources.Usgs;
 using Microsoft.EntityFrameworkCore;
@@ -192,5 +193,24 @@ public static class DependencyInjection
         // No resilience handler: one 2.5 MB archive, fetched by hand once. A retry would restart
         // the transfer and the standard handler's per-attempt timeout would abort a slow but
         // healthy download — the same reasoning as the two adapters above.
+
+        services.AddOptions<OpenStreetMapOptions>()
+            .Bind(configuration.GetSection(OpenStreetMapOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient<ISettlementCoordinateSource, OverpassSettlementSource>((provider, client) =>
+            {
+                var options = provider.GetRequiredService<IOptions<OpenStreetMapOptions>>().Value;
+
+                client.BaseAddress = new Uri(options.OverpassEndpoint);
+                client.Timeout = options.Timeout;
+                // Overpass answers 406 with an HTML body to a request without one, which reads as a
+                // content-negotiation fault rather than as a missing header.
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
+            });
+        // No resilience handler, and here it is a courtesy as well as a correctness argument: the
+        // national query is one heavy request against a shared public instance, and Overpass's usage
+        // policy asks callers not to retry heavy queries automatically.
     }
 }

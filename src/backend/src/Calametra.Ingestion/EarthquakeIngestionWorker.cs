@@ -167,4 +167,27 @@ internal static partial class WorkerLog
         Level = LogLevel.Error,
         Message = "Place import failed: {ErrorCode} — {ErrorDescription}")]
     public static partial void PlaceImportFailed(ILogger logger, string errorCode, string errorDescription);
+
+    [LoggerMessage(
+        EventId = 7010,
+        Level = LogLevel.Information,
+        Message = "Place coordinates refined: {Moved} of {Considered} moved (mean {MeanKm} km, largest "
+            + "{LargestKm} km), {Unmatched} unmatched and {Ambiguous} ambiguous left unchanged")]
+    public static partial void CoordinateRefinementCompleted(
+        ILogger logger,
+        int moved,
+        int considered,
+        double meanKm,
+        double largestKm,
+        int unmatched,
+        int ambiguous);
+
+    [LoggerMessage(
+        EventId = 7011,
+        Level = LogLevel.Error,
+        Message = "Place coordinate refinement failed: {ErrorCode} — {ErrorDescription}")]
+    public static partial void CoordinateRefinementFailed(
+        ILogger logger,
+        string errorCode,
+        string errorDescription);
 }
