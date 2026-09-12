@@ -1,0 +1,128 @@
+﻿/* ── FEATURE INSPECTOR ────────────────────────────────────────────────────
+   The publisher's own record for the feature under the pointer, and the one place a hazard *class*
+   is interpreted rather than plotted. Moved out of explore.scss with the component: that stylesheet
+   is at its budget, and these rules describe a panel rather than the map. */
+.inspector__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.inspector__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.inspector__name {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--text-primary);
+  max-inline-size: none;
+}
+
+/* Two columns, key then value. The publisher's own field order is preserved, so the keys are not
+   sorted and the grid must not reorder them either. */
+/* â”€â”€ ORDINAL CLASS SCALE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   A published class shown as a position rather than a word. Monochrome on purpose: hue is a data
+   channel spent on earthquake depth, and giving susceptibility its own ramp would put two scales in
+   competition on one map. Height and fill carry the ordinal reading instead. */
+.ordinal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.ordinal__scale {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 0.85rem;
+}
+
+/* Equal heights, not a staircase. A rising bar would imply the gaps between classes are measured
+   quantities; they are not â€” an ordinal scale states order and nothing more. The filled run carries
+   the reading. */
+.ordinal__step {
+  flex: 1;
+  border: 1px solid var(--line-subtle);
+  border-radius: 1px;
+}
+
+.ordinal__step--filled {
+  background: var(--text-tertiary);
+  border-color: var(--text-tertiary);
+}
+
+.ordinal__step--current {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ordinal__reading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ordinal__value {
+  font-size: var(--text-small);
+  color: var(--text-primary);
+}
+
+/* Reuses the attribute list's own type for the position and the gloss, rather than declaring two more
+   near-identical rules: this stylesheet is at its budget, and the inspector's dt/dd already establish
+   the register these belong to. */
+.ordinal__position,
+.ordinal__meaning {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: none;
+}
+
+.ordinal__meaning {
+  font-family: inherit;
+  color: var(--text-secondary);
+}
+
+.inspector__attributes {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+
+  dt {
+    font-size: var(--text-micro);
+    color: var(--text-tertiary);
+  }
+
+  dd {
+    margin: 0;
+    font-size: var(--text-micro);
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+}
+
+.inspector__caveat {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-faint);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-disabled);
+  max-inline-size: none;
+}

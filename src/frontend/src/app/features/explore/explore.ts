@@ -48,11 +48,11 @@ import {
   faultCasingWidthExpression,
   faultColourExpression,
   faultLineWidthExpression,
-  faultWidthMultiplierExpression,
 } from '../../core/visual/fault-style';
 import { HIGHLIGHT_COLOUR } from '../../core/visual/highlight-style';
 import { EarthquakeFilterStore } from '../../core/earthquakes/earthquake-filter-store';
 import { FilterPanel } from './panels/filter-panel';
+import { FeatureInspector } from './panels/feature-inspector';
 import { firstValueFrom } from 'rxjs';
 import { toEarthquakeGeoJson } from '../../core/visual/earthquake-geojson';
 import { toCycloneGeoJson } from '../../core/visual/cyclone-track';
@@ -132,6 +132,7 @@ type OpenTool = 'hazards' | 'timeline' | 'legend' | 'layers' | 'filter' | null;
     EventDetail,
     LayersPanel,
     FilterPanel,
+    FeatureInspector,
     Timeline,
     CrossSectionPlot,
     SimilarEvents,
@@ -338,21 +339,14 @@ export class Explore {
    * different kinds of thing, and conflating them into one "selected" slot would make
    * the panel guess which it is showing.
    */
-  protected readonly inspectedFeature = signal<HazardFeatureAttributes | null>(null);
-
   /**
-   * Inspected attributes as ordered entries.
+   * The feature under the pointer, rendered by `cal-feature-inspector`.
    *
-   * Derived here rather than with a `keyvalue` pipe in the template: that pipe sorts
-   * alphabetically by default, which would reorder a publisher's fields into an order
-   * they did not choose.
+   * The attribute ordering and the ordinal-scale placement moved into that component with its
+   * markup: they are how the panel presents a publisher's record, not something the map needs to
+   * know.
    */
-  protected readonly inspectedAttributes = computed(() =>
-    Object.entries(this.inspectedFeature()?.attributes ?? {}).map(([key, value]) => ({
-      key,
-      value,
-    })),
-  );
+  protected readonly inspectedFeature = signal<HazardFeatureAttributes | null>(null);
 
   protected readonly eventCount = signal<number | null>(null);
   protected readonly loadFailed = signal(false);
@@ -2045,7 +2039,7 @@ export class Explore {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': FAULT_CASING_COLOUR,
-          'line-width': faultWidthMultiplierExpression(faultCasingWidthExpression()) as never,
+          'line-width': faultCasingWidthExpression() as never,
           'line-opacity': 0.85,
         },
       },
@@ -2060,7 +2054,7 @@ export class Explore {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': faultColourExpression() as never,
-          'line-width': faultWidthMultiplierExpression(faultLineWidthExpression()) as never,
+          'line-width': faultLineWidthExpression() as never,
           'line-opacity': 0.9,
         },
       },
@@ -2194,15 +2188,32 @@ export class Explore {
           this.api.identifyHazardFeature(layer.id, event.lngLat.lat, event.lngLat.lng),
         );
 
-        this.inspectedFeature.set(features[0] ?? null);
+        const inspected = features[0] ?? null;
+
+        this.inspectedFeature.set(inspected);
+
+        // Marks where the reading was taken. On a national polygon fill every part of a class looks
+        // alike, so a panel saying "High Potential" with nothing on the map leaves the reader unsure
+        // which of several patches they hit.
+        //
+        // The clicked point, deliberately, and not the polygon: the outline would have to come from
+        // the agency's own vector geometry, which ADR-003 refuses to take. The honest mark is where
+        // the question was asked.
+        if (inspected) {
+          this.highlightPosition(event.lngLat.lng, event.lngLat.lat);
+        } else {
+          this.clearHighlight();
+        }
       } catch {
         this.inspectedFeature.set(null);
+        this.clearHighlight();
       }
     });
   }
 
   protected clearInspectedFeature(): void {
     this.inspectedFeature.set(null);
+    this.clearHighlight();
   }
 
   // ---- Filters ------------------------------------------------------------

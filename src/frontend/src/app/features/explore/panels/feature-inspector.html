@@ -1,0 +1,71 @@
+<header class="inspector__header">
+  <span class="c-label">{{ feature().layerName }}</span>
+  <button class="c-icon-button" type="button" (click)="close()">
+    <cal-icon name="close" [size]="14" label="Close" />
+  </button>
+</header>
+
+<div class="inspector__body">
+  @if (feature().displayValue) {
+    <p class="inspector__name">{{ feature().displayValue }}</p>
+  }
+
+  <!-- The class drawn as a position on the publisher's own scale. A rating printed as a word loses
+       the fact that it is ordinal, and says nothing about what it means on the ground. -->
+  @if (classified(); as reading) {
+    <div class="ordinal">
+      <span class="c-label">{{ reading.placement.scale.name }}</span>
+
+      <div
+        class="ordinal__scale"
+        role="img"
+        [attr.aria-label]="
+          reading.value +
+          ' — step ' +
+          (reading.placement.stepIndex + 1) +
+          ' of ' +
+          reading.placement.scale.steps.length +
+          ' on the ' +
+          reading.placement.scale.name
+        "
+      >
+        @for (step of reading.placement.scale.steps; track step; let i = $index) {
+          <!-- Filled up to the reading: the eye takes a filled run as "this far up the scale", which
+               is exactly what an ordinal value asserts. -->
+          <span
+            class="ordinal__step"
+            [class.ordinal__step--filled]="i <= reading.placement.stepIndex"
+            [class.ordinal__step--current]="i === reading.placement.stepIndex"
+          ></span>
+        }
+      </div>
+
+      <div class="ordinal__reading">
+        <span class="ordinal__value">{{ reading.value }}</span>
+        <span class="ordinal__position">
+          {{ reading.placement.stepIndex + 1 }} of {{ reading.placement.scale.steps.length }}
+        </span>
+      </div>
+
+      @if (reading.placement.meaning; as meaning) {
+        <p class="ordinal__meaning">{{ meaning }}</p>
+      }
+    </div>
+  }
+
+  <dl class="inspector__attributes">
+    @for (entry of attributes(); track entry.key) {
+      <dt>{{ entry.key }}</dt>
+      <dd>{{ entry.value }}</dd>
+    }
+  </dl>
+
+  <!-- Stated because it is the substantive limit on what a hazard class means: a susceptibility
+       rating describes the ground's tendency, not a forecast, and a mapped fault near an earthquake
+       does not establish that the fault produced it. -->
+  <p class="inspector__caveat">
+    Attributes as published by the source agency. A susceptibility or intensity class describes
+    expected behaviour, not a forecast, and a mapped fault near an earthquake does not establish that
+    this fault produced it.
+  </p>
+</div>

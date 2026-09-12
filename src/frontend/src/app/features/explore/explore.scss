@@ -1,4 +1,4 @@
-/* Explore. Every overlay is positioned against the map, which is never cropped. */
+﻿/* Explore. Every overlay is positioned against the map, which is never cropped. */
 
 .explore {
   position: absolute;
@@ -11,7 +11,7 @@
   background-color: var(--surface-000);
 }
 
-/* ── CAMERA ───────────────────────────────────────────────────────────────
+/* â”€â”€ CAMERA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Named text buttons on a hairline group. Three spatial views are understood
    faster read than inferred from icons alone, and the group needs no fill to
    read as a set. */
@@ -48,7 +48,7 @@
   color: var(--text-secondary);
 }
 
-/* Active state: white ink on a barely-there wash. No hue — the accent is
+/* Active state: white ink on a barely-there wash. No hue â€” the accent is
    luminance, and hue belongs to the data. */
 .camera__option[aria-pressed='true'] {
   color: var(--text-primary);
@@ -56,7 +56,7 @@
   box-shadow: inset 0 0 0 1px var(--line-subtle);
 }
 
-/* ── ARCHIVE READOUT ──────────────────────────────────────────────────────
+/* â”€â”€ ARCHIVE READOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Typography rather than a card. The figure is the content; a panel around it
    would only add weight. */
 .explore__readout {
@@ -124,7 +124,7 @@
   text-shadow: none;
 }
 
-/* ── TOOL RAIL ────────────────────────────────────────────────────────────*/
+/* â”€â”€ TOOL RAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .explore__tools {
   position: absolute;
   top: var(--space-3);
@@ -132,7 +132,7 @@
   z-index: var(--z-panel);
 }
 
-/* ── LEGEND ───────────────────────────────────────────────────────────────*/
+/* â”€â”€ LEGEND â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .explore__legend {
   position: absolute;
   top: var(--space-3);
@@ -141,7 +141,7 @@
   animation: panel-in var(--motion-quick) var(--ease-out);
 }
 
-/* ── DETAIL ───────────────────────────────────────────────────────────────*/
+/* â”€â”€ DETAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .explore__detail {
   position: absolute;
   top: var(--space-3);
@@ -169,7 +169,7 @@
   }
 }
 
-/* ── DRAWER ───────────────────────────────────────────────────────────────
+/* â”€â”€ DRAWER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Full width across the bottom. Slides up rather than appearing, so the map does
    not seem to jump when a tool opens. */
 .explore__drawer {
@@ -226,7 +226,7 @@
   }
 }
 
-/* ── DISCLAIMER ───────────────────────────────────────────────────────────
+/* â”€â”€ DISCLAIMER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Bottom-centre, set quietly. It must always be present and never compete. */
 .explore__disclaimer {
   position: absolute;
@@ -258,7 +258,7 @@
   background-color: var(--surface-000);
 }
 
-/* ── PRESENTATION ─────────────────────────────────────────────────────────
+/* â”€â”€ PRESENTATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Chrome is already collapsed by the shell. Here the control column and the readout
    step back too, leaving the map, the tool rail and the disclaimer. */
 .explore--presenting .explore__camera {
@@ -310,7 +310,7 @@
   }
 }
 
-/* ── PANEL CONTAINERS ─────────────────────────────────────────────────────
+/* â”€â”€ PANEL CONTAINERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    These rules were lost when this file was restored from the last commit after a shell command
    truncated it, and have been rewritten to the conventions of the surviving ones above:
    `--z-panel`, the `panel-in` animation, and a rail offset of `--space-3 + 2.75rem` so a panel
@@ -368,7 +368,7 @@
   bottom: calc(var(--timeline-height) + var(--space-6));
 }
 
-/* ── INSPECTOR ────────────────────────────────────────────────────────────
+/* â”€â”€ INSPECTOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Published attributes of a hazard feature. Carries its own panel chrome because, unlike the
    others, its content is markup in this template rather than a child component. */
 .explore__inspector {
@@ -389,59 +389,3 @@
   animation: panel-in var(--motion-quick) var(--ease-out);
 }
 
-.inspector__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex: none;
-  padding: var(--space-2);
-  border-bottom: 1px solid var(--line-faint);
-}
-
-.inspector__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.inspector__name {
-  margin: 0;
-  font-size: var(--text-small);
-  font-weight: 500;
-  color: var(--text-primary);
-  max-inline-size: none;
-}
-
-/* Two columns, key then value. The publisher's own field order is preserved, so the keys are not
-   sorted and the grid must not reorder them either. */
-.inspector__attributes {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
-  margin: 0;
-
-  dt {
-    font-size: var(--text-micro);
-    color: var(--text-tertiary);
-  }
-
-  dd {
-    margin: 0;
-    font-size: var(--text-micro);
-    color: var(--text-secondary);
-    overflow-wrap: anywhere;
-  }
-}
-
-.inspector__caveat {
-  margin: 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--line-faint);
-  font-size: var(--text-micro);
-  line-height: var(--leading-snug);
-  color: var(--text-disabled);
-  max-inline-size: none;
-}

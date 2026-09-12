@@ -1,4 +1,4 @@
-<!--
+﻿<!--
   Explore.
 
   The map holds the whole viewport. Everything else floats over it, and nothing is
@@ -39,7 +39,7 @@
         }
       </p>
       <p class="readout__caption">
-        Earthquakes · USGS catalogue
+        Earthquakes Â· USGS catalogue
         <span class="readout__note">{{ floorLabel() }}</span>
       </p>
     </div>
@@ -53,7 +53,7 @@
   <!-- Tool rail. Low opacity at rest: findable when looked for, invisible when not.
 
        Grouped by what a tool applies to. Hazard selection leads, because every tool under it depends
-       on that choice. Hazard-specific tools appear only with their hazard — a depth cross-section of
+       on that choice. Hazard-specific tools appear only with their hazard â€” a depth cross-section of
        a typhoon is meaningless, and offering it beside a wind field invited exactly that reading. The
        final group works whatever is on screen. -->
   <div class="explore__tools">
@@ -191,12 +191,14 @@
     </div>
   }
 
-  <!-- Hazard layer controls, grouped by lens. -->
   <!-- Filter panel. Bounds on the archive, distinct from the Time Machine's scrub. -->
   @if (earthquakesActive() && openTool() === 'filter') {
-    <cal-filter-panel (changed)="onFilterChanged()" (closed)="closeTool()" />
+    <div class="explore__side-panel">
+      <cal-filter-panel (changed)="onFilterChanged()" (closed)="closeTool()" />
+    </div>
   }
 
+  <!-- Hazard layer controls, grouped by lens. -->
   @if (hasHazardLayers() && openTool() === 'layers') {
     <div class="explore__side-panel">
       <cal-layers-panel [(epicentresVisible)]="epicentresVisible" (closed)="closeTool()" />
@@ -220,43 +222,18 @@
 
        Gated on the hazard as well as on its own phase. Selecting a hazard already closes the other
        hazard's tools, but this panel describes slab depth and must not be renderable over a storm
-       map by any route — a second condition here costs nothing and removes the whole class of bug. -->
+       map by any route â€” a second condition here costs nothing and removes the whole class of bug. -->
   @if (earthquakesActive() && sectionActive()) {
     <div class="explore__section">
       <cal-cross-section-plot />
     </div>
   }
 
-  <!-- Inspected hazard feature. Separate from the event panel because a fault and an
-       earthquake are different kinds of thing. -->
+  <!-- Inspected hazard feature. Its own component: it is the only place a hazard class is
+       interpreted rather than plotted, and a fault and an earthquake are different kinds of thing. -->
   @if (inspectedFeature(); as feature) {
     <div class="explore__inspector">
-      <header class="inspector__header">
-        <span class="c-label">{{ feature.layerName }}</span>
-        <button class="c-icon-button" type="button" (click)="clearInspectedFeature()">
-          <cal-icon name="close" [size]="14" label="Close" />
-        </button>
-      </header>
-
-      <div class="inspector__body">
-        @if (feature.displayValue) {
-          <p class="inspector__name">{{ feature.displayValue }}</p>
-        }
-
-        <dl class="inspector__attributes">
-          @for (entry of inspectedAttributes(); track entry.key) {
-            <dt>{{ entry.key }}</dt>
-            <dd>{{ entry.value }}</dd>
-          }
-        </dl>
-
-        <!-- Stated because it is the substantive limit on what a fault line means: a
-             trace shows where a fault was mapped, not that it caused anything. -->
-        <p class="inspector__caveat">
-          Attributes as published by the source agency. A mapped fault near an earthquake
-          does not establish that this fault produced it.
-        </p>
-      </div>
+      <cal-feature-inspector [feature]="feature" (closed)="clearInspectedFeature()" />
     </div>
   }
 
