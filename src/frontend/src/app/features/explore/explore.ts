@@ -2404,6 +2404,17 @@ export class Explore {
       const eventId = event.features?.[0]?.properties?.['id'];
 
       if (typeof eventId === 'string') {
+        // Marked as well as selected. At these densities the clicked marker is one of dozens under
+        // the pointer's neighbourhood, and a panel opening on the right with nothing changed on the
+        // map leaves the reader unsure which dot they hit. The mark is placed on the feature's own
+        // coordinate rather than the click position, so it lands on the epicentre and not a pixel
+        // beside it.
+        const [longitude, latitude] = (
+          event.features?.[0]?.geometry as { coordinates?: [number, number] } | undefined
+        )?.coordinates ?? [event.lngLat.lng, event.lngLat.lat];
+
+        this.highlightPosition(longitude, latitude);
+
         void this.selectEvent(eventId);
       }
     });
@@ -2463,6 +2474,9 @@ export class Explore {
     this.selectedDetail.set(null);
     this.detailLoading.set(false);
     this.detailFailed.set(false);
+
+    // The mark goes with the selection it was pointing at.
+    this.clearHighlight();
 
     // The similarity panel is anchored to the selected event, so it goes with it.
     this.similarEventsStore.close();

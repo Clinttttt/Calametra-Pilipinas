@@ -6,7 +6,10 @@
   flex-direction: column;
   width: 21rem;
   max-height: calc(100vh - 12rem);
-  background: var(--surface-panel);
+  /* The same glass as every other rail panel. It was on `--surface-panel`, which is transparent, so
+     the map read straight through the controls — legible over deep ocean and unreadable over land. */
+  background-color: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(120%);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
