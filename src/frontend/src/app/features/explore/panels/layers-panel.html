@@ -116,7 +116,12 @@
                   }
 
                   @if (entry.loading) {
-                    <span class="layer__status c-label">…</span>
+                    <!-- Titled because the wait can be long and its cause is not the reader's
+                         connection: PHIVOLCS renders each tile on request. -->
+                    <span
+                      class="layer__status c-label"
+                      [title]="'Waiting for ' + entry.layer.sourceAgency + ' to render this area'"
+                    >…</span>
                   } @else if (entry.failed) {
                     <span class="layer__status layer__status--failed" title="This layer could not be loaded">
                       <cal-icon name="caution" [size]="14" label="Failed to load" />

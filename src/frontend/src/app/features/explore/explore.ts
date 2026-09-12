@@ -254,13 +254,26 @@ export class Explore {
   private readonly attachedLayers = new Map<string, readonly string[]>();
 
   /**
-   * Work deferred until the map style has settled, keyed so each kind defers once.
+   * Whether the style is ready to accept source and layer mutations.
    *
-   * MapLibre rejects source and layer mutations while a style is loading, so every sync in this
-   * component is guarded by `isStyleLoaded`. Returning early on that guard is what caused two
-   * observed faults: a layer ticked mid-load stayed ticked and undrawn, and a place ring survived the
-   * panel that explained it, because the *clearing* pass was the one dropped. Dropping work leaves
-   * the map asserting something the interface is no longer saying, so it is deferred instead.
+   * <b>Not `map.isStyleLoaded()`, and the difference caused a real fault.</b> That method reports
+   * false while *any source* is still fetching, not merely while the style document is loading — so a
+   * proxied hazard layer mid-request, which for PHIVOLCS can take nineteen seconds, made every guarded
+   * sync in this component defer. Unticking that layer then waited for the very tile it was trying to
+   * cancel: the layer stayed drawn, its inspector stayed open, and the map felt frozen.
+   *
+   * The style here is loaded exactly once — the basemap is changed by setting paint and toggling an
+   * imagery source rather than by `setStyle`, precisely so this component's own layers survive — so a
+   * flag set at `load` is both sufficient and immune to tile traffic.
+   */
+  private styleReady = false;
+
+  /**
+   * Work deferred until the style is ready, keyed so each kind defers once.
+   *
+   * Deferred rather than dropped: returning early is what left a layer ticked and undrawn, and a
+   * place ring outliving the panel that explained it, because the pass being skipped was the one that
+   * *clears*. Work that is dropped leaves the map asserting something the interface no longer says.
    */
   private readonly deferredStyleWork = new Set<string>();
 
@@ -359,6 +372,15 @@ export class Explore {
    * know.
    */
   protected readonly inspectedFeature = signal<HazardFeatureAttributes | null>(null);
+
+  /**
+   * Which catalogue layer the open inspector belongs to.
+   *
+   * Tracked separately because the identify response carries the layer's display name but not its id,
+   * and the id is what `detachHazardLayer` matches on. Without it, switching off any layer dismissed
+   * an inspector that belonged to another one.
+   */
+  private readonly inspectedLayerId = signal<string | null>(null);
 
   protected readonly eventCount = signal<number | null>(null);
   protected readonly loadFailed = signal(false);
@@ -545,7 +567,7 @@ export class Explore {
       const emphasisedSlug = this.cycloneStore.emphasised()?.sourceSlug ?? null;
       const map = this.map;
 
-      if (!map || !map.isStyleLoaded()) {
+      if (!map || !this.styleReady) {
         return;
       }
 
@@ -589,7 +611,7 @@ export class Explore {
       const fix = this.cycloneStore.currentFix();
       const map = this.map;
 
-      if (!map || !map.isStyleLoaded()) {
+      if (!map || !this.styleReady) {
         return;
       }
 
@@ -776,7 +798,7 @@ export class Explore {
   private syncSectionGeometry(): void {
     const map = this.map;
 
-    if (!map || !map.isStyleLoaded()) {
+    if (!map || !this.styleReady) {
       return;
     }
 
@@ -852,7 +874,7 @@ export class Explore {
   ): void {
     const map = this.map;
 
-    if (!map || !map.isStyleLoaded()) {
+    if (!map || !this.styleReady) {
       return;
     }
 
@@ -1004,7 +1026,7 @@ export class Explore {
   private pushRotation(): void {
     const map = this.map;
 
-    if (!map || !map.isStyleLoaded() || !map.getLayer(Explore.cyclonePositionLayerId)) {
+    if (!map || !this.styleReady || !map.getLayer(Explore.cyclonePositionLayerId)) {
       return;
     }
 
@@ -1372,7 +1394,7 @@ export class Explore {
     // Deferred rather than dropped. The pass that empties the source is the one that matters here:
     // skipped, the dashed ring and its centre dot stay on the map with no panel accounting for them,
     // which is a circle asserting an analysis the reader has already dismissed.
-    if (!map.isStyleLoaded()) {
+    if (!this.styleReady) {
       this.deferStyleWork('place-geometry', () => this.syncPlaceGeometry());
 
       return;
@@ -1506,6 +1528,7 @@ export class Explore {
       // `addCycloneLayers` would otherwise cover the moving position during playback, and the
       // position is the one thing that must stay visible while the track animates.
       map.moveLayer(Explore.cyclonePositionLayerId);
+      this.styleReady = true;
       this.ready.set(true);
       this.mapZoom.set(map.getZoom());
 
@@ -2007,13 +2030,12 @@ export class Explore {
       return;
     }
 
-    // A tick made while the style is busy used to be dropped here, and nothing brought it back:
+    // A tick made before the style is ready used to be dropped here, and nothing brought it back:
     // the effect only re-runs when store state changes, so the checkbox stayed on with no layer
-    // drawn until the reader reloaded the page. That is the "I checked it and nothing happened"
-    // bug. The request is now deferred to the next idle — which is the event that guarantees the
-    // style has settled — and re-read from the store at that point rather than captured here, so
-    // several toggles made during a basemap change collapse into one correct pass.
-    if (!map.isStyleLoaded()) {
+    // drawn until the reader reloaded the page. The request is deferred instead. It is keyed on style
+    // readiness alone, not on whether tiles are in flight — waiting for a slow proxied tile is what
+    // made unticking a layer take twenty seconds.
+    if (!this.styleReady) {
       this.deferStyleWork('hazard-layers', () => this.syncHazardLayers(this.layerStore.layers()));
 
       return;
@@ -2043,7 +2065,13 @@ export class Explore {
           : this.attachRasterLayer(map, layer);
 
       this.attachedLayers.set(layer.id, layerIds);
-      this.layerStore.setLoading(layer.id, false);
+
+      // A stored layer is drawn the moment its geometry is in hand, so the wait ends here. A proxied
+      // one has only just begun requesting tiles, and `reportRasterProgress` owns its indicator until
+      // the first tile lands.
+      if (layer.deliveryMode === 'LocalVector') {
+        this.layerStore.setLoading(layer.id, false);
+      }
     } catch {
       this.attachedLayers.delete(layer.id);
       this.layerStore.setFailed(layer.id, true);
@@ -2159,7 +2187,36 @@ export class Explore {
       this.wireRasterInteraction(map, rasterId, layer);
     }
 
+    this.reportRasterProgress(map, sourceId, layer.id);
+
     return [rasterId];
+  }
+
+  /**
+   * Keeps a proxied layer's row in a loading state until its first tile actually arrives.
+   *
+   * The panel used to clear the indicator as soon as the layer was added to the style, which is when
+   * the *request* starts, not when anything is drawn. For MGB's cached layers that is a fifth of a
+   * second and the distinction does not matter; for PHIVOLCS, which renders every tile on demand,
+   * nineteen seconds can pass with a ticked box, an empty map and no indication that anything is
+   * happening. That is indistinguishable from the layer being broken, so the wait is reported.
+   *
+   * Removed on the first `isSourceLoaded` rather than left attached: subsequent pans fetch more tiles,
+   * and a row that flickered into loading on every pan would be noise.
+   */
+  private reportRasterProgress(map: MapLibreMap, sourceId: string, layerId: string): void {
+    this.layerStore.setLoading(layerId, true);
+
+    const onSourceData = (event: { sourceId?: string; isSourceLoaded?: boolean }): void => {
+      if (event.sourceId !== sourceId || !event.isSourceLoaded) {
+        return;
+      }
+
+      this.layerStore.setLoading(layerId, false);
+      map.off('sourcedata', onSourceData);
+    };
+
+    map.on('sourcedata', onSourceData);
   }
 
   private detachHazardLayer(map: MapLibreMap, layerId: string): void {
@@ -2176,7 +2233,14 @@ export class Explore {
     }
 
     this.attachedLayers.delete(layerId);
-    this.inspectedFeature.set(null);
+
+    // Only if the open inspector belongs to *this* layer. Clearing unconditionally would dismiss a
+    // fault's attributes because an unrelated susceptibility layer was switched off.
+    if (this.inspectedLayerId() === layerId) {
+      this.inspectedFeature.set(null);
+      this.inspectedLayerId.set(null);
+      this.clearHighlight();
+    }
   }
 
   /** Click a stored fault to see the publisher's own attributes. */
@@ -2198,6 +2262,7 @@ export class Explore {
 
       // No round trip: for a stored layer the client already holds everything the
       // publisher provided.
+      this.inspectedLayerId.set(layer.id);
       this.inspectedFeature.set({
         layerName: layer.displayName,
         displayValue: (properties['name'] as string | null) ?? null,
@@ -2238,6 +2303,7 @@ export class Explore {
 
         const inspected = features[0] ?? null;
 
+        this.inspectedLayerId.set(inspected === null ? null : layer.id);
         this.inspectedFeature.set(inspected);
 
         // Marks where the reading was taken. On a national polygon fill every part of a class looks
