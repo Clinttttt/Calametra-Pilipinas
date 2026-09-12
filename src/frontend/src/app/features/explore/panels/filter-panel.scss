@@ -66,10 +66,15 @@
   }
 }
 
+/* Selected state follows `.c-segment__option`: accent text on an accent wash with an inset hairline.
+   It was a solid `--accent` fill with `--bg-base` text — and `--bg-base` is not a token in this
+   system, so the declaration was invalid and the label inherited light text onto a white chip,
+   rendering it unreadable. Reusing the primitive's own convention keeps one answer for "selected". */
 .filter__choice--active {
-  color: var(--bg-base);
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--accent);
+  background-color: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--line-accent);
+  border-color: transparent;
 }
 
 .filter__switch {

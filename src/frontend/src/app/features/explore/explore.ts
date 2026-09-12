@@ -254,12 +254,15 @@ export class Explore {
   private readonly attachedLayers = new Map<string, readonly string[]>();
 
   /**
-   * Whether a hazard layer sync is already waiting for the style to settle.
+   * Work deferred until the map style has settled, keyed so each kind defers once.
    *
-   * One deferral at a time. Without the guard, every toggle made during a basemap change would
-   * register its own `idle` handler and they would all run the same pass.
+   * MapLibre rejects source and layer mutations while a style is loading, so every sync in this
+   * component is guarded by `isStyleLoaded`. Returning early on that guard is what caused two
+   * observed faults: a layer ticked mid-load stayed ticked and undrawn, and a place ring survived the
+   * panel that explained it, because the *clearing* pass was the one dropped. Dropping work leaves
+   * the map asserting something the interface is no longer saying, so it is deferred instead.
    */
-  private hazardSyncQueued = false;
+  private readonly deferredStyleWork = new Set<string>();
 
   /**
    * Whether the epicentre markers are drawn.
@@ -1362,7 +1365,16 @@ export class Explore {
   private syncPlaceGeometry(): void {
     const map = this.map;
 
-    if (!map || !map.isStyleLoaded()) {
+    if (!map) {
+      return;
+    }
+
+    // Deferred rather than dropped. The pass that empties the source is the one that matters here:
+    // skipped, the dashed ring and its centre dot stay on the map with no panel accounting for them,
+    // which is a circle asserting an analysis the reader has already dismissed.
+    if (!map.isStyleLoaded()) {
+      this.deferStyleWork('place-geometry', () => this.syncPlaceGeometry());
+
       return;
     }
 
@@ -1908,6 +1920,10 @@ export class Explore {
     // group so that hiding them cannot survive a switch to cyclones and back.
     this.applyEpicentreVisibility(map);
 
+    // Marks belong to a subject. Switching hazard changes the subject, so a ring left pointing at an
+    // earthquake would sit over a storm track explaining nothing.
+    this.clearHighlight();
+
     if (showEarthquakes) {
       // Fetched on first selection and kept thereafter. One request for the whole archive, so
       // re-requesting it on every switch would be wasteful and visibly slower.
@@ -1940,6 +1956,27 @@ export class Explore {
       Explore.epicentreLayerIds,
       this.hazardStore.isEarthquakes() && this.epicentresVisible(),
     );
+  }
+
+  /**
+   * Queues work until the style has settled, at most once per key.
+   *
+   * `idle` rather than `styledata`: it is the event that guarantees the style is loaded *and* the
+   * tiles it needs are in place, and it fires whether the delay came from a basemap change or a
+   * first paint. The action is re-invoked rather than a captured value replayed, so it reads current
+   * state when it finally runs and several changes during one load collapse into one correct pass.
+   */
+  private deferStyleWork(key: string, action: () => void): void {
+    if (this.deferredStyleWork.has(key)) {
+      return;
+    }
+
+    this.deferredStyleWork.add(key);
+
+    this.map?.once('idle', () => {
+      this.deferredStyleWork.delete(key);
+      action();
+    });
   }
 
   /** Sets one hazard's layers visible or hidden, skipping any the style has not registered. */  private static setLayerGroupVisible(
@@ -1977,14 +2014,7 @@ export class Explore {
     // style has settled — and re-read from the store at that point rather than captured here, so
     // several toggles made during a basemap change collapse into one correct pass.
     if (!map.isStyleLoaded()) {
-      if (!this.hazardSyncQueued) {
-        this.hazardSyncQueued = true;
-
-        map.once('idle', () => {
-          this.hazardSyncQueued = false;
-          void this.syncHazardLayers(this.layerStore.layers());
-        });
-      }
+      this.deferStyleWork('hazard-layers', () => this.syncHazardLayers(this.layerStore.layers()));
 
       return;
     }

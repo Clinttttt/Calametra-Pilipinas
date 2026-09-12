@@ -118,6 +118,18 @@ export class PlacePanel {
     this.store.loadMoreEvents();
   }
 
+  /**
+   * A date for the dense list, as ISO.
+   *
+   * Deliberately different from `formatDate`, which writes prose dates for the summary cards. In a
+   * column of 150 rows the value being scanned is the ordering, and `2026-08-25` is fixed-width in
+   * the monospaced face where "Aug 25, 2026" is not — the ragged form is what pushed the row onto
+   * three lines. It is also the form the catalogue itself uses.
+   */
+  protected formatListDate(iso: string): string {
+    return iso.slice(0, 10);
+  }
+
   protected back(): void {
     this.store.clearSelection();
   }

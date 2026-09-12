@@ -210,7 +210,7 @@
                         {{ event.magnitude?.display ?? '—' }}
                       </span>
                       <span class="catalogue__meta">
-                        <span class="catalogue__date">{{ formatDate(event.occurredAt) }}</span>
+                        <span class="catalogue__date">{{ formatListDate(event.occurredAt) }}</span>
                         <!-- Depth carries its own qualification, because a third of these were
                              assigned by the agency rather than measured. -->
                         <span class="catalogue__depth">{{ event.depth.display }}</span>

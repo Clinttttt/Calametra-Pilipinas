@@ -65,11 +65,15 @@
 
 .catalogue__locate {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
+  /* Four columns, each sized to its content: magnitude, date, depth, agency. It was three columns
+     with the date and depth stacked in the middle one, which at this panel width wrapped "Aug 25,
+     2026" onto three lines and made a scannable list unreadable. Dates and depths are the columns a
+     reader runs their eye down, so they get fixed widths and never wrap. */
+  grid-template-columns: 3.25rem 5.5rem minmax(0, 1fr) minmax(0, auto);
+  align-items: baseline;
   gap: var(--space-2);
   width: 100%;
-  padding: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
@@ -84,10 +88,14 @@
   }
 }
 
+.catalogue__date,
+.catalogue__depth,
+.catalogue__magnitude {
+  white-space: nowrap;
+}
+
 .catalogue__meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+  display: contents;
 }
 
 .catalogue__more {
