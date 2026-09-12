@@ -88,6 +88,16 @@
           <button
             class="c-tool"
             type="button"
+            [attr.aria-expanded]="openTool() === 'filter'"
+            title="Filter the archive"
+            (click)="toggleTool('filter')"
+          >
+            <cal-icon name="filter" [size]="19" label="Filter the archive" />
+          </button>
+
+          <button
+            class="c-tool"
+            type="button"
             [attr.aria-expanded]="sectionActive()"
             title="Depth cross-section"
             (click)="toggleCrossSection()"
@@ -182,6 +192,11 @@
   }
 
   <!-- Hazard layer controls, grouped by lens. -->
+  <!-- Filter panel. Bounds on the archive, distinct from the Time Machine's scrub. -->
+  @if (earthquakesActive() && openTool() === 'filter') {
+    <cal-filter-panel (changed)="onFilterChanged()" (closed)="closeTool()" />
+  }
+
   @if (hasHazardLayers() && openTool() === 'layers') {
     <div class="explore__side-panel">
       <cal-layers-panel [(epicentresVisible)]="epicentresVisible" (closed)="closeTool()" />

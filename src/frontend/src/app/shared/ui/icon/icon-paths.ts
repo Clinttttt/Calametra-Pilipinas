@@ -70,6 +70,7 @@ export type IconName =
   | 'collapse'
   | 'download'
   | 'legend'
+  | 'filter'
   | 'info'
   | 'caution'
   // Interface theme
@@ -262,6 +263,16 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
 
   /** Legend / key. */
   legend: ['M4.5 7h3M4.5 12h3M4.5 17h3', 'M11 7h8.5M11 12h8.5M11 17h8.5'],
+
+  // Three sliders rather than the conventional funnel. A funnel says "narrow this down"; these
+  // controls set bounds on three named quantities — time, magnitude, depth — and the handles say
+  // that the bounds are adjustable rather than a fixed sieve.
+  filter: [
+    'M4 7.5h6M14 7.5h6',
+    'M4 12h10M18 12h2',
+    'M4 16.5h3M11 16.5h9',
+    'M12 5.5v4M16 10v4M9 14.5v4',
+  ],
 
   info: ['M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Z', 'M12 11v5.5', 'M12 7.75h.01'],
 

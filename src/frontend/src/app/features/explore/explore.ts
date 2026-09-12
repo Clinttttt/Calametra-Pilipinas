@@ -51,6 +51,8 @@ import {
   faultWidthMultiplierExpression,
 } from '../../core/visual/fault-style';
 import { HIGHLIGHT_COLOUR } from '../../core/visual/highlight-style';
+import { EarthquakeFilterStore } from '../../core/earthquakes/earthquake-filter-store';
+import { FilterPanel } from './panels/filter-panel';
 import { firstValueFrom } from 'rxjs';
 import { toEarthquakeGeoJson } from '../../core/visual/earthquake-geojson';
 import { toCycloneGeoJson } from '../../core/visual/cyclone-track';
@@ -67,6 +69,7 @@ import {
   type PlaceEvent,
   type PlaceMatch,
   type SimilarEarthquake,
+  DEPTH_QUALITY,
 } from '../../core/api/contracts';
 import { type IconName } from '../../shared/ui/icon/icon-paths';
 
@@ -97,7 +100,7 @@ interface SectionFeature {
 }
 
 /** Which tool panel is open, if any. Only one at a time. */
-type OpenTool = 'hazards' | 'timeline' | 'legend' | 'layers' | null;
+type OpenTool = 'hazards' | 'timeline' | 'legend' | 'layers' | 'filter' | null;
 
 /**
  * The main interactive map.
@@ -128,6 +131,7 @@ type OpenTool = 'hazards' | 'timeline' | 'legend' | 'layers' | null;
     EventComparison,
     EventDetail,
     LayersPanel,
+    FilterPanel,
     Timeline,
     CrossSectionPlot,
     SimilarEvents,
@@ -217,10 +221,12 @@ export class Explore {
   ] as const;
 
   /**
-   * The magnitude the map opens on. Shared with the Time Machine's "M6.0+ only" control so the two
-   * cannot describe different thresholds.
+   * The magnitude the map opens on.
+   *
+   * Defined by <see cref="EarthquakeFilterStore"/>, which owns the floor, and re-exported here only
+   * because the template's opening readout needs it. Two constants would eventually differ.
    */
-  private static readonly openingMagnitudeFloor = 6;
+  private static readonly openingMagnitudeFloor = EarthquakeFilterStore.openingMagnitudeFloor;
 
   private readonly config = inject(APP_CONFIG);
   private readonly destroyRef = inject(DestroyRef);
@@ -270,7 +276,12 @@ export class Explore {
    * Kept so the visible count can be recomputed without re-querying the map or the
    * API as the filters move.
    */
-  private loadedEvents: { epochMs: number; magnitude: number | null }[] = [];
+  private loadedEvents: {
+    epochMs: number;
+    magnitude: number | null;
+    depthKm: number | null;
+    depthMeasured: boolean;
+  }[] = [];
 
   protected readonly ready = signal(false);
   protected readonly cameraMode = signal<CameraMode>('top');
@@ -382,10 +393,28 @@ export class Explore {
    * The full catalogue is one click away and the readout states the floor in place, so nothing is
    * hidden — the default states a premise instead of dumping a population.
    */
-  private readonly magnitudeFloor = signal<number | null>(Explore.openingMagnitudeFloor);
+  /**
+   * The reader's own filter over the archive, beyond the timeline's scrub and floor.
+   *
+   * Held in a root store rather than here because the panel that sets it is created and destroyed
+   * with the rail: component state would reset every time the panel was reopened. Read by
+   * <see cref="applyFilters"/>, which is already the single place where the map's GPU-side predicate
+   * is assembled, so this adds dimensions to an existing mechanism rather than a second one.
+   */
+  protected readonly filterStore = inject(EarthquakeFilterStore);
+
+  /**
+   * The active magnitude floor, owned by the filter store rather than by this component.
+   *
+   * The Time Machine's "M6.0+" control and the filter panel's magnitude row set the same field, and
+   * two owners of one field is how a filter starts disagreeing with the count beside it — tick M6.0+
+   * on the timeline, choose "Any" in the panel, and a component-local floor would leave the map
+   * filtered while the panel said otherwise. One signal, two ways in.
+   */
+  private readonly magnitudeFloor = this.filterStore.minMagnitude;
 
   /** Read-only views for the template and the Time Machine, so only this component mutates them. */
-  protected readonly activeMagnitudeFloor = this.magnitudeFloor.asReadonly();
+  protected readonly activeMagnitudeFloor = this.magnitudeFloor;
   protected readonly activeInstantMs = this.timeInstantMs.asReadonly();
 
   /**
@@ -398,9 +427,37 @@ export class Explore {
    */
   protected readonly floorLabel = computed(() => {
     const floor = this.magnitudeFloor();
+    const magnitude = floor === null ? 'M4.0+' : `M${floor.toFixed(1)}+`;
 
-    return floor === null ? 'M4.0+ · 1901–2026' : `M${floor.toFixed(1)}+ · 1901–2026`;
+    // The span has to follow the window, not restate the archive's extent. Left as "1901–2026" while
+    // a window was applied, this line would assert a span the map is not showing — the same class of
+    // error as presenting a filtered count as a total.
+    const fromMs = this.filterStore.fromMs();
+    const toMs = this.filterStore.toMs();
+
+    if (fromMs === null && toMs === null) {
+      return `${magnitude} · 1901–2026`;
+    }
+
+    const from = fromMs === null ? '1901' : Explore.formatWindowEdge(fromMs);
+    const to = toMs === null ? 'now' : Explore.formatWindowEdge(toMs);
+
+    return `${magnitude} · ${from}–${to}`;
   });
+
+  /**
+   * A window edge, to the month.
+   *
+   * To the month rather than the day because the readout sits beside a five-digit count and has to
+   * stay one line; the exact bounds are visible in the panel that set them.
+   */
+  private static formatWindowEdge(epochMs: number): string {
+    return new Date(epochMs).toLocaleDateString('en-GB', {
+      timeZone: 'UTC',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
 
   protected readonly cameraOptions: readonly CameraOption[] = [
     { mode: 'top', label: 'Plan', icon: 'camera-top', pitch: 0, terrain: false },
@@ -1719,6 +1776,10 @@ export class Explore {
       this.loadedEvents = archive.points.map((point) => ({
         epochMs: point.t,
         magnitude: point.m,
+        depthKm: point.d,
+        // Same test the GeoJSON builder applies, so the count and the map agree on what "measured"
+        // means rather than each deciding for itself.
+        depthMeasured: point.q === DEPTH_QUALITY.measured,
       }));
 
       this.eventCount.set(archive.count);
@@ -2162,17 +2223,49 @@ export class Explore {
     }
 
     const instantMs = this.timeInstantMs();
-    const magnitudeFloor = this.magnitudeFloor();
+    const filter = this.filterStore.filter();
     const clauses: unknown[] = [];
 
     if (instantMs !== null) {
       clauses.push(['<=', ['get', 'epochMs'], instantMs]);
     }
 
-    if (magnitudeFloor !== null) {
-      // Events with no reported magnitude are excluded rather than treated as zero:
-      // an unmeasured magnitude is not evidence of a small earthquake.
-      clauses.push(['>=', ['coalesce', ['get', 'magnitude'], -1], magnitudeFloor]);
+    // The reader's window. Both edges are applied, and the upper edge coexists with the scrubber's
+    // instant rather than replacing it — two upper bounds intersect, which is what a reader
+    // scrubbing inside a chosen window expects.
+    if (filter.fromMs !== null) {
+      clauses.push(['>=', ['get', 'epochMs'], filter.fromMs]);
+    }
+
+    if (filter.toMs !== null) {
+      clauses.push(['<=', ['get', 'epochMs'], filter.toMs]);
+    }
+
+    // Events with no reported magnitude are excluded from a magnitude bound rather than treated as
+    // zero: an unmeasured magnitude is not evidence of a small earthquake.
+    if (filter.minMagnitude !== null) {
+      clauses.push(['>=', ['coalesce', ['get', 'magnitude'], -1], filter.minMagnitude]);
+    }
+
+    if (filter.maxMagnitude !== null) {
+      clauses.push(['<=', ['coalesce', ['get', 'magnitude'], 99], filter.maxMagnitude]);
+    }
+
+    // Depth bounds use the same convention: an event with no depth at all is outside any depth
+    // range rather than at its surface.
+    if (filter.minDepthKm !== null) {
+      clauses.push(['>=', ['coalesce', ['get', 'depthKm'], -1], filter.minDepthKm]);
+    }
+
+    if (filter.maxDepthKm !== null) {
+      clauses.push(['<=', ['coalesce', ['get', 'depthKm'], 9999], filter.maxDepthKm]);
+    }
+
+    if (!filter.includeAssignedDepth) {
+      // 43% of the archive carries a depth the agency assigned rather than measured. Left in by
+      // default and disclosed; taken out only when the reader asks, because a fixed 33 km is not a
+      // measurement and a depth study should be able to exclude it.
+      clauses.push(['coalesce', ['get', 'depthMeasured'], false]);
     }
 
     const baseFilter = clauses.length === 0 ? null : ['all', ...clauses];
@@ -2200,9 +2293,9 @@ export class Explore {
 
   private recountVisible(): void {
     const instantMs = this.timeInstantMs();
-    const magnitudeFloor = this.magnitudeFloor();
+    const filter = this.filterStore.filter();
 
-    if (instantMs === null && magnitudeFloor === null) {
+    if (instantMs === null && !this.filterStore.isFiltered()) {
       this.visibleCount.set(null);
 
       return;
@@ -2211,11 +2304,21 @@ export class Explore {
     // Counted from the loaded event list rather than from rendered features:
     // queryRenderedFeatures only sees the current viewport, which would make the
     // count change as the user pans.
+    //
+    // The predicate deliberately mirrors the paint filter clause for clause, including the
+    // treatment of an absent magnitude or depth. A count that disagreed with the map would be worse
+    // than no count: the figure in the corner is what a reader quotes.
     this.visibleCount.set(
       this.loadedEvents.filter(
         (event) =>
-          (instantMs === null || event.epochMs <= instantMs) &&
-          (magnitudeFloor === null || (event.magnitude ?? -1) >= magnitudeFloor),
+          (instantMs === null || event.epochMs <= instantMs)
+          && (filter.fromMs === null || event.epochMs >= filter.fromMs)
+          && (filter.toMs === null || event.epochMs <= filter.toMs)
+          && (filter.minMagnitude === null || (event.magnitude ?? -1) >= filter.minMagnitude)
+          && (filter.maxMagnitude === null || (event.magnitude ?? 99) <= filter.maxMagnitude)
+          && (filter.minDepthKm === null || (event.depthKm ?? -1) >= filter.minDepthKm)
+          && (filter.maxDepthKm === null || (event.depthKm ?? 9999) <= filter.maxDepthKm)
+          && (filter.includeAssignedDepth || event.depthMeasured),
       ).length,
     );
   }
@@ -2225,10 +2328,21 @@ export class Explore {
     this.applyFilters();
   }
 
-  protected onMagnitudeFloorChanged(floor: number | null): void {
-    this.magnitudeFloor.set(floor);
+  /**
+   * Re-applies the map's predicate after the filter panel changes a bound.
+   *
+   * An explicit call rather than an effect on the store, matching how the Time Machine's own changes
+   * arrive. The predicate is assembled in one place and pushed; nothing watches the store, so there
+   * is no second route by which the map and the count could fall out of step.
+   */
+  protected onFilterChanged(): void {
     this.applyFilters();
   }
+
+  protected onMagnitudeFloorChanged(floor: number | null): void {
+    // Written to the store, not to a local signal: the filter panel reads the same field.
+    this.filterStore.setMagnitudeRange(floor, this.filterStore.maxMagnitude());
+    this.applyFilters();  }
 
   // ---- Selection ----------------------------------------------------------
 

@@ -1,0 +1,105 @@
+<aside class="filter" aria-label="Filter the earthquake archive">
+  <header class="filter__header">
+    <span class="c-label">Filter</span>
+    <button class="c-icon-button" type="button" (click)="close()">
+      <cal-icon name="close" [size]="14" label="Close the filter panel" />
+    </button>
+  </header>
+
+  <div class="filter__body">
+    <section class="filter__group">
+      <span class="c-label">Time</span>
+      <div class="filter__choices" role="group" aria-label="Time window">
+        @for (option of presets; track option.id) {
+          <button
+            class="filter__choice"
+            type="button"
+            [class.filter__choice--active]="preset() === option.id"
+            [attr.aria-pressed]="preset() === option.id"
+            (click)="applyPreset(option.id)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+      <!-- Stated because the archive ends where the catalogue does, not today: a reader choosing
+           "this month" on a quiet month should know an empty map is a real answer. -->
+      <p class="filter__note">Windows run to the present. The catalogue itself spans 1901–2026.</p>
+    </section>
+
+    <section class="filter__group">
+      <span class="c-label">Magnitude</span>
+      <div class="filter__choices" role="group" aria-label="Minimum magnitude">
+        @for (floor of magnitudeFloors; track floor) {
+          <button
+            class="filter__choice"
+            type="button"
+            [class.filter__choice--active]="minMagnitude() === floor"
+            [attr.aria-pressed]="minMagnitude() === floor"
+            (click)="setMagnitudeFloor(floor)"
+          >
+            {{ magnitudeLabel(floor) }}
+          </button>
+        }
+      </div>
+      <p class="filter__note">
+        The catalogue holds effectively nothing below M4.0 anywhere in the archipelago. Only M6.0+ is
+        comparable between eras.
+      </p>
+    </section>
+
+    <section class="filter__group">
+      <span class="c-label">Depth</span>
+      <div class="filter__choices" role="group" aria-label="Depth band">
+        @for (band of depthBands; track band.label; let i = $index) {
+          <button
+            class="filter__choice"
+            type="button"
+            [class.filter__choice--active]="activeDepthBand() === i"
+            [attr.aria-pressed]="activeDepthBand() === i"
+            (click)="setDepthBand(i)"
+          >
+            {{ band.label }}
+          </button>
+        }
+      </div>
+
+      <button
+        class="filter__switch"
+        type="button"
+        [attr.aria-pressed]="!includeAssignedDepth()"
+        (click)="toggleAssignedDepth()"
+      >
+        <span class="filter__indicator" aria-hidden="true">
+          @if (!includeAssignedDepth()) {
+            <svg viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <path
+                d="M2 5.2 4 7.2 8 3"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          }
+        </span>
+        <span>Hide agency-assigned depths</span>
+      </button>
+      <!-- The caution hue, because this one is a data-quality caveat rather than a preference. -->
+      <p class="filter__note filter__note--caution">
+        <cal-icon name="caution" [size]="13" />
+        <span>
+          43% of the archive carries a depth the agency assigned rather than measured — a fixed 33,
+          10, 35 or 15 km standing in for a value that could not be resolved. Those mark that an
+          earthquake occurred, not how deep it was.
+        </span>
+      </p>
+    </section>
+
+    @if (isFiltered()) {
+      <button class="c-button c-button--quiet filter__clear" type="button" (click)="clear()">
+        Show the whole archive
+      </button>
+    }
+  </div>
+</aside>
