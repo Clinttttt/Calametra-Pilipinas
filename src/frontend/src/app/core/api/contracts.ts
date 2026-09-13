@@ -209,6 +209,16 @@ export interface EarthquakeQuery {
   readonly centreLatitude?: number;
   readonly centreLongitude?: number;
   readonly radiusKm?: number;
+
+  /**
+   * How the page is ordered.
+   *
+   * `Strongest` requires `scaleFamily`: the archive is 92.8% body-wave with nearly every large event
+   * reported as moment magnitude, so ranking a mixed list by magnitude value would order events on a
+   * difference that belongs to the scale rather than to the earthquake. The server refuses the
+   * combination rather than serving it.
+   */
+  readonly sort?: 'Newest' | 'Oldest' | 'Strongest';
   readonly page?: number;
   readonly pageSize?: number;
 }

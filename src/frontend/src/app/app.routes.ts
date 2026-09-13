@@ -14,6 +14,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/explore/explore').then((m) => m.Explore),
   },
   {
+    path: 'events',
+    title: 'Earthquake catalogue · Calametra Pilipinas',
+    loadComponent: () => import('./features/events/events').then((m) => m.Events),
+  },
+  {
     path: 'stories',
     title: 'Stories · Calametra Pilipinas',
     loadComponent: () => import('./features/story/story').then((m) => m.StoryView),

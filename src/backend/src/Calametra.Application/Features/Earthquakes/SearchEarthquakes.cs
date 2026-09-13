@@ -62,6 +62,31 @@ public static class SearchEarthquakes
         public int Page { get; init; } = 1;
 
         public int PageSize { get; init; } = 100;
+
+        /// <summary>How the page is ordered.</summary>
+        public EarthquakeSort Sort { get; init; } = EarthquakeSort.Newest;
+    }
+
+    /// <summary>
+    /// Orderings a caller may ask for.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Strongest"/> is constrained rather than free: ranking a mixed list by magnitude
+    /// value would place a body-wave reading above a moment reading on a difference that is an
+    /// artefact of the scale, and the catalogue is 92.8% <c>mb</c> with nearly every large event
+    /// reported as <c>mww</c>. So it requires <see cref="Query.ScaleFamily"/>, and the validator
+    /// refuses the combination rather than serving a ranking the platform elsewhere says is invalid.
+    /// </remarks>
+    public enum EarthquakeSort
+    {
+        /// <summary>Most recent first. The default, and always valid.</summary>
+        Newest = 0,
+
+        /// <summary>Earliest first, for reading the record forward.</summary>
+        Oldest = 1,
+
+        /// <summary>Largest magnitude first, within one scale family.</summary>
+        Strongest = 2,
     }
 
     public sealed class Validator : AbstractValidator<Query>
@@ -69,6 +94,17 @@ public static class SearchEarthquakes
         public Validator()
         {
             RuleFor(query => query.Page).GreaterThan(0);
+
+            // Refused rather than quietly reinterpreted. Ranking by magnitude across scale families
+            // compares body-wave against moment readings, which `MagnitudeType.IsComparableWith`
+            // refuses everywhere else in this codebase; serving it here would make the API the one
+            // place the rule does not hold.
+            RuleFor(query => query.ScaleFamily)
+                .NotNull()
+                .When(query => query.Sort == EarthquakeSort.Strongest)
+                .WithMessage(
+                    "Ordering by magnitude requires a scale family: the catalogue mixes body-wave and "
+                    + "moment magnitudes, which are not comparable quantities.");
 
             RuleFor(query => query.PageSize)
                 .InclusiveBetween(1, 1_000)
@@ -183,8 +219,22 @@ public static class SearchEarthquakes
                     PaginatedList<EarthquakeSummaryResponse>.Empty(request.Page, request.PageSize));
             }
 
-            var rows = await query
-                .OrderByDescending(row => row.HazardEvent.CanonicalOccurredAt)
+            // Ordered in SQL rather than after paging, which would sort one page of a hundred rather
+            // than the archive. The secondary key is time in every case, so a page boundary cannot
+            // reorder events that share a magnitude.
+            var ordered = request.Sort switch
+            {
+                EarthquakeSort.Oldest => query.OrderBy(row => row.HazardEvent.CanonicalOccurredAt),
+                EarthquakeSort.Strongest => query
+                    // Events with no reported magnitude sort last rather than first: an unmeasured
+                    // magnitude is not evidence of a small earthquake, but it is not a ranking either.
+                    .OrderByDescending(row => row.Observation.MagnitudeValue != null)
+                    .ThenByDescending(row => row.Observation.MagnitudeValue)
+                    .ThenByDescending(row => row.HazardEvent.CanonicalOccurredAt),
+                _ => query.OrderByDescending(row => row.HazardEvent.CanonicalOccurredAt),
+            };
+
+            var rows = await ordered
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .Select(row => new

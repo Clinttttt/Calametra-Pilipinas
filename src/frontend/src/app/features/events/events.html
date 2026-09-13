@@ -1,0 +1,173 @@
+<section class="events" aria-labelledby="events-title">
+  <header class="events__head">
+    <div>
+      <h1 class="events__title" id="events-title">Earthquake catalogue</h1>
+      <!-- The count states its own catalogue and floor. A bare "27,242" would read as every
+           earthquake that happened here, which is false: the USGS record holds effectively nothing
+           below magnitude 4.0 anywhere in the archipelago. -->
+      <p class="events__lede">
+        {{ total() | number }} readings from the USGS catalogue, 1901–2026. Each row is one agency's
+        reading of one earthquake, with the scale it was measured on.
+      </p>
+    </div>
+  </header>
+
+  <div class="events__controls">
+    <div class="control">
+      <span class="c-label">Order</span>
+      <div class="control__choices" role="group" aria-label="Order">
+        @for (option of sorts; track option.id) {
+          <button
+            class="control__choice"
+            type="button"
+            [class.control__choice--active]="sort() === option.id"
+            [attr.aria-pressed]="sort() === option.id"
+            (click)="setSort(option.id)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="control">
+      <span class="c-label">Magnitude scale</span>
+      <div class="control__choices" role="group" aria-label="Magnitude scale family">
+        <button
+          class="control__choice"
+          type="button"
+          [class.control__choice--active]="family() === null"
+          [attr.aria-pressed]="family() === null"
+          (click)="setFamily(null)"
+        >
+          All scales
+        </button>
+        @for (option of families; track option.id) {
+          <button
+            class="control__choice"
+            type="button"
+            [class.control__choice--active]="family() === option.id"
+            [attr.aria-pressed]="family() === option.id"
+            (click)="setFamily(option.id)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="control">
+      <span class="c-label">Minimum magnitude</span>
+      <div class="control__choices" role="group" aria-label="Minimum magnitude">
+        @for (floor of [null, 5, 6, 7]; track floor) {
+          <button
+            class="control__choice"
+            type="button"
+            [class.control__choice--active]="minMagnitude() === floor"
+            [attr.aria-pressed]="minMagnitude() === floor"
+            (click)="setMinMagnitude(floor)"
+          >
+            {{ floor === null ? 'Any' : 'M' + floor + '.0+' }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (sort() === 'Strongest') {
+    <!-- Stated rather than silently applied: the ranking is only valid inside one family, so
+         choosing it narrowed the list. -->
+    <p class="events__note events__note--caution">
+      <cal-icon name="caution" [size]="13" />
+      <span>
+        Ranked within one scale family. Body-wave and moment magnitudes are different quantities, so a
+        ranking across both would order events on a property of the scale rather than of the
+        earthquake.
+      </span>
+    </p>
+  }
+
+  <div class="events__table-wrap">
+    <table class="table">
+      <caption class="table__caption">
+        @if (total() > 0) {
+          Showing {{ firstRow() | number }}–{{ lastRow() | number }} of {{ total() | number }}
+        } @else if (!loading()) {
+          No readings match these filters
+        }
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Time (UTC)</th>
+          <th scope="col">Magnitude</th>
+          <th scope="col">Depth</th>
+          <th scope="col">Epicentre</th>
+          <th scope="col">Reported by</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr>
+            <td class="table__figure">{{ formatDate(row.occurredAt) }}</td>
+            <td class="table__figure table__muted">{{ formatTime(row.occurredAt) }}</td>
+            <td class="table__figure">
+              {{ row.magnitude?.display ?? '—' }}
+              @if (row.hasMagnitudeDisagreement) {
+                <!-- More than one agency reported this event and they do not agree, or reported on
+                     scales that cannot be compared. -->
+                <span class="table__flag" title="Agencies disagree on this magnitude">±</span>
+              }
+            </td>
+            <td class="table__figure">
+              {{ row.depth.display }}
+              @if (!row.depth.isMeasured) {
+                <span class="table__flag table__flag--caution" title="Depth assigned by the agency, not measured">
+                  ⚑
+                </span>
+              }
+            </td>
+            <td class="table__figure table__muted">{{ coordinates(row) }}</td>
+            <td class="table__muted">{{ row.sourceAgency }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (loading()) {
+      <p class="events__note">Loading…</p>
+    } @else if (failed()) {
+      <p class="events__note events__note--caution">
+        <cal-icon name="caution" [size]="13" />
+        <span>The archive could not be read. <button class="c-button c-button--quiet" type="button" (click)="load()">Try again</button></span>
+      </p>
+    }
+  </div>
+
+  <!-- The two qualifications that apply to every row, stated once beneath the table rather than
+       repeated per row. -->
+  <ul class="events__legend">
+    <li><span class="table__flag table__flag--caution">⚑</span> Depth assigned by the agency rather than measured — 43% of the archive. It marks that an earthquake occurred, not how deep it was.</li>
+    <li><span class="table__flag">±</span> More than one agency reported this event, and the readings differ or sit on scales that cannot be compared.</li>
+  </ul>
+
+  <nav class="pager" aria-label="Pages">
+    <button
+      class="c-button c-button--quiet"
+      type="button"
+      [disabled]="page() <= 1 || loading()"
+      (click)="goToPage(page() - 1)"
+    >
+      Previous
+    </button>
+    <span class="pager__position">Page {{ page() | number }} of {{ lastPage() | number }}</span>
+    <button
+      class="c-button c-button--quiet"
+      type="button"
+      [disabled]="page() >= lastPage() || loading()"
+      (click)="goToPage(page() + 1)"
+    >
+      Next
+    </button>
+  </nav>
+</section>

@@ -31,7 +31,8 @@ internal static class SearchEarthquakesEndpoint
                 double? centreLongitude = null,
                 double? radiusKm = null,
                 int page = 1,
-                int pageSize = 100) =>
+                int pageSize = 100,
+                SearchEarthquakes.EarthquakeSort sort = SearchEarthquakes.EarthquakeSort.Newest) =>
             {
                 var query = new SearchEarthquakes.Query
                 {
@@ -48,6 +49,7 @@ internal static class SearchEarthquakesEndpoint
                     RadiusKm = radiusKm,
                     Page = page,
                     PageSize = pageSize,
+                    Sort = sort,
                 };
 
                 var result = await dispatcher.Send(query, cancellationToken);

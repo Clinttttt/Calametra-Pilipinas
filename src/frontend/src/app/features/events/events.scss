@@ -1,0 +1,164 @@
+/* ── EARTHQUAKE CATALOGUE ─────────────────────────────────────────────────
+   A reading view rather than a map view. Wide measure, dense rows, figures monospaced so a column of
+   them aligns — the point of this page is that a reader can scan it. */
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  max-width: 76rem;
+  margin: 0 auto;
+}
+
+.events__title {
+  margin: 0;
+  font-size: var(--text-title);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.events__lede,
+.events__note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  max-inline-size: 60ch;
+}
+
+.events__note--caution {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  color: var(--caution);
+}
+
+.events__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-block: 1px solid var(--line-faint);
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.control__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* Same selected state as the filter panel and `.c-segment__option`: accent text on an accent wash.
+   One answer to "selected" across the interface. */
+.control__choice {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-micro);
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--text-primary);
+  }
+}
+
+.control__choice--active {
+  color: var(--accent);
+  background-color: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--line-accent);
+  border-color: transparent;
+}
+
+.events__table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.table__caption {
+  text-align: left;
+  padding-bottom: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--space-2);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--line-subtle);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--line-faint);
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-raised);
+}
+
+.table__figure {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.table__muted {
+  color: var(--text-tertiary);
+}
+
+/* A mark, not a colour-coded cell: the row's meaning must survive being read in greyscale, and hue
+   in this system belongs to depth. */
+.table__flag {
+  margin-left: var(--space-1);
+  color: var(--text-tertiary);
+  cursor: help;
+}
+
+.table__flag--caution {
+  color: var(--caution);
+}
+
+.events__legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: 70ch;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pager__position {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
