@@ -193,8 +193,31 @@ export interface PaginatedList<T> {
   readonly hasNextPage: boolean;
 }
 
-/** Query parameters for the earthquake archive search. */
-export interface EarthquakeQuery {
+/** One decade of the catalogue's own history. */
+export interface DecadeSummary {
+  readonly decade: number;
+  readonly totalCount: number;
+  readonly comparableCount: number;
+
+  /** The era-comparable rate. This is the series to read across decades; the total is not. */
+  readonly comparablePerYear: number;
+
+  readonly assignedDepthCount: number;
+  readonly assignedDepthShare: number;
+  readonly dominantScale: string | null;
+  readonly strongestMagnitude: number | null;
+  readonly strongestScale: string | null;
+}
+
+/** How complete the catalogue is, decade by decade. */
+export interface CatalogueCompleteness {
+  readonly decades: readonly DecadeSummary[];
+  readonly comparableMagnitudeFloor: number;
+  readonly totalCount: number;
+  readonly observedAt: string;
+}
+
+/** Query parameters for the earthquake archive search. */export interface EarthquakeQuery {
   readonly from?: string;
   readonly to?: string;
   readonly minMagnitude?: number;

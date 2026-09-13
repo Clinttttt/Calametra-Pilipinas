@@ -7,6 +7,7 @@ import {
   type CycloneSummary,
   type CycloneTrack,
   type DataSourceCredit,
+  type CatalogueCompleteness,
   type EarthquakeActivity,
   type EarthquakeComparison,
   type EarthquakeDetail,
@@ -93,6 +94,17 @@ export class CalametraApi {
    */
   getEarthquakeActivity(): Observable<EarthquakeActivity> {
     return this.http.get<EarthquakeActivity>('/api/earthquakes/activity');
+  }
+
+  /**
+   * How complete the catalogue is, decade by decade.
+   *
+   * Both series arrive together — the total and the magnitude-6 rate — because the rise in the total
+   * is instrumentation rather than seismicity, and rendering it without the rate that explains it is
+   * the misreading this platform exists to prevent.
+   */
+  getCatalogueCompleteness(): Observable<CatalogueCompleteness> {
+    return this.http.get<CatalogueCompleteness>('/api/earthquakes/completeness');
   }
 
   /**

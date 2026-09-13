@@ -1,0 +1,168 @@
+<section class="time" aria-labelledby="time-title">
+  <header>
+    <h1 class="time__title" id="time-title">The record, decade by decade</h1>
+    <p class="time__lede">
+      The archive holds more earthquakes every decade. That is a record of how many seismometers were
+      running, not of how often the ground moved — and the way to see it is to read the two series
+      below against each other.
+    </p>
+  </header>
+
+  @if (failed()) {
+    <p class="time__note time__note--caution">
+      <cal-icon name="caution" [size]="13" />
+      <span>
+        The catalogue summary could not be read.
+        <button class="c-button c-button--quiet" type="button" (click)="load()">Try again</button>
+      </span>
+    </p>
+  } @else if (loading()) {
+    <p class="time__note">Reading the archive…</p>
+  } @else if (growth(); as growth) {
+    <!-- The claim, computed. Both figures come from the same query as the bars, so the sentence
+         cannot drift from the data underneath it. -->
+    <p class="time__claim">
+      From the {{ growth.firstDecade }}s to the {{ growth.lastDecade }}s the catalogue grew
+      @if (growth.totalFactor !== null) {
+        <strong>{{ growth.totalFactor | number }}-fold</strong>
+      } @else {
+        <strong>enormously</strong>
+      }
+      — while the rate of magnitude {{ data()?.comparableMagnitudeFloor }} and above went from
+      <strong>{{ growth.firstRate }}</strong> to <strong>{{ growth.lastRate }}</strong> per year.
+      Large earthquakes were always detected. Small ones only became detectable.
+    </p>
+
+    <div class="series" role="group" aria-label="Series">
+      <button
+        class="series__choice"
+        type="button"
+        [class.series__choice--active]="series() === 'total'"
+        [attr.aria-pressed]="series() === 'total'"
+        (click)="setSeries('total')"
+      >
+        Every reading
+      </button>
+      <button
+        class="series__choice"
+        type="button"
+        [class.series__choice--active]="series() === 'comparable'"
+        [attr.aria-pressed]="series() === 'comparable'"
+        (click)="setSeries('comparable')"
+      >
+        M{{ data()?.comparableMagnitudeFloor }}+ per year
+      </button>
+    </div>
+
+    <div class="chart">
+      @for (decade of decades(); track decade.decade) {
+        <div class="chart__column">
+          <span class="chart__value">
+            @if (series() === 'total') {
+              {{ decade.totalCount | number }}
+            } @else {
+              {{ decade.comparablePerYear }}
+            }
+          </span>
+          <div
+            class="chart__bar"
+            [style.height.%]="barHeight(decade)"
+            [class.chart__bar--comparable]="series() === 'comparable'"
+            role="img"
+            [attr.aria-label]="
+              label(decade) +
+              ': ' +
+              decade.totalCount +
+              ' readings, ' +
+              decade.comparablePerYear +
+              ' at magnitude ' +
+              data()?.comparableMagnitudeFloor +
+              ' and above per year'
+            "
+          ></div>
+          <span class="chart__label">{{ label(decade) }}</span>
+        </div>
+      }
+    </div>
+
+    @if (series() === 'total') {
+      <p class="time__note time__note--caution">
+        <cal-icon name="caution" [size]="13" />
+        <span>
+          These bars are not comparable with each other. Switch to M{{ data()?.comparableMagnitudeFloor }}+
+          per year for the series that is.
+        </span>
+      </p>
+    } @else if (steadyFrom(); as steady) {
+      <p class="time__note">
+        Steady from the {{ steady }}s. The two decades before it sit below that rate, which means even
+        magnitude {{ data()?.comparableMagnitudeFloor }} events were being missed — so the earliest
+        record is a floor on what happened, not a measure of it.
+      </p>
+    }
+
+    <h2 class="time__subtitle">What changes underneath the reader</h2>
+    <p class="time__lede">
+      Two more things shift across these decades, and both are reasons not to carry a figure from one
+      era into another.
+    </p>
+
+    <div class="time__table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Decade</th>
+            <th scope="col">Readings</th>
+            <th scope="col">M{{ data()?.comparableMagnitudeFloor }}+ / year</th>
+            <th scope="col">Depth assigned, not measured</th>
+            <th scope="col">Dominant scale</th>
+            <th scope="col">Strongest</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (decade of decades(); track decade.decade) {
+            <tr>
+              <td class="table__figure">{{ label(decade) }}</td>
+              <td class="table__figure">{{ decade.totalCount | number }}</td>
+              <td class="table__figure">{{ decade.comparablePerYear }}</td>
+              <td class="table__figure">
+                {{ decade.assignedDepthShare | percent }}
+                <span class="table__muted">({{ decade.assignedDepthCount | number }})</span>
+              </td>
+              <td class="table__figure">{{ decade.dominantScale ?? '—' }}</td>
+              <td class="table__figure">
+                @if (decade.strongestMagnitude !== null) {
+                  {{ decade.strongestScale }} {{ decade.strongestMagnitude }}
+                } @else {
+                  —
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <ul class="time__legend">
+      <li>
+        <strong>Depth assigned, not measured.</strong> A fixed 33, 10, 35 or 15 km standing in for a
+        value the agency could not resolve. It marks that an earthquake occurred, not how deep it was —
+        and the share is far higher in the historical record, where the 33 km convention dominates.
+      </li>
+      <li>
+        <strong>Dominant scale.</strong> The scale most readings in the decade were measured on. Body-wave
+        and moment magnitudes are different quantities, so a magnitude from one decade and a magnitude
+        from another are frequently not the same kind of number.
+      </li>
+      <li>
+        <strong>Strongest.</strong> The largest value in the decade, shown with its scale and
+        deliberately not ranked against other decades for the same reason.
+      </li>
+    </ul>
+
+    <p class="time__note">
+      Computed from the archive on request — {{ data()?.totalCount | number }} readings — rather than
+      transcribed, so this page cannot fall out of step with the catalogue it describes.
+    </p>
+  }
+</section>

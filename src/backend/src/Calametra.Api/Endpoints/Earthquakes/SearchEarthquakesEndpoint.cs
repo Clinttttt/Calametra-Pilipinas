@@ -165,6 +165,32 @@ internal static class GetEarthquakeActivityEndpoint
 }
 
 /// <summary>
+/// GET /api/earthquakes/completeness — the catalogue's own history, decade by decade.
+/// </summary>
+internal static class GetCatalogueCompletenessEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/completeness", async (
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await dispatcher.Send(new GetCatalogueCompleteness.Query(), cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("GetCatalogueCompleteness")
+            .WithSummary("How complete the catalogue is, decade by decade")
+            .WithDescription(
+                "Returns per-decade totals beside the magnitude-6 rate, the share of depths the "
+                + "agency assigned rather than measured, and the dominant magnitude scale. Both "
+                + "series are served together on purpose: the total rises roughly 285-fold across "
+                + "the archive while the magnitude-6 rate stays flat at five to seven per year, so a "
+                + "caller cannot render the rising bars without also holding the figure that explains "
+                + "them. The rise is instrumentation, not seismicity.")
+            .Produces<object>(StatusCodes.Status200OK);
+}
+
+/// <summary>
 /// GET /api/earthquakes/map — the whole archive, compactly, for rendering.
 /// </summary>
 internal static class GetEarthquakeMapDataEndpoint
@@ -357,6 +383,7 @@ internal static class EarthquakesModule
         // not load-bearing: the guid constraint means these cannot match it.
         GetEarthquakeMapDataEndpoint.Map(group);
         GetEarthquakeActivityEndpoint.Map(group);
+        GetCatalogueCompletenessEndpoint.Map(group);
         GetCrossSectionEndpoint.Map(group);
         CompareEarthquakesEndpoint.Map(group);
         GetSimilarEarthquakesEndpoint.Map(group);
