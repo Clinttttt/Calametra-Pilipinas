@@ -42,6 +42,14 @@
         Earthquakes Â· USGS catalogue
         <span class="readout__note">{{ floorLabel() }}</span>
       </p>
+
+      <!-- Stated, with the way out. The map is showing one event because the reader asked for one; a
+           single dot beside a five-figure total would misrepresent what is on screen. -->
+      @if (isolatedEventId() !== null) {
+        <button class="readout__isolated" type="button" (click)="showWholeArchive()">
+          Showing this event alone — show the whole archive
+        </button>
+      }
     </div>
   } @else if (earthquakesActive() && loadFailed()) {
     <div class="explore__readout explore__readout--failed">

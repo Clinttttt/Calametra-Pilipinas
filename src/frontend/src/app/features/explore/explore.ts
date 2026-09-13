@@ -166,6 +166,11 @@ export class Explore {
   private static readonly highlightSourceId = 'calametra-highlight';
   private static readonly highlightRingLayerId = 'calametra-highlight-ring';
   private static readonly highlightCentreLayerId = 'calametra-highlight-centre';
+  private static readonly highlightRangeLayerId = 'calametra-highlight-range';
+  private static readonly highlightRangeLabelLayerId = 'calametra-highlight-range-label';
+
+  /** Distances the rings are drawn at, in kilometres. */
+  private static readonly rangeRingsKm = [50, 100, 200] as const;
   private static readonly sectionSourceId = 'calametra-section';
   private static readonly sectionLineLayerId = 'calametra-section-line';
   private static readonly sectionEndpointLayerId = 'calametra-section-endpoints';
@@ -442,6 +447,16 @@ export class Explore {
    * filtered while the panel said otherwise. One signal, two ways in.
    */
   private readonly magnitudeFloor = this.filterStore.minMagnitude;
+
+  /**
+   * When set, the map draws this event alone.
+   *
+   * Arriving from the catalogue the reader asked about one earthquake, and 27,000 neighbours are not
+   * context at that moment — they are noise the reader has to find their event inside. So the archive
+   * is narrowed to it, and the narrowing is stated with a control to undo it: a map showing one dot
+   * while the corner reads 27,242 would be lying about what is on screen.
+   */
+  protected readonly isolatedEventId = signal<string | null>(null);
 
   /** Read-only views for the template and the Time Machine, so only this component mutates them. */
   protected readonly activeMagnitudeFloor = this.magnitudeFloor;
@@ -1566,6 +1581,7 @@ export class Explore {
         // The reader asked for one earthquake, so the archive opens with the floor lifted rather than
         // at M6.0+ — otherwise a magnitude 4.7 arrives selected but filtered out of the map beneath it.
         this.filterStore.setMagnitudeRange(null, null);
+        this.isolatedEventId.set(requested);
         this.applyFilters();
 
         void this.selectEvent(requested, true);
@@ -1765,10 +1781,49 @@ export class Explore {
       data: { type: 'FeatureCollection', features: [] },
     });
 
+    // Distance rings, drawn beneath the mark. Deliberately *not* an area of effect: how far shaking is
+    // felt depends on depth, magnitude, scale and local ground, and this platform holds no attenuation
+    // model or ShakeMap — a shaded footprint would be a modelled claim with nothing behind it. What
+    // these are is a ruler on the map, so a reader can see that a town is inside 50 km rather than
+    // guessing from the scale bar.
+    map.addLayer({
+      id: Explore.highlightRangeLayerId,
+      type: 'line',
+      source: Explore.highlightSourceId,
+      filter: ['==', ['coalesce', ['get', 'role'], ''], 'range'],
+      paint: {
+        'line-color': HIGHLIGHT_COLOUR,
+        'line-width': 1,
+        'line-opacity': 0.35,
+        'line-dasharray': [3, 3],
+      },
+    });
+
+    map.addLayer({
+      id: Explore.highlightRangeLabelLayerId,
+      type: 'symbol',
+      source: Explore.highlightSourceId,
+      filter: ['==', ['coalesce', ['get', 'role'], ''], 'range'],
+      layout: {
+        'symbol-placement': 'line',
+        'text-field': ['get', 'label'],
+        'text-size': 10,
+        'text-letter-spacing': 0.08,
+        'text-keep-upright': true,
+      },
+      paint: {
+        'text-color': HIGHLIGHT_COLOUR,
+        'text-opacity': 0.6,
+        'text-halo-color': '#05080c',
+        'text-halo-width': 1.2,
+      },
+    });
+
     map.addLayer({
       id: Explore.highlightRingLayerId,
       type: 'circle',
       source: Explore.highlightSourceId,
+      filter: ['!=', ['coalesce', ['get', 'role'], ''], 'range'],
       paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 11, 8, 16, 12, 22],
         'circle-color': 'transparent',
@@ -1784,6 +1839,7 @@ export class Explore {
       id: Explore.highlightCentreLayerId,
       type: 'circle',
       source: Explore.highlightSourceId,
+      filter: ['!=', ['coalesce', ['get', 'role'], ''], 'range'],
       paint: {
         'circle-radius': 2.2,
         'circle-color': HIGHLIGHT_COLOUR,
@@ -1792,20 +1848,40 @@ export class Explore {
     });
   }
 
-  /** Marks one position, replacing any previous mark. */
-  private highlightPosition(longitude: number, latitude: number): void {
+  /**
+   * Marks one position, replacing any previous mark.
+   *
+   * @param withDistanceRings Draws 50, 100 and 200 km circles around the point.
+   */
+  private highlightPosition(
+    longitude: number,
+    latitude: number,
+    withDistanceRings = false,
+  ): void {
     const source = this.map?.getSource(Explore.highlightSourceId) as GeoJSONSource | undefined;
+
+    const rings = withDistanceRings
+      ? Explore.rangeRingsKm.map((km) => {
+          const ring = radiusRing(latitude, longitude, km);
+
+          return {
+            ...ring,
+            properties: { role: 'range', label: `${km} km` },
+          };
+        })
+      : [];
 
     source?.setData({
       type: 'FeatureCollection',
       features: [
+        ...rings,
         {
           type: 'Feature',
           properties: {},
           geometry: { type: 'Point', coordinates: [longitude, latitude] },
         },
       ],
-    });
+    } as never);
   }
 
   /** Removes the mark. Called when the subject changes, so a stale mark cannot mislead. */
@@ -2370,6 +2446,14 @@ export class Explore {
     const filter = this.filterStore.filter();
     const clauses: unknown[] = [];
 
+    // Isolation overrides every other clause, because it is the reader's most specific request: they
+    // named one event. Applied first so the intent is legible in the assembled predicate.
+    const isolated = this.isolatedEventId();
+
+    if (isolated !== null) {
+      clauses.push(['==', ['get', 'id'], isolated]);
+    }
+
     if (instantMs !== null) {
       clauses.push(['<=', ['get', 'epochMs'], instantMs]);
     }
@@ -2493,6 +2577,12 @@ export class Explore {
     this.map?.easeTo({ zoom, duration: 900, essential: true });
   }
 
+  /** Returns the whole archive to the map, keeping the event selected. */
+  protected showWholeArchive(): void {
+    this.isolatedEventId.set(null);
+    this.applyFilters();
+  }
+
   protected onMagnitudeFloorChanged(floor: number | null): void {
     // Written to the store, not to a local signal: the filter panel reads the same field.
     this.filterStore.setMagnitudeRange(floor, this.filterStore.maxMagnitude());
@@ -2579,7 +2669,7 @@ export class Explore {
         // marker click already happened where the reader was looking, and moving the map under them
         // would be disorienting.
         if (focus) {
-          this.highlightPosition(detail.longitude, detail.latitude);
+          this.highlightPosition(detail.longitude, detail.latitude, true);
 
           this.map?.flyTo({
             center: [detail.longitude, detail.latitude],
@@ -2607,6 +2697,13 @@ export class Explore {
     this.selectedDetail.set(null);
     this.detailLoading.set(false);
     this.detailFailed.set(false);
+
+    // Dismissing the event dismisses the narrowing that came with it: a map showing one dot with no
+    // panel to account for it is worse than either.
+    if (this.isolatedEventId() !== null) {
+      this.isolatedEventId.set(null);
+      this.applyFilters();
+    }
 
     // The mark goes with the selection it was pointing at.
     this.clearHighlight();

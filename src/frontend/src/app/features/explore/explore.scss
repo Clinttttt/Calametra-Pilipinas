@@ -115,6 +115,24 @@
   text-transform: none;
 }
 
+/* The isolation notice, and the only interactive element in an otherwise inert readout — hence the
+   underline, which nothing else here carries. */
+.readout__isolated {
+  display: block;
+  margin-top: var(--space-2);
+  padding: 0;
+  max-inline-size: 17rem;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
 .explore__readout--failed {
   display: flex;
   align-items: center;
