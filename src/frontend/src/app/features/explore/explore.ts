@@ -1562,7 +1562,13 @@ export class Explore {
       if (requested) {
         this.hazardStore.select('earthquakes');
         this.applyHazardToMap(map);
-        void this.selectEvent(requested);
+
+        // The reader asked for one earthquake, so the archive opens with the floor lifted rather than
+        // at M6.0+ — otherwise a magnitude 4.7 arrives selected but filtered out of the map beneath it.
+        this.filterStore.setMagnitudeRange(null, null);
+        this.applyFilters();
+
+        void this.selectEvent(requested, true);
       }
     });
 
@@ -2553,7 +2559,7 @@ export class Explore {
    * one reading, and showing a partial comparison would undercut the point of the
    * panel.
    */
-  private async selectEvent(eventId: string): Promise<void> {
+  private async selectEvent(eventId: string, focus = false): Promise<void> {
     this.selectedEventId.set(eventId);
     this.detailFailed.set(false);
     this.detailLoading.set(true);
@@ -2566,6 +2572,24 @@ export class Explore {
       // without this, clicking two markers quickly can show the wrong one.
       if (this.selectedEventId() === eventId) {
         this.selectedDetail.set(detail);
+
+        // Arriving from the catalogue, the reader asked for one earthquake and would otherwise land on
+        // the whole archive at national zoom with a panel open somewhere to the right. So the camera
+        // goes to it and the mark says which one — but only when the event was named in the URL. A
+        // marker click already happened where the reader was looking, and moving the map under them
+        // would be disorienting.
+        if (focus) {
+          this.highlightPosition(detail.longitude, detail.latitude);
+
+          this.map?.flyTo({
+            center: [detail.longitude, detail.latitude],
+            // Close enough that the epicentre and its neighbours are distinguishable, without
+            // implying the location is more precise than the catalogue's own coordinate.
+            zoom: 8.5,
+            duration: 1600,
+            essential: true,
+          });
+        }
       }
     } catch {
       if (this.selectedEventId() === eventId) {

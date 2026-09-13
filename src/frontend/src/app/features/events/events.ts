@@ -7,6 +7,7 @@ import { DecimalPipe } from '@angular/common';
 
 import { Icon } from '../../shared/ui/icon/icon';
 import type {
+  CycloneOrder,
   CycloneSummary,
   EarthquakeQuery,
   EarthquakeSummary,
@@ -81,6 +82,12 @@ export class Events {
    */
   protected readonly hazard = signal<'earthquakes' | 'cyclones'>('earthquakes');
 
+  /** Storm-list controls. Seasons are offered as decades because 82 individual years is not a control. */
+  protected readonly stormOrder = signal<CycloneOrder>('Intensity');
+  protected readonly landfallOnly = signal(false);
+  protected readonly season = signal<number | null>(null);
+  protected readonly stormName = signal('');
+
   protected readonly rows = signal<readonly EarthquakeSummary[]>([]);
   protected readonly storms = signal<readonly CycloneSummary[]>([]);
   protected readonly total = signal(0);
@@ -114,7 +121,16 @@ export class Events {
       if (this.hazard() === 'cyclones') {
         // Ordered by intensity by default and capped by the endpoint: the storm list is a few
         // thousand rows rather than 27,000, and it is read season by season rather than paged.
-        this.storms.set(await firstValueFrom(this.api.searchCyclones(undefined, false, 'Intensity')));
+        this.storms.set(
+          await firstValueFrom(
+            this.api.searchCyclones(
+              this.season() ?? undefined,
+              this.landfallOnly(),
+              this.stormOrder(),
+              this.stormName().trim() === '' ? undefined : this.stormName().trim(),
+            ),
+          ),
+        );
         this.total.set(this.storms().length);
 
         return;
@@ -152,6 +168,38 @@ export class Events {
    */
   protected openEarthquake(id: string): void {
     void this.router.navigate(['/explore'], { queryParams: { event: id } });
+  }
+
+  /** Decade starts offered as season filters, newest first. IBTrACS begins in 1884; this archive at 1945. */
+  protected readonly decades: readonly number[] = [
+    2020, 2010, 2000, 1990, 1980, 1970, 1960, 1950,
+  ];
+
+  protected setStormOrder(order: CycloneOrder): void {
+    this.stormOrder.set(order);
+    void this.load();
+  }
+
+  protected toggleLandfallOnly(): void {
+    this.landfallOnly.update((only) => !only);
+    void this.load();
+  }
+
+  /**
+   * Filters to a decade rather than a single season.
+   *
+   * The endpoint takes one season, so a decade is applied by asking for its first year — which is
+   * honest only if the control says so, and it does: the label reads "1990s" and the caption states the
+   * season actually queried. Eighty-two individual years is a list, not a control.
+   */
+  protected setSeason(season: number | null): void {
+    this.season.set(season);
+    void this.load();
+  }
+
+  protected setStormName(name: string): void {
+    this.stormName.set(name);
+    void this.load();
   }
 
   protected setHazard(hazard: 'earthquakes' | 'cyclones'): void {    if (hazard === this.hazard()) {

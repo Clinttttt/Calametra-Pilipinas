@@ -205,6 +205,94 @@
     </button>
   </nav>
   } @else {
+    <div class="events__controls">
+      <div class="control">
+        <span class="c-label">Order</span>
+        <div class="control__choices" role="group" aria-label="Order">
+          <button
+            class="control__choice"
+            type="button"
+            [class.control__choice--active]="stormOrder() === 'Intensity'"
+            [attr.aria-pressed]="stormOrder() === 'Intensity'"
+            (click)="setStormOrder('Intensity')"
+          >
+            Strongest first
+          </button>
+          <button
+            class="control__choice"
+            type="button"
+            [class.control__choice--active]="stormOrder() === 'Recent'"
+            [attr.aria-pressed]="stormOrder() === 'Recent'"
+            (click)="setStormOrder('Recent')"
+          >
+            Most recent
+          </button>
+        </div>
+      </div>
+
+      <div class="control">
+        <span class="c-label">Season</span>
+        <div class="control__choices" role="group" aria-label="Season">
+          <button
+            class="control__choice"
+            type="button"
+            [class.control__choice--active]="season() === null"
+            [attr.aria-pressed]="season() === null"
+            (click)="setSeason(null)"
+          >
+            All seasons
+          </button>
+          @for (decade of decades; track decade) {
+            <button
+              class="control__choice"
+              type="button"
+              [class.control__choice--active]="season() === decade"
+              [attr.aria-pressed]="season() === decade"
+              (click)="setSeason(decade)"
+            >
+              {{ decade }}s
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="control">
+        <span class="c-label">Landfall</span>
+        <div class="control__choices">
+          <button
+            class="control__choice"
+            type="button"
+            [class.control__choice--active]="landfallOnly()"
+            [attr.aria-pressed]="landfallOnly()"
+            (click)="toggleLandfallOnly()"
+          >
+            Made landfall only
+          </button>
+        </div>
+      </div>
+
+      <div class="control">
+        <label class="c-label" for="storm-name">Name</label>
+        <input
+          class="c-input control__input"
+          id="storm-name"
+          type="search"
+          placeholder="Yolanda, Haiyan…"
+          [value]="stormName()"
+          (change)="setStormName($any($event.target).value)"
+        />
+      </div>
+    </div>
+
+    <!-- Stated because the control is coarser than the query: a decade button asks for its first
+         season, which is the only granularity the endpoint takes. -->
+    @if (season() !== null) {
+      <p class="events__note">
+        Showing season {{ season() }}. The endpoint filters one season at a time, so a decade button
+        asks for its first year.
+      </p>
+    }
+
     <div class="events__table-wrap">
       <table class="table">
         <caption class="table__caption">

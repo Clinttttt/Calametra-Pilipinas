@@ -36,10 +36,13 @@
    here refuses. So the depth comes from the interface's own cool ramp: two wide, very low-opacity
    pools, warm-cool as the terrain palette is, fixed so they do not travel with the scroll. */
 .c-page-wash {
+  /* A base tint under the pools. Without it the gradients sat on flat black at single-digit opacity and
+     the page read as unlit — the wash has to lift the ground, not merely mottle it. */
+  background-color: #0c1219;
   background-image:
-    radial-gradient(120% 90% at 12% -10%, rgb(94 150 190 / 9%), transparent 60%),
-    radial-gradient(90% 70% at 88% 8%, rgb(120 130 160 / 6%), transparent 55%),
-    radial-gradient(140% 120% at 50% 110%, rgb(70 110 140 / 7%), transparent 60%);
+    radial-gradient(120% 90% at 12% -10%, rgb(104 164 206 / 20%), transparent 62%),
+    radial-gradient(90% 70% at 88% 4%, rgb(132 146 178 / 14%), transparent 58%),
+    radial-gradient(150% 130% at 50% 112%, rgb(74 120 152 / 16%), transparent 64%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
