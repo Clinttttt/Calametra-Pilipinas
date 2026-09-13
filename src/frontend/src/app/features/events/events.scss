@@ -1,6 +1,18 @@
 /* ── EARTHQUAKE CATALOGUE ─────────────────────────────────────────────────
    A reading view rather than a map view. Wide measure, dense rows, figures monospaced so a column of
    them aligns — the point of this page is that a reader can scan it. */
+
+/* The shell clips its stage, because the map must never scroll. A reading page therefore has to be its
+   own scroll container: without this the table simply ran off the bottom of the viewport with no way
+   to reach it. Declared on the host rather than on `.events` so the scrollbar sits at the edge of the
+   window instead of inside the centred measure. */
+:host {
+  display: block;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .events {
   display: flex;
   flex-direction: column;
@@ -78,6 +90,18 @@
   border-color: transparent;
 }
 
+.events__hazards {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Each agency's peak on its own line: stacked rather than joined by a comma, because the two figures
+   are separate measurements and a single line invites reading them as a range. */
+.peak {
+  display: block;
+  white-space: nowrap;
+}
+
 .events__table-wrap {
   overflow-x: auto;
 }
@@ -115,6 +139,31 @@
 
 .table tbody tr:hover {
   background: var(--surface-raised);
+}
+
+/* Rows that open a record. The arrow is the affordance rather than an underline: the whole row is the
+   target, and underlining eight cells would read as eight links. */
+.table__row--link {
+  cursor: pointer;
+}
+
+.table__open {
+  color: var(--text-disabled);
+  text-align: right;
+}
+
+.table__row--link:hover .table__open {
+  color: var(--accent);
+}
+
+/* Present for screen readers, absent for the eye: the column has no useful heading. */
+.table__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .table__figure {

@@ -24,6 +24,7 @@ import type { CatalogueCompleteness, DecadeSummary } from '../../core/api/contra
   selector: 'cal-time',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icon, DecimalPipe, PercentPipe],
+  host: { class: 'c-page-wash' },
   templateUrl: './time.html',
   styleUrl: './time.scss',
 })

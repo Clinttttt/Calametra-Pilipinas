@@ -10,6 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { Map as MapLibreMap, NavigationControl, ScaleControl, type GeoJSONSource } from 'maplibre-gl';
 
 import { APP_CONFIG } from '../../core/config/app-config';
@@ -230,6 +231,7 @@ export class Explore {
   private static readonly openingMagnitudeFloor = EarthquakeFilterStore.openingMagnitudeFloor;
 
   private readonly config = inject(APP_CONFIG);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(CalametraApi);
   private readonly layerStore = inject(HazardLayerStore);
@@ -1551,6 +1553,17 @@ export class Explore {
       // Applies whatever the reader has already chosen. Normally nothing, but the store is
       // root-provided, so a selection survives navigating away to Stories and back.
       this.applyHazardToMap(map);
+
+      // An event named in the URL, which is how the catalogue hands one over. Read once at load
+      // rather than watched: this is an entry point, and a reader who then clicks another marker
+      // should not have the address bar drag them back.
+      const requested = this.route.snapshot.queryParamMap.get('event');
+
+      if (requested) {
+        this.hazardStore.select('earthquakes');
+        this.applyHazardToMap(map);
+        void this.selectEvent(requested);
+      }
     });
 
     // Framed once the container has settled. Calling fitBounds during `load` can

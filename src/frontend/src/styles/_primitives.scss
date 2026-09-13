@@ -26,6 +26,24 @@
   color: var(--accent-dim);
 }
 
+/* ── READING PAGE WASH ────────────────────────────────────────────────────
+   A backdrop for the pages that are read rather than flown over — the catalogue, the record. The map
+   supplies its own ground; a full-bleed table on flat black reads as a terminal, and the eye has
+   nothing to place the content against.
+
+   <b>Gradients rather than a decorative coastline.</b> An outline of the archipelago drawn for effect
+   would be a map on this platform that answers to no source, which is exactly what everything else
+   here refuses. So the depth comes from the interface's own cool ramp: two wide, very low-opacity
+   pools, warm-cool as the terrain palette is, fixed so they do not travel with the scroll. */
+.c-page-wash {
+  background-image:
+    radial-gradient(120% 90% at 12% -10%, rgb(94 150 190 / 9%), transparent 60%),
+    radial-gradient(90% 70% at 88% 8%, rgb(120 130 160 / 6%), transparent 55%),
+    radial-gradient(140% 120% at 50% 110%, rgb(70 110 140 / 7%), transparent 60%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
 /* ── INSTRUMENT FRAME ─────────────────────────────────────────────────────
    A hairline box with tick marks at the corners, like the frame of a
    scientific plot. Structure without weight: it delineates a region while
