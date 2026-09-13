@@ -125,6 +125,10 @@ public sealed class DependencyInjectionTests
             typeof(Domain.Abstractions.Result<IReadOnlyList<SearchCyclones.CycloneSummaryResponse>>)
         },
         {
+            typeof(GetCycloneDecades.Query),
+            typeof(Domain.Abstractions.Result<GetCycloneDecades.CycloneDecadesResponse>)
+        },
+        {
             typeof(GetCycloneTrack.Query),
             typeof(Domain.Abstractions.Result<GetCycloneTrack.CycloneTrackResponse>)
         },
@@ -151,6 +155,10 @@ public sealed class DependencyInjectionTests
         {
             typeof(GetEarthquakeActivity.Query),
             typeof(Domain.Abstractions.Result<GetEarthquakeActivity.ActivityResponse>)
+        },
+        {
+            typeof(GetCatalogueCompleteness.Query),
+            typeof(Domain.Abstractions.Result<GetCatalogueCompleteness.CompletenessResponse>)
         },
         {
             typeof(GetEarthquakeDetail.Query),

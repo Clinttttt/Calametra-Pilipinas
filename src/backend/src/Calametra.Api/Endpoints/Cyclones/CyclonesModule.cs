@@ -124,6 +124,31 @@ internal static class GetCycloneByExternalIdEndpoint
             .ProducesProblem(StatusCodes.Status404NotFound);
 }
 
+/// <summary>
+/// GET /api/cyclones/decades — storm counts by decade, for era comparison.
+/// </summary>
+internal static class GetCycloneDecadesEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/decades", async (
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await dispatcher.Send(new GetCycloneDecades.Query(), cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("GetCycloneDecades")
+            .WithSummary("Storm counts by decade")
+            .WithDescription(
+                "Returns storms per decade with the landfalling count beside the total, plus the "
+                + "season from which JTWC rates its own best-track record as high quality. The "
+                + "landfalling count is the more era-comparable series: coverage of storms at sea "
+                + "depended on what could be observed, while a storm that crossed the coast was "
+                + "recorded by the people it crossed.")
+            .Produces<object>(StatusCodes.Status200OK);
+}
+
 /// <summary>Route group for the cyclone endpoints.</summary>
 internal static class CyclonesModule
 {
@@ -135,6 +160,7 @@ internal static class CyclonesModule
             .RequireRateLimiting(RateLimitPolicies.PublicRead);
 
         SearchCyclonesEndpoint.Map(group);
+        GetCycloneDecadesEndpoint.Map(group);
 
         // Literal route before the {eventId:guid} route for readability. Ordering is not
         // load-bearing: the guid constraint means "external" cannot match it.

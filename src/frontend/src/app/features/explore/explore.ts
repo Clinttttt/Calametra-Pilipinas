@@ -1591,7 +1591,14 @@ export class Explore {
     // Framed once the container has settled. Calling fitBounds during `load` can
     // compute against a container that has not reached its final size, which frames
     // the country slightly wrong on first paint.
-    map.once('idle', () => this.frameStudyArea(map, false));
+    //
+    // Skipped entirely when the URL names an event: this fires after the detail request resolves and
+    // the camera has already flown to the epicentre, so framing the country here snapped straight back
+    // out — the reader saw the zoom happen and then undo itself. The check reads the parameter rather
+    // than a flag set later, because `idle` can arrive before the fetch does.
+    if (this.route.snapshot.queryParamMap.get('event') === null) {
+      map.once('idle', () => this.frameStudyArea(map, false));
+    }
 
     this.map = map;
   }
