@@ -1,0 +1,313 @@
+/* ── COMPARE ──────────────────────────────────────────────────────────────
+   Two subjects, read against each other. The layout is a spine: label in the middle, values mirrored
+   outwards, bars growing away from the centre — so the eye compares along one axis rather than hunting
+   between two stacked tables. */
+
+/* Its own scroll container, as the other reading pages are: the shell clips its stage for the map. */
+:host {
+  display: block;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  max-width: 76rem;
+  margin: 0 auto;
+}
+
+.compare__title {
+  margin: 0;
+  font-size: var(--text-title);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.compare__lede,
+.compare__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  max-inline-size: 68ch;
+}
+
+.compare__hint {
+  color: var(--text-tertiary);
+}
+
+.compare__modes,
+.compare__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.compare__radius {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* The one selected-state convention this platform uses, shared with the filter panel and the catalogue
+   controls: accent text on an accent wash. */
+.choice {
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.choice--active {
+  color: var(--accent);
+  background-color: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--line-accent);
+  border-color: transparent;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.pair__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.matches {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.matches__item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--surface-raised);
+    color: var(--text-primary);
+  }
+}
+
+.matches__where {
+  color: var(--text-tertiary);
+}
+
+/* ── THE SHEET ────────────────────────────────────────────────────────────*/
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+}
+
+.sheet__head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.sheet__name {
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+.sheet__name--right {
+  text-align: right;
+}
+
+.sheet__vs {
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+}
+
+.sheet__section {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+/* Label centred, values outboard, bars mirrored from the spine. */
+.metric {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr minmax(14rem, 1.4fr) 1fr 4.5rem;
+  grid-template-areas: 'leftvalue leftbar label rightbar rightvalue';
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
+.metric--text {
+  grid-template-columns: 1fr minmax(14rem, 1.4fr) 1fr;
+  grid-template-areas: 'leftvalue label rightvalue';
+}
+
+.metric__label {
+  grid-area: label;
+  text-align: center;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}
+
+.metric__value {
+  grid-area: leftvalue;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.metric__value--right {
+  grid-area: rightvalue;
+  text-align: left;
+}
+
+.metric__qualifier {
+  display: block;
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+/* Monochrome, and mirrored: hue belongs to depth elsewhere in the platform, so the two sides are told
+   apart by direction rather than colour. */
+.metric__bar {
+  grid-area: leftbar;
+  display: flex;
+  justify-content: flex-end;
+  height: 6px;
+  background: var(--line-faint);
+  border-radius: 1px;
+
+  i {
+    display: block;
+    height: 100%;
+    background: var(--text-tertiary);
+    border-radius: 1px;
+  }
+}
+
+.metric__bar--right {
+  grid-area: rightbar;
+  justify-content: flex-start;
+
+  i {
+    background: var(--accent);
+    opacity: 0.7;
+  }
+}
+
+.sheet__note {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+  max-inline-size: none;
+
+  em {
+    font-style: normal;
+    color: var(--text-tertiary);
+  }
+}
+
+.faults {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.faults__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+}
+
+.faults__list--right {
+  text-align: right;
+}
+
+.faults__distance {
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+
+  em {
+    font-style: normal;
+    color: var(--caution);
+  }
+}
+
+.faults__none {
+  color: var(--text-tertiary);
+}
+
+@media (width <= 60rem) {
+  .pair,
+  .faults {
+    grid-template-columns: 1fr;
+  }
+
+  /* Below this width the mirrored spine has no room, so the metric stacks: label, then both values. */
+  .metric,
+  .metric--text {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas: 'label leftvalue rightvalue';
+  }
+
+  .metric__bar {
+    display: none;
+  }
+}

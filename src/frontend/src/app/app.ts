@@ -54,7 +54,7 @@ export class App {
     { path: '/time', label: 'Time', icon: 'time', available: true },
     { path: '/events', label: 'Events', icon: 'events', available: true },
     { path: '/stories', label: 'Stories', icon: 'stories', available: true },
-    { path: '/compare', label: 'Compare', icon: 'compare', available: false },
+    { path: '/compare', label: 'Compare', icon: 'compare', available: true },
     { path: '/about-data', label: 'Sources', icon: 'data-sources', available: true },
   ];
 

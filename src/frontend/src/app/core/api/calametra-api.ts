@@ -8,6 +8,7 @@ import {
   type CycloneTrack,
   type DataSourceCredit,
   type CatalogueCompleteness,
+  type CycloneDecades,
   type EarthquakeActivity,
   type EarthquakeComparison,
   type EarthquakeDetail,
@@ -105,6 +106,11 @@ export class CalametraApi {
    */
   getCatalogueCompleteness(): Observable<CatalogueCompleteness> {
     return this.http.get<CatalogueCompleteness>('/api/earthquakes/completeness');
+  }
+
+  /** Storm counts by decade, with the landfalling series beside the total. */
+  getCycloneDecades(): Observable<CycloneDecades> {
+    return this.http.get<CycloneDecades>('/api/cyclones/decades');
   }
 
   /**

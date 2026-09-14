@@ -193,6 +193,38 @@ export interface PaginatedList<T> {
   readonly hasNextPage: boolean;
 }
 
+/** Storms whose best-track positions came within a place's radius. */
+export interface CycloneProximity {
+  readonly stormCount: number;
+  readonly landfallCount: number;
+  readonly strongestKnots: number | null;
+  readonly strongestPeriod: string | null;
+  readonly strongestAgency: string | null;
+  readonly firstSeason: number | null;
+  readonly lastSeason: number | null;
+}
+
+/** One decade of the storm record. */
+export interface CycloneDecade {
+  readonly decade: number;
+  readonly stormCount: number;
+
+  /** The more era-comparable series: coverage at sea depended on what could be observed. */
+  readonly landfallCount: number;
+
+  readonly namedInPhilippinesCount: number;
+  readonly strongestKnots: number | null;
+}
+
+export interface CycloneDecades {
+  readonly decades: readonly CycloneDecade[];
+
+  /** The season from which JTWC rates its own best-track record as high quality. */
+  readonly reliableFromSeason: number;
+
+  readonly totalCount: number;
+}
+
 /** One decade of the catalogue's own history. */
 export interface DecadeSummary {
   readonly decade: number;
@@ -716,6 +748,14 @@ export interface PlaceContext {
   readonly strongestByScaleFamily: readonly PlaceStrongestReading[];
   readonly mostRecentEvent: PlaceEvent | null;
   readonly nearestFaults: readonly PlaceFault[];
+
+  /**
+   * Storms whose track passed within the radius.
+   *
+   * Track proximity, not impact: a cyclone's damaging winds and rain reach far beyond the positions its
+   * analysts recorded, so this undercounts exposure.
+   */
+  readonly cyclones: CycloneProximity;
   /** Server-composed caveats. Rendered verbatim: they are claims about the data. */
   readonly notes: readonly string[];
 }

@@ -24,6 +24,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/events/events').then((m) => m.Events),
   },
   {
+    path: 'compare',
+    title: 'Compare · Calametra Pilipinas',
+    loadComponent: () => import('./features/compare/compare').then((m) => m.Compare),
+  },
+  {
     path: 'stories',
     title: 'Stories Â· Calametra Pilipinas',
     loadComponent: () => import('./features/story/story').then((m) => m.StoryView),
