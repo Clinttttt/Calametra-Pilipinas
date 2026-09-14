@@ -114,6 +114,13 @@
   --depth-deepest: #5a7fc0; /* 300 km+   deepest slab                 */
   --depth-unknown: #4a5464; /* not measured — deliberately inert      */
 
+  /* ── FAULT INK ──────────────────────────────────────────────────────────
+     Mirrors `FAULT_LINE_COLOUR` in `core/visual/fault-style.ts`, which is what
+     MapLibre actually paints with. Duplicated here for the same reason the depth
+     ramp is: a legend key is CSS and a map layer is a paint expression, and the
+     two cannot share one declaration. Change both together.               */
+  --fault-trace: #d8d2c8;
+
   /* ── STATE ──────────────────────────────────────────────────────────────
      Only for genuine system state, never for data. Kept desaturated so a
      transient toast can never out-shout a magnitude 7 marker.            */

@@ -1,0 +1,76 @@
+<label class="c-label" [attr.for]="fieldId()">{{ heading() }}</label>
+
+<div class="finder">
+  <cal-icon name="search" [size]="14" />
+  <input
+    class="finder__input"
+    [id]="fieldId()"
+    type="search"
+    placeholder="Cebu City, Davao, Surigao…"
+    [value]="term()"
+    (input)="termChange.emit($any($event.target).value)"
+  />
+</div>
+
+@if (matches().length > 0) {
+  <ul class="matches">
+    @for (match of matches(); track match.psgcCode ?? match.name) {
+      <li>
+        <button class="matches__item" type="button" (click)="chosen.emit(match)">
+          <span>{{ match.name }}</span>
+          <span>{{ hierarchy(match) }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+}
+
+@if (context(); as place) {
+  <article class="card">
+    <h2 class="card__name">{{ place.name }}</h2>
+    <p class="card__where">{{ hierarchy(place) }}</p>
+
+    <!-- Both maps are drawn at the same scale — see LocatorMap — so the two circles come out the same
+         size on screen and the point counts inside them are visually comparable. -->
+    <cal-locator-map
+      [latitude]="place.latitude"
+      [longitude]="place.longitude"
+      [radiusKm]="place.radiusKm"
+      [events]="events()"
+      [faults]="faults()"
+    />
+
+    <p class="legend">
+      <span><i class="key key--place"></i>Town centre</span>
+      <span><i class="key key--ring"></i>{{ place.radiusKm }} km</span>
+      <span><i class="key key--event"></i>M{{ comparableMagnitude().toFixed(1) }}+, by depth</span>
+      <span><i class="key key--assigned"></i>Depth assigned</span>
+      <span><i class="key key--fault"></i>Mapped fault</span>
+    </p>
+
+    <dl class="facts">
+      <div>
+        <dt class="c-label">Coordinates</dt>
+        <dd>{{ coordinates(place) }}</dd>
+      </div>
+      @if (era(place); as span) {
+        <div>
+          <dt class="c-label">Catalogued</dt>
+          <dd>{{ span }}</dd>
+        </div>
+      }
+      @if (place.psgcCode) {
+        <div>
+          <dt class="c-label">PSGC</dt>
+          <dd>{{ place.psgcCode }}</dd>
+        </div>
+      }
+    </dl>
+  </article>
+} @else if (loading()) {
+  <p class="hint">Reading the archive…</p>
+} @else {
+  <p class="hint">
+    Search for a city, municipality, province or region. Both sides are read at the same radius.
+  </p>
+}

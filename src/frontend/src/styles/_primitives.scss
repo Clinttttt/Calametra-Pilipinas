@@ -545,6 +545,94 @@
   background-repeat: repeat-x;
 }
 
+/* ── CAVEAT DISCLOSURE ────────────────────────────────────────────────────
+   A collapsed block of data limitations, opened on demand.
+
+   The counterpart to `.c-badge-caution`, which marks one value. This is for the case where a page
+   carries several caveats at once: interleaving four amber paragraphs among the figures makes them
+   read as decoration, and a reader learns to skip the hue that is supposed to stop them. Collapsed,
+   in one place, with the toggle in the caution colour so it is plainly a caveat and not a footnote.
+
+   Collapsed BY DEFAULT is a deliberate trade. It is only defensible because the figures themselves
+   carry their own standing — a value labelled "catalogue context" has already told the reader not to
+   compare it, and this explains why. Do not use it to hide a caveat that has no other disclosure. */
+.c-disclosure {
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.c-disclosure__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  padding: var(--space-3);
+  font: inherit;
+  font-size: var(--text-micro);
+  color: var(--caution);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* The label takes the free space, which pushes the chevron to the trailing edge without a second
+   rule and without the toggle needing to know how many icons it carries. */
+.c-disclosure__toggle > span {
+  flex: 1;
+}
+
+.c-disclosure__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-block-start: 1px solid var(--line-faint);
+}
+
+.c-disclosure__body p {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+  max-inline-size: 82ch;
+}
+
+.c-disclosure__body strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* A caveat the server composed, rather than one this interface wrote. Quieter, because it is
+   specific to one subject rather than to the dataset. */
+.c-disclosure__source {
+  color: var(--text-tertiary);
+}
+
+/* ── RESOLVED-SHARE BAR ───────────────────────────────────────────────────
+   A proportion drawn so its REMAINDER is visible.
+
+   Segmented rather than proportional: the track is the whole population and the fill is the part
+   actually resolved, so what was not measured occupies real width instead of being inferred from a
+   percentage. The track takes `--depth-unknown`, the same inert grey the map gives a depth that was
+   never measured, so the two readings of one fact agree.
+
+   Exists as a primitive because non-negotiable 4 — every unmeasured depth is marked — needs a
+   consistent form wherever a share of the archive is stated, and 43% of the archive carries one. */
+.c-resolved-bar {
+  block-size: 8px;
+  border-radius: 1px;
+  overflow: hidden;
+  background-color: var(--depth-unknown);
+}
+
+.c-resolved-bar > i {
+  display: block;
+  block-size: 100%;
+  background-color: var(--text-secondary);
+}
+
 /* ── SCREEN-READER ONLY ───────────────────────────────────────────────────*/
 .u-visually-hidden {
   position: absolute;

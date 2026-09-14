@@ -1,9 +1,25 @@
 /* ── COMPARE ──────────────────────────────────────────────────────────────
-   Two subjects, read against each other. The layout is a spine: label in the middle, values mirrored
-   outwards, bars growing away from the centre — so the eye compares along one axis rather than hunting
-   between two stacked tables. */
+   A COMPARATIVE HAZARD PROFILE, NOT A SCOREBOARD
 
-/* Its own scroll container, as the other reading pages are: the shell clips its stage for the map. */
+   The previous layout gave every figure the same mirrored bar. Two consequences, both bad: it read
+   as a winner-and-loser scoreboard, and a catalogue total — the one figure that cannot honestly be
+   compared — carried exactly as much visual weight as an M6.0+ count.
+
+   Hierarchy is therefore drawn here, not merely stated:
+
+     • `.metric--lead` sets its figures at display size; only comparable ones appear there
+     • `.metric` is the same grid at reading size, with a bar only where a proportion is meaningful
+     • `.standing` says on every figure what it may be used for
+     • `.quality` is segmented, because a composition must sum to the whole
+     • the caveats live in one collapsed disclosure rather than four amber paragraphs
+
+   ONE GRID, THREE SIZES. The lead figures, the profile rows and the per-family readings are all the
+   same three-column arrangement — value, label, value — so they share `.metric` rather than
+   restating it. That is also what keeps this file inside its style budget.
+
+   Colour still carries meaning and chrome still does not: the only hue on the page is `--caution` on
+   the caveats, and the depth ramp inside the two locator maps. */
+
 :host {
   display: block;
   height: 100%;
@@ -16,7 +32,7 @@
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-5) var(--space-5) var(--space-6);
-  max-width: 76rem;
+  max-width: 82rem;
   margin: 0 auto;
 }
 
@@ -27,17 +43,12 @@
   color: var(--text-primary);
 }
 
-.compare__lede,
-.compare__hint {
+.compare__lede {
   margin: var(--space-2) 0 0;
   font-size: var(--text-small);
-  line-height: var(--leading-relaxed);
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
   max-inline-size: 68ch;
-}
-
-.compare__hint {
-  color: var(--text-tertiary);
 }
 
 .compare__modes,
@@ -50,20 +61,24 @@
 .compare__radius {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-3);
 }
 
-/* The one selected-state convention this platform uses, shared with the filter panel and the catalogue
-   controls: accent text on an accent wash. */
+/* The platform's one selected-state convention: white ink on a barely-there wash. */
 .choice {
   padding: var(--space-1) var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   color: var(--text-secondary);
-  background: var(--surface-raised);
+  background: var(--surface-400);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-sm);
   cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+  }
 }
 
 .choice--active {
@@ -73,189 +88,369 @@
   border-color: transparent;
 }
 
-.pair {
+/* ── THE TWO SUBJECTS ─────────────────────────────────────────────────────
+   Three columns with the swap on the spine, so the exchange reads as an operation on the pair
+   rather than a control belonging to one side. Source order stays first place, second place, swap. */
+.subjects {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
   gap: var(--space-4);
 }
 
-.pair__column {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+.subjects__column,
+.subjects__slot {
   min-width: 0;
-}
 
-.matches {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--line-subtle);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
+  &:first-of-type {
+    grid-column: 1;
+  }
 
-.matches__item {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-2);
-  font-size: var(--text-micro);
-  color: var(--text-secondary);
-  background: none;
-  border: 0;
-  text-align: left;
-  cursor: pointer;
-
-  &:hover,
-  &:focus-visible {
-    background: var(--surface-raised);
-    color: var(--text-primary);
+  &:nth-of-type(2) {
+    grid-column: 3;
   }
 }
 
-.matches__where {
-  color: var(--text-tertiary);
-}
-
-/* ── THE SHEET ────────────────────────────────────────────────────────────*/
-.sheet {
+.subjects__column {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-4);
+}
+
+.swap {
+  grid-area: 1 / 2;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  color: var(--text-tertiary);
+  background: var(--surface-400);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--text-primary);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+/* ── SURFACES ─────────────────────────────────────────────────────────────
+   One glass card, four uses: the era card, the lead band, each profile panel and the closing
+   observations. */
+.era-card,
+.band,
+.panel,
+.stands {
   background: var(--surface-glass);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-md);
 }
 
-.sheet__head {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: baseline;
+.era-card,
+.band,
+.stands {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.band,
+.stands {
   gap: var(--space-3);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--line-subtle);
+  padding: var(--space-4);
 }
 
-.sheet__name {
+.era-card__name,
+.band__title {
+  margin: 0;
   font-size: var(--text-body);
-  color: var(--text-primary);
-}
-
-.sheet__name--right {
-  text-align: right;
-}
-
-.sheet__vs {
-  font-size: var(--text-micro);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-tertiary);
-}
-
-.sheet__section {
-  margin: var(--space-4) 0 var(--space-2);
-  font-size: var(--text-micro);
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-tertiary);
-}
-
-/* Label centred, values outboard, bars mirrored from the spine. */
-.metric {
-  display: grid;
-  grid-template-columns: 4.5rem 1fr minmax(14rem, 1.4fr) 1fr 4.5rem;
-  grid-template-areas: 'leftvalue leftbar label rightbar rightvalue';
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
-}
-
-.metric--text {
-  grid-template-columns: 1fr minmax(14rem, 1.4fr) 1fr;
-  grid-template-areas: 'leftvalue label rightvalue';
-}
-
-.metric__label {
-  grid-area: label;
-  text-align: center;
-  font-size: var(--text-micro);
-  line-height: var(--leading-snug);
-  color: var(--text-secondary);
-}
-
-.metric__value {
-  grid-area: leftvalue;
-  font-family: var(--font-mono);
-  font-size: var(--text-small);
   color: var(--text-primary);
-  text-align: right;
 }
 
-.metric__value--right {
-  grid-area: rightvalue;
-  text-align: left;
-}
-
-.metric__qualifier {
-  display: block;
-  font-size: var(--text-micro);
-  color: var(--text-tertiary);
-}
-
-/* Monochrome, and mirrored: hue belongs to depth elsewhere in the platform, so the two sides are told
-   apart by direction rather than colour. */
-.metric__bar {
-  grid-area: leftbar;
-  display: flex;
-  justify-content: flex-end;
-  height: 6px;
-  background: var(--line-faint);
-  border-radius: 1px;
-
-  i {
-    display: block;
-    height: 100%;
-    background: var(--text-tertiary);
-    border-radius: 1px;
-  }
-}
-
-.metric__bar--right {
-  grid-area: rightbar;
-  justify-content: flex-start;
-
-  i {
-    background: var(--accent);
-    opacity: 0.7;
-  }
-}
-
-.sheet__note {
-  display: flex;
-  gap: var(--space-2);
-  align-items: flex-start;
-  margin: var(--space-2) 0 0;
+.era-card__where,
+.band__sub,
+.compare__hint {
+  margin: 0;
   font-size: var(--text-micro);
   line-height: var(--leading-snug);
-  color: var(--caution);
-  max-inline-size: none;
-
-  em {
-    font-style: normal;
-    color: var(--text-tertiary);
-  }
+  color: var(--text-tertiary);
+  max-inline-size: 64ch;
 }
 
+/* Two era cards abreast: no swap column to leave open between them. */
+.era-cards,
+.quality__pair,
 .faults {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
+}
+
+.era-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+
+  dt,
+  dd {
+    margin: 0;
+  }
+
+  dd {
+    font-family: var(--font-mono);
+    font-size: var(--text-micro);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── STANDING ─────────────────────────────────────────────────────────────
+   What a figure may be used for. Monochrome by rule: three hues here would read as good, warning and
+   bad, which is a ranking again. A wash and a hairline do the separating. */
+.standing {
+  padding: 1px var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  box-shadow: inset 0 0 0 1px var(--line-faint);
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.standing--comparable {
+  color: var(--accent);
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--line-accent);
+}
+
+/* The two subjects named once, above the figures, so each column below needs no repeated heading.
+   No bottom rule: the first `.metric` supplies it. */
+.band__names {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+
+  span:last-child {
+    text-align: right;
+  }
+}
+
+/* ── THE METRIC ───────────────────────────────────────────────────────────
+   Value, label, value — with an optional bar row beneath each figure, growing outwards from the
+   number it belongs to. Thin and low-contrast on purpose: a proportion aid, not the number's
+   replacement. */
+.metric {
+  display: grid;
+  grid-template-columns: minmax(3.5rem, 1fr) minmax(16rem, 2fr) minmax(3.5rem, 1fr);
+  grid-template-areas:
+    'leftvalue label rightvalue'
+    'lefttrack label righttrack';
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 3px;
+  padding-block: var(--space-2);
+  border-block-start: 1px solid var(--line-faint);
+}
+
+.metric--plain {
+  grid-template-areas: 'leftvalue label rightvalue';
+}
+
+/* The lead band: the only place on the page where a figure is set at display size, and that size is
+   the claim that these three may be compared. */
+.metric--lead {
+  row-gap: var(--space-1);
+
+  .metric__value {
+    font-size: var(--text-display);
+    line-height: var(--leading-tight);
+  }
+
+  .metric__label {
+    font-size: var(--text-small);
+    color: var(--text-primary);
+  }
+}
+
+.metric__value {
+  grid-area: leftvalue;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+
+  strong {
+    font-weight: 500;
+  }
+}
+
+.metric__value--right {
+  grid-area: rightvalue;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.metric__meta,
+.metric__unit,
+.metric__absent {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+/* An absent reading is set at the value's own size: it is the answer to the row, not a footnote. */
+.metric__absent {
+  font-size: var(--text-small);
+}
+
+.metric__mid {
+  grid-area: label;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.metric__label {
+  font-size: var(--text-micro);
+  color: var(--text-secondary);
+}
+
+.metric__note {
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: 48ch;
+}
+
+.metric__track {
+  grid-area: lefttrack;
+  display: flex;
+  justify-content: flex-end;
+  block-size: 3px;
+  background: var(--line-faint);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.metric__track--right {
+  grid-area: righttrack;
+  justify-content: flex-start;
+}
+
+.metric__fill {
+  display: block;
+  block-size: 100%;
+  background: var(--text-secondary);
+  border-radius: 1px;
+}
+
+/* ── A PROFILE PANEL ──────────────────────────────────────────────────────*/
+.panel {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--line-subtle);
+  color: var(--text-tertiary);
+}
+
+.panel__title {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.panel__scope {
+  margin-inline-start: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.panel__sub {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-tertiary);
+}
+
+.panel__aside {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  max-inline-size: 68ch;
+}
+
+.panel__caution {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--caution);
+}
+
+/* ── DEPTH QUALITY ───────────────────────────────────────────────────────
+   The bar itself is `.c-resolved-bar`, a primitive: the platform states a resolved share the same way
+   wherever it appears. What is local is the pairing and the figures beneath. */
+.quality {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  border-block-start: 1px solid var(--line-faint);
+}
+
+.quality__label {
+  text-align: center;
+}
+
+.quality__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+
+  &:last-child {
+    text-align: right;
+  }
+}
+
+/* ── FAULTS ───────────────────────────────────────────────────────────────*/
+.faults {
+  padding-block-start: var(--space-2);
 }
 
 .faults__list {
@@ -275,14 +470,23 @@
   }
 }
 
-.faults__list--right {
-  text-align: right;
+.faults__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+
+  em {
+    font-style: normal;
+    color: var(--text-tertiary);
+  }
 }
 
 .faults__distance {
   font-family: var(--font-mono);
   color: var(--text-tertiary);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 
   em {
     font-style: normal;
@@ -290,24 +494,80 @@
   }
 }
 
-.faults__none {
-  color: var(--text-tertiary);
+/* ── WHAT STANDS OUT
+   Prose, deliberately. An observation is a sentence; forcing it into a metric would repeat the
+   mistake the mirrored bars made. No bullet glyphs: the spacing separates them, and the only mark in
+   the gutter is the caution icon on the closing line — which is a limit rather than a finding, and so
+   takes the caution hue, meaning on this platform exactly "read the caveat". */
+.stands__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: var(--space-2);
+    font-size: var(--text-small);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
 }
 
-@media (width <= 60rem) {
-  .pair,
+.stands__limit {
+  color: var(--caution);
+}
+
+/* ── NARROW ───────────────────────────────────────────────────────────────
+   Below this width the two columns have no room, so each side stacks and the figures sit beside
+   their labels. The bars are dropped rather than shrunk: a 40px bar encodes nothing. */
+@media (width <= 62rem) {
+  .subjects,
+  .era-cards,
+  .quality__pair,
   .faults {
     grid-template-columns: 1fr;
   }
 
-  /* Below this width the mirrored spine has no room, so the metric stacks: label, then both values. */
-  .metric,
-  .metric--text {
-    grid-template-columns: 1fr auto auto;
-    grid-template-areas: 'label leftvalue rightvalue';
+  .subjects__column:first-of-type,
+  .subjects__column:nth-of-type(2),
+  .subjects__slot:first-of-type,
+  .subjects__slot:nth-of-type(2),
+  .swap {
+    grid-column: 1;
   }
 
-  .metric__bar {
+  .swap {
+    grid-row: auto;
+    justify-self: center;
+  }
+
+  .metric {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas: 'label leftvalue rightvalue';
+    column-gap: var(--space-2);
+  }
+
+  .metric--lead .metric__value {
+    font-size: var(--text-lead);
+  }
+
+  .metric__mid {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .metric__track {
     display: none;
+  }
+
+  .quality__side:last-child {
+    text-align: left;
+  }
+
+  .faults__list--right {
+    text-align: left;
   }
 }

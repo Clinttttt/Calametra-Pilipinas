@@ -55,6 +55,7 @@ export type IconName =
   | 'locate'
   | 'radius'
   // Controls
+  | 'swap'
   | 'search'
   | 'hazards'
   | 'play'
@@ -215,6 +216,14 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   // ── CONTROLS ───────────────────────────────────────────────────────────
   // search and play keep their conventional forms: universal recognition
   // outweighs distinctiveness for the two most-used controls in any app.
+
+  /**
+   * Exchange the two sides of a comparison.
+   *
+   * Two shafts with heads at opposite ends, deliberately *not* a circular
+   * refresh arrow: the two subjects trade places, nothing is reloaded.
+   */
+  swap: ['M4 9h13', 'M13.5 5.5 17 9l-3.5 3.5', 'M20 15H7', 'M10.5 11.5 7 15l3.5 3.5'],
 
   /** A magnifier whose lens carries a crosshair: search *on the map*. */
   search: ['M16 16l4.5 4.5', 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Z', 'M10.5 7.5v6M7.5 10.5h6'],
