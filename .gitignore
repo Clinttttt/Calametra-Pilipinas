@@ -1,8 +1,15 @@
 # ---------------------------------------------------------------------------
-# Documentation — excluded from the public repository by request.
+# Documentation — excluded from the public repository by request, with two
+# deliberate exceptions.
+#
+# The decision record and the README that indexes it ARE tracked. A decision
+# that is not in version control is not a decision, it is a note: nothing shows
+# when it changed, nothing shows who accepted it, and the code it governs can
+# drift from it silently. `/docs/*` rather than `/docs/` because Git cannot
+# re-include a file whose parent directory is itself excluded.
 # ---------------------------------------------------------------------------
-/docs/
-/README.md
+/docs/*
+!/docs/adr/
 /ROADMAP.md
 src/frontend/README.md
 
