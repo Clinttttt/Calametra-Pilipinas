@@ -83,7 +83,6 @@ src/frontend/         Angular 22 — standalone, signals, zoneless
   src/app/features/           lazily loaded features
 
 docs/adr/             architecture decision records
-docs/DESIGN_SYSTEM.md design rules — read before adding UI
 ```
 
 Two hosts is why this architecture is warranted rather than aspirational:
@@ -192,7 +191,9 @@ difference is visible rather than hidden.
   spatial concept, not a replacement for the radius. Accepted; implementation gated on the PSGC
   crosswalk
 
-Current state and remaining work: **[docs/ROADMAP.md](docs/ROADMAP.md)**
+The decision record above is the part of the documentation that is version-controlled, because a
+decision the code obeys has to be reviewable. The roadmap and the design system are maintained
+outside this repository.
 
 ## Data sources
 

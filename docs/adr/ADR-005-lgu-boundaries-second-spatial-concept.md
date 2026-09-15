@@ -102,11 +102,30 @@ So the crosswalk has two states and they are not interchangeable:
 | `Confirmed` | a person, with evidence recorded | Yes |
 
 **A proposal is a work queue, not data.** `Proposed` rows exist so a reviewer has somewhere to start
-and so the unmatched remainder is visible. No containment query, no place lookup, no figure rendered
-to a reader may join through a `Proposed` row — and that is a schema-level constraint with a test
-behind it, not a convention someone remembers. A pairing that has not been reviewed behaves exactly
-as if it were absent, which is the same treatment this platform gives an unmeasured depth: not
-approximated, marked.
+and so the unmatched remainder is visible. An unreviewed pairing behaves exactly as if it were absent,
+which is the same treatment this platform gives an unmeasured depth: not approximated, marked.
+
+**"Unreadable" is a runtime boundary, not a hope.** The rule that no figure may be derived from a
+`Proposed` row cannot be expressed as a table constraint — a `CHECK` constrains the row it sits on, it
+cannot forbid a `SELECT`. So the boundary is enforced where reads actually happen, in three layers
+that fail independently:
+
+| Layer | Enforces | If it is bypassed |
+|---|---|---|
+| A `Confirmed`-only view, and a repository that exposes no other read path | Analytics can only see confirmed pairings | The next layer still holds |
+| Database permissions on the base table, where the deployment allows separate roles | The application role cannot read `Proposed` at all | Falls back to the view boundary |
+| Tests asserting no analytics query touches the base table, and that a `Proposed` row is invisible through every public read | Regression cannot reintroduce the join | — |
+
+Permissions are qualified deliberately: a single-role local deployment cannot separate them, and an
+ADR that mandates what the environment cannot supply is ignored rather than obeyed. Where roles are
+available the base table is unreadable to the application; where they are not, the view and the tests
+carry it, and that difference is recorded rather than glossed.
+
+**Constraints enforce completeness, which is a different thing.** A row may not be `Confirmed`
+without the evidence that makes it reviewable: `Evidence` present, `Reason` present where the evidence
+is `ManualReview`, reviewer and date recorded, and the register edition cited. That *is* expressible
+as a constraint, so it is one — a half-filled `Confirmed` row is the failure mode that would make the
+whole gate decorative, because it would pass every read boundary while carrying no evidence at all.
 
 **Confirming requires stating the evidence, per row.** The `Evidence` column carries what was
 actually checked:
