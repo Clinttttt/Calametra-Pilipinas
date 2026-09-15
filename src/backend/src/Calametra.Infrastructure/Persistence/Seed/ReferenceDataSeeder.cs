@@ -49,6 +49,7 @@ public sealed class ReferenceDataSeeder(
         await EnsureGeoNamesAsync(now, cancellationToken);
         await EnsurePsgcRegisterAsync(now, cancellationToken);
         await EnsureOpenStreetMapAsync(now, cancellationToken);
+        await EnsureOpenStreetMapBoundariesAsync(now, cancellationToken);
         await EnsurePagasaNamesAsync(now, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
@@ -726,6 +727,88 @@ public sealed class ReferenceDataSeeder(
                     + "which for a large municipality is not its edge.")
             // Storable, and share-alike: any derived database Calametra publishes carries ODbL 1.0
             // and the attribution above is mandatory.
+            .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: false);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
+
+        return created;
+    }
+
+    /// <summary>
+    /// OpenStreetMap administrative boundaries — the polygons, as a separate dataset row.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Separate from the town centres deliberately.</b> ADR-005 D2 requires the boundary set to carry
+    /// its own row rather than appear as a footnote on the coordinates, because the two are read from
+    /// different OSM objects at different times and the Sources page lists what this platform reads
+    /// dataset by dataset. They also fail differently: a missing centre leaves a place on its gazetteer
+    /// point, while a missing boundary leaves a unit with no geometry at all.
+    /// </para>
+    /// <para>
+    /// <b>ODbL 1.0 share-alike, and this is where the obligation stops being incidental.</b> The town
+    /// centres already placed the place directory under ODbL; adding roughly sixteen hundred polygons
+    /// makes any derived database this project publishes substantially an OSM derivative. Attribution is
+    /// mandatory and the licence travels with anything derived from it.
+    /// </para>
+    /// <para>
+    /// Levels are the Philippine ones, verified against the OSM Philippines LGU mapping conventions:
+    /// region 3, province 4, city and municipality <b>6</b>, barangay 10. Level 6 is what this platform
+    /// reads. An import written against the common assumption that municipalities are level 8 would
+    /// silently fetch city and municipal administrative districts instead.
+    /// </para>
+    /// </remarks>
+    private async Task<DataSource> EnsureOpenStreetMapBoundariesAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(
+                source => source.Slug == OpenStreetMapOptions.BoundarySlug,
+                cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                OpenStreetMapOptions.BoundarySlug,
+                agency: "OpenStreetMap contributors",
+                datasetName:
+                    "Philippine city and municipality administrative boundaries (admin_level 6), via "
+                    + "the Overpass API",
+                SourceAccessKind.RestApi,
+                attribution:
+                    "Administrative boundary geometry © OpenStreetMap contributors, available under the "
+                    + "Open Database Licence (ODbL) 1.0.",
+                now)
+            .Value;
+
+        created
+            .WithLinks(
+                sourceUrl: "https://www.openstreetmap.org/",
+                termsUrl: "https://opendatacommons.org/licenses/odbl/1-0/")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "City and municipality outlines, read as OSM administrative relations at "
+                    + "admin_level 6 and attached to the PSA ten-digit register by the relation's own "
+                    + "'ref' tag. The Philippine OSM community records the PSGC code in that tag, which "
+                    + "is why no boundary here is matched by name: 111 city and municipality names in "
+                    + "this country are not unique, so a name match would be wrong in at least that "
+                    + "many places.\n\n"
+                    + "A volunteer map, and treated as one. Edges are as good as the last mapper made "
+                    + "them, vary in precision across the archipelago, and are not a cadastral or legal "
+                    + "record of any boundary. Where a municipal boundary is disputed, OSM holds one "
+                    + "rendering of it rather than the resolution.\n\n"
+                    + "Geometry is versioned and never overwritten. Boundaries change by legislation — "
+                    + "provinces split, cities are created, regions are formed — so each import records "
+                    + "the extract it came from and supersedes rather than replaces. A containment "
+                    + "figure therefore always names the boundary edition it used.\n\n"
+                    + "Barangay boundaries (admin_level 10) are deliberately not read: OSM coverage is "
+                    + "uneven across the country, and a set complete in Metro Manila and sparse in "
+                    + "Caraga would make this platform most confident exactly where a national service "
+                    + "should not be.")
+            // Share-alike, and stored rather than proxied: these polygons are held in this database.
             .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: false);
 
         if (existing is null)

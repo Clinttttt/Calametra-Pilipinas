@@ -235,6 +235,73 @@ internal sealed class LguCrosswalkExceptionConfiguration
 }
 
 /// <summary>
+/// Versioned boundary geometry. Rows are added and retired, never edited.
+/// </summary>
+internal sealed class LguBoundaryConfiguration : IEntityTypeConfiguration<LguBoundary>
+{
+    public void Configure(EntityTypeBuilder<LguBoundary> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("lgu_boundaries");
+
+        builder.HasKey(boundary => boundary.Id);
+
+        builder.Property(boundary => boundary.CanonicalPsgcCode).HasMaxLength(10).IsRequired();
+        builder.Property(boundary => boundary.OsmRefTag).HasMaxLength(20);
+        builder.Property(boundary => boundary.OsmName).HasMaxLength(200);
+        builder.Property(boundary => boundary.ExtractVersion).HasMaxLength(60);
+        builder.Property(boundary => boundary.RepairNote).HasMaxLength(500);
+
+        // geography, matching every other spatial column in this schema: containment is asked in metres
+        // on the sphere, and a geometry column would answer in degrees and be wrong by latitude.
+        builder.Property(boundary => boundary.Geometry)
+            .HasColumnType("geography (MultiPolygon, 4326)")
+            .IsRequired();
+
+        builder.HasIndex(boundary => boundary.Geometry).HasMethod("gist");
+
+        builder.HasIndex(boundary => boundary.LguId);
+        builder.HasIndex(boundary => boundary.OsmRelationId);
+
+        // The question every containment query asks: which outline is in force for this unit. Partial, so
+        // the index holds one row per unit however many superseded versions accumulate behind it.
+        builder.HasIndex(boundary => boundary.LguId)
+            .IsUnique()
+            .HasFilter("valid_to IS NULL")
+            .HasDatabaseName("ux_lgu_boundaries_in_force_per_lgu");
+
+        builder.ToTable(table =>
+        {
+            // A boundary with no area is not a boundary. Guarded in the database as well as the domain
+            // because a zero-area row would make a unit look covered while containing nothing, and
+            // coverage is the figure the whole gate turns on.
+            table.HasCheckConstraint(
+                "ck_lgu_boundaries_area_is_positive",
+                "area_square_km > 0");
+
+            // ADR-005 D7: a retired version must say when it stopped being in force AND what replaced it.
+            // Either alone is a half-recorded supersession, which is the state that makes a version history
+            // unreadable later.
+            table.HasCheckConstraint(
+                "ck_lgu_boundaries_supersession_is_complete",
+                "(valid_to IS NULL AND superseded_by_boundary_id IS NULL) "
+                + "OR (valid_to IS NOT NULL AND superseded_by_boundary_id IS NOT NULL)");
+
+            table.HasCheckConstraint(
+                "ck_lgu_boundaries_valid_period_is_ordered",
+                "valid_to IS NULL OR valid_to >= valid_from");
+
+            // A repair is a guess dressed as an operation, so it may not be recorded without saying what
+            // was done.
+            table.HasCheckConstraint(
+                "ck_lgu_boundaries_repair_is_explained",
+                "NOT was_repaired OR repair_note IS NOT NULL");
+        });
+    }
+}
+
+/// <summary>
 /// The confirmed-only read boundary, mapped to a view rather than to the base table.
 /// </summary>
 /// <remarks>

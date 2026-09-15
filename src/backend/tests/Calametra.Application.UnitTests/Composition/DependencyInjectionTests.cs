@@ -53,6 +53,7 @@ public sealed class DependencyInjectionTests
         // this test is meant to keep honest.
         services.AddScoped(_ => Substitute.For<ILguCrosswalkReviewContext>());
         services.AddScoped(_ => Substitute.For<IPsgcRegisterSource>());
+        services.AddScoped(_ => Substitute.For<ILguBoundarySource>());
         services.AddScoped(_ => Substitute.For<IEarthquakeCatalogSource>());
         services.AddScoped(_ => Substitute.For<IActiveFaultSource>());
         services.AddScoped(_ => Substitute.For<IHazardMapService>());
@@ -185,6 +186,19 @@ public sealed class DependencyInjectionTests
         {
             typeof(Features.Administrative.AcceptLguCrosswalkException.Command),
             typeof(Domain.Abstractions.Result)
+        },
+
+        // Geometry. ADR-005 D2 and D7: acquiring outlines and judging whether there are enough of them are
+        // separate requests, so the coverage verdict is never a side effect of a successful import.
+        {
+            typeof(Features.Administrative.ImportLguBoundaries.Command),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.ImportLguBoundaries.BoundaryImportSummary>)
+        },
+        {
+            typeof(Features.Administrative.GetLguBoundaryCoverage.Query),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.GetLguBoundaryCoverage.BoundaryCoverageReport>)
         },
         {
             typeof(GetCycloneTrack.Query),

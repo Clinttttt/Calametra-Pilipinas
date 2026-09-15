@@ -50,6 +50,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<LguCrosswalkException> LguCrosswalkExceptions => Set<LguCrosswalkException>();
 
+    public DbSet<LguBoundary> LguBoundaries => Set<LguBoundary>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

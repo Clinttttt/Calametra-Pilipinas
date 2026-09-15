@@ -106,6 +106,19 @@ var isExceptionAcceptance = bool.TryParse(
 var rejectLinkId = builder.Configuration["Ingestion:Lgu:RejectLink"];
 var isLinkRejection = !string.IsNullOrWhiteSpace(rejectLinkId);
 
+// ── ADR-005 D2 AND D7: GEOMETRY ──────────────────────────────────────────────
+//
+// Two modes, separated for the same reason the review path was: acquiring geometry and judging whether
+// there is enough of it are different acts, and a report that runs only as a side effect of a
+// successful import cannot be used to decide whether the import was good enough.
+var isBoundaryImport = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ImportBoundaries"],
+    out var boundaryFlag) && boundaryFlag;
+
+var isBoundaryCoverage = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:BoundaryCoverage"],
+    out var coverageFlag) && coverageFlag;
+
 var isOneShot = isBackfill
     || isCycloneImport
     || isPlaceImport
@@ -117,7 +130,9 @@ var isOneShot = isBackfill
     || isReviewQueue
     || isClassConfirmation
     || isExceptionAcceptance
-    || isLinkRejection;
+    || isLinkRejection
+    || isBoundaryImport
+    || isBoundaryCoverage;
 
 if (!isOneShot)
 {
@@ -146,7 +161,9 @@ await using (var scope = host.Services.CreateAsyncScope())
         && !isReviewQueue
         && !isClassConfirmation
         && !isExceptionAcceptance
-        && !isLinkRejection;
+        && !isLinkRejection
+        && !isBoundaryImport
+        && !isBoundaryCoverage;
 
     if (needsFaultGeometry)
     {
@@ -508,6 +525,73 @@ if (isLinkRejection)
     Console.WriteLine($"Pairing {linkId} rejected by {reviewedBy}.");
 
     return 0;
+}
+
+// ── ADR-005 D2: ACQUIRE GEOMETRY ───────────────────────────────────────────
+//
+// Runs only behind the gate. The readiness report is what says the crosswalk is reviewed, and geometry
+// attached to unreviewed identity would be a polygon on the wrong municipality — the failure that is
+// hardest to notice, because a map that draws is a map that looks right.
+if (isBoundaryImport)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var dispatcher = scope.ServiceProvider.GetRequiredService<IDispatcher>();
+
+    var gate = await dispatcher.Send(new GetLguCrosswalkReadiness.Query());
+
+    if (gate.IsFailure)
+    {
+        Console.WriteLine($"Readiness could not be established: {gate.Error!.Code}");
+
+        return 1;
+    }
+
+    if (!gate.Value.MayBeginGeometryIngestion)
+    {
+        Console.WriteLine(
+            "The ADR-005 gate is SHUT, so no geometry may be stored. Run "
+            + "--Ingestion:Lgu:Readiness=true to see which condition is unmet.");
+
+        return 2;
+    }
+
+    var imported = await dispatcher.Send(new ImportLguBoundaries.Command());
+
+    if (imported.IsFailure)
+    {
+        Console.WriteLine(
+            $"Boundary import failed: {imported.Error!.Code} — {imported.Error.Description}");
+
+        return 1;
+    }
+
+    LguBoundaryPrinter.WriteImport(imported.Value);
+
+    return 0;
+}
+
+// ── ADR-005: IS THERE ENOUGH GEOMETRY TO BUILD THE INTERACTION ON ──────────
+if (isBoundaryCoverage)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new GetLguBoundaryCoverage.Query());
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine($"Coverage report failed: {result.Error!.Code}");
+
+        return 1;
+    }
+
+    LguBoundaryPrinter.WriteCoverage(result.Value);
+
+    // Non-zero while coverage is short, so a script cannot proceed to the interaction by ignoring the
+    // text — the same contract the readiness gate uses.
+    return result.Value.SufficientForInteraction ? 0 : 2;
 }
 
 // ── ADR-005: THE GATE ──────────────────────────────────────────────────────

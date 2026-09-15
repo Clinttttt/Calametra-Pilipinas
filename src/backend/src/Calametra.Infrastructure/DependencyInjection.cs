@@ -233,5 +233,23 @@ public static class DependencyInjection
         // No resilience handler, and here it is a courtesy as well as a correctness argument: the
         // national query is one heavy request against a shared public instance, and Overpass's usage
         // policy asks callers not to retry heavy queries automatically.
+
+        services.AddHttpClient<ILguBoundarySource, OverpassBoundarySource>((provider, client) =>
+            {
+                var options = provider.GetRequiredService<IOptions<OpenStreetMapOptions>>().Value;
+
+                client.BaseAddress = new Uri(options.OverpassEndpoint);
+
+                // Longer than the settlement client's. A chunk of boundary geometry is megabytes of
+                // coordinates rather than a list of points, and the server-side timeout in the query is
+                // set from this value, so a short client timeout would abandon work Overpass is still
+                // doing.
+                client.Timeout = options.BoundaryTimeout;
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
+            });
+        // The adapter retries once per chunk itself, with a twenty-second pause. That is deliberate rather
+        // than delegated to a resilience handler: it retries at the granularity of a chunk, so a refusal
+        // costs one box rather than restarting a national fetch, and it stays inside the two-slot limit
+        // the public instance publishes.
     }
 }

@@ -53,5 +53,15 @@ public interface ILguCrosswalkReviewContext
     /// </remarks>
     DbSet<LguCrosswalkException> LguCrosswalkExceptions { get; }
 
+    /// <summary>
+    /// Every version of every unit's outline, in force or superseded.
+    /// </summary>
+    /// <remarks>
+    /// On the review surface because the import matches polygons to units through the confirmed crosswalk,
+    /// and because a superseded boundary is retained: analytics ask for the outline in force, which is a
+    /// narrower question than "every boundary ever recorded".
+    /// </remarks>
+    DbSet<LguBoundary> LguBoundaries { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

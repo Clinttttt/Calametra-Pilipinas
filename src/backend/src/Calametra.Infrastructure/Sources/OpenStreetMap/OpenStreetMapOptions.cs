@@ -31,6 +31,29 @@ public sealed class OpenStreetMapOptions
     /// <summary>Slug of the corresponding <c>DataSource</c> row.</summary>
     public const string Slug = "openstreetmap-ph-places";
 
+    /// <summary>
+    /// Slug of the boundary polygons' own <c>DataSource</c> row.
+    /// </summary>
+    /// <remarks>
+    /// A second row rather than a second use of the first, per ADR-005 D2: the polygons are read from
+    /// different OSM objects at a different time, and the Sources page lists datasets rather than
+    /// services. They also fail differently — a missing town centre leaves a place on its gazetteer
+    /// point, while a missing boundary leaves a unit with no geometry at all.
+    /// </remarks>
+    public const string BoundarySlug = "openstreetmap-ph-admin-boundaries";
+
+    /// <summary>
+    /// The OSM <c>admin_level</c> Philippine cities and municipalities are mapped at.
+    /// </summary>
+    /// <remarks>
+    /// <b>Six, not eight.</b> Verified against the OSM Philippines LGU mapping conventions: region 3,
+    /// province 4, city and municipality 6, barangay 10. Level 8 in the Philippines is a city or
+    /// municipal <em>administrative district</em> — Quezon City's Diliman and Cubao, Manila's fourteen
+    /// districts. An import written against the general-purpose assumption that municipalities are level
+    /// 8 would fetch that tier instead and look plausible while being the wrong unit everywhere.
+    /// </remarks>
+    public const int CityMunicipalityAdminLevel = 6;
+
     /// <summary>Overpass API endpoint.</summary>
     /// <remarks>
     /// The public instance. It rate-limits by IP and refuses requests without a user agent — a 406
@@ -52,6 +75,16 @@ public sealed class OpenStreetMapOptions
     /// 13 s for 1,695 nodes on 2026-09-12, but a busy instance queues.
     /// </remarks>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Timeout for one chunk of boundary geometry, and the server-side timeout asked of Overpass.
+    /// </summary>
+    /// <remarks>
+    /// Longer than <see cref="Timeout"/> because the payload is different in kind: a settlement query
+    /// returns a list of points, while one boundary chunk can be megabytes of coordinates that the server
+    /// has to assemble before sending anything.
+    /// </remarks>
+    public TimeSpan BoundaryTimeout { get; set; } = TimeSpan.FromMinutes(8);
 
     /// <summary>
     /// How far a candidate town centre may be from the gazetteer's point and still be accepted as
