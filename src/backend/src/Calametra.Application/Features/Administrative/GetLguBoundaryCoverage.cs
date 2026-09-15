@@ -50,14 +50,20 @@ public static class GetLguBoundaryCoverage
     public sealed record MissingUnit(string CanonicalCode, string Name, string Level, bool IsExcepted);
 
     /// <param name="TotalAreaSquareKm">
-    /// Summed area of the outlines in force. A sanity figure rather than a claim about the country: the
-    /// Philippine land area is about 300,000 km², so a total far from that says the geometry is wrong in a
-    /// way no count of rows would reveal.
+    /// Summed area of the outlines in force.
     /// </param>
     /// <param name="SmallestAreaSquareKm">
     /// The smallest outline stored. A near-zero minimum is the signature of a collapsed ring that passed
     /// validity but encloses nothing meaningful.
     /// </param>
+    /// <remarks>
+    /// <b>These areas are jurisdictional, not land areas, and the difference is large.</b> The OSM
+    /// Philippine convention maps a city or municipality out to its municipal waters — 15 km from the
+    /// coastline under RA 8550 — so an island municipality's outline is mostly sea. Calayan in the Babuyan
+    /// Islands measures about 7,000 km² here against roughly 200 km² of land. Comparing the total against
+    /// the country's ~300,000 km² of land would therefore be comparing two different quantities, and any
+    /// area this platform publishes has to say which one it is.
+    /// </remarks>
     public sealed record BoundaryCoverageReport(
         bool AnyBoundariesHeld,
         string? SourceSlug,

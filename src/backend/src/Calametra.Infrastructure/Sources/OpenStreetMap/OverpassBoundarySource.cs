@@ -47,10 +47,12 @@ internal sealed class OverpassBoundarySource(
     private static readonly GeometryFactory Factory = new(new PrecisionModel(), 4326);
 
     /// <summary>Courtesy pause between chunks, on volunteer infrastructure with a published slot limit.</summary>
-    private static readonly TimeSpan BetweenChunks = TimeSpan.FromSeconds(2);
-
-    /// <summary>Longer pause before a retry, to let a busy slot clear.</summary>
-    private static readonly TimeSpan RetryPause = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan[] LoadRetryPauses =
+    [
+        TimeSpan.FromSeconds(15),
+        TimeSpan.FromSeconds(45),
+        TimeSpan.FromSeconds(90),
+    ];
 
     /// <summary>
     /// How many times a failing cell may be quartered.
@@ -102,22 +104,22 @@ internal sealed class OverpassBoundarySource(
 
             BoundaryLog.ChunkStarting(logger, chunk.Label, completed, completed + pending.Count);
 
-            var document = await TryFetchAsync(adminLevel, chunk, cancellationToken);
+            var outcome = await TryFetchAsync(adminLevel, chunk, cancellationToken);
 
-            if (document is not null)
+            if (outcome.Document is not null)
             {
-                using (document)
+                using (outcome.Document)
                 {
-                    extractVersion ??= ReadExtractVersion(document);
+                    extractVersion ??= ReadExtractVersion(outcome.Document);
 
                     var before = features.Count;
 
-                    ReadRelations(document, features, unassembled);
+                    ReadRelations(outcome.Document, features, unassembled);
 
                     BoundaryLog.ChunkCompleted(logger, chunk.Label, features.Count - before);
                 }
             }
-            else if (next.Depth < MaximumSubdivisionDepth)
+            else if (outcome.WasTooLarge && next.Depth < MaximumSubdivisionDepth)
             {
                 foreach (var quarter in Subdivide(chunk))
                 {
@@ -137,7 +139,7 @@ internal sealed class OverpassBoundarySource(
 
             if (pending.Count > 0)
             {
-                await Task.Delay(BetweenChunks, timeProvider, cancellationToken);
+                await Task.Delay(options.BoundaryPause, timeProvider, cancellationToken);
             }
         }
 
@@ -152,42 +154,76 @@ internal sealed class OverpassBoundarySource(
     }
 
     /// <summary>
-    /// Fetches one cell, retrying once. Returns null when the cell could not be read.
+    /// Fetches one cell. Returns the outcome, which distinguishes "too big" from "too busy".
     /// </summary>
-    private async Task<JsonDocument?> TryFetchAsync(
+    /// <remarks>
+    /// <para>
+    /// <b>The two failures look identical and need opposite responses.</b> An oversized cell must be
+    /// quartered; a loaded server must be waited for. Subdividing a cell that failed because the instance
+    /// was busy makes it worse — it turns one request into four against the thing that is already
+    /// struggling, which is how a national read becomes an outage.
+    /// </para>
+    /// <para>
+    /// They are told apart by how long the failure took. A gateway refusal arrives in seconds, well inside
+    /// the timeout; a cell genuinely too large to assemble consumes the whole budget. Measured on the
+    /// public instance, load failures returned 504 in about thirty seconds against a three-minute timeout,
+    /// including for cells over open sea that can contain almost nothing.
+    /// </para>
+    /// <para>
+    /// Load failures are retried with escalating pauses and rotated across the configured mirrors. Only a
+    /// failure that used its full budget subdivides.
+    /// </para>
+    /// </remarks>
+    private async Task<FetchOutcome> TryFetchAsync(
         int adminLevel,
         BoundaryChunk chunk,
         CancellationToken cancellationToken)
     {
-        // One retry before subdividing. The public instance refuses a request when its slots are busy,
-        // which at the transport is indistinguishable from a cell that is genuinely too large — so the
-        // cheap explanation is tested first.
-        for (var attempt = 1; attempt <= 2; attempt++)
+        var budget = options.BoundaryTimeout;
+        var endpoints = options.BoundaryEndpoints;
+
+        for (var attempt = 1; attempt <= LoadRetryPauses.Length + 1; attempt++)
         {
+            var endpoint = endpoints[(attempt - 1) % endpoints.Length];
+            var started = timeProvider.GetTimestamp();
+
             try
             {
-                return await FetchChunkAsync(adminLevel, chunk, cancellationToken);
+                var document = await FetchChunkAsync(adminLevel, chunk, endpoint, cancellationToken);
+
+                return FetchOutcome.Served(document);
             }
             catch (Exception exception) when (exception is HttpRequestException
                 or HttpIOException
                 or TaskCanceledException
                 or JsonException)
             {
-                BoundaryLog.ChunkAttemptFailed(
+                var elapsed = timeProvider.GetElapsedTime(started);
+
+                // Used most of its budget: the cell itself is the problem, and no amount of waiting or
+                // mirror-hopping will make it smaller.
+                if (elapsed >= budget * 0.8)
+                {
+                    BoundaryLog.ChunkTooLarge(logger, chunk.Label, (int)elapsed.TotalSeconds);
+
+                    return FetchOutcome.TooLarge();
+                }
+
+                BoundaryLog.ChunkRefused(
                     logger,
                     chunk.Label,
                     attempt,
-                    exception.GetType().Name,
-                    exception.Message);
+                    (int)elapsed.TotalSeconds,
+                    exception.GetType().Name);
 
-                if (attempt < 2)
+                if (attempt <= LoadRetryPauses.Length)
                 {
-                    await Task.Delay(RetryPause, timeProvider, cancellationToken);
+                    await Task.Delay(LoadRetryPauses[attempt - 1], timeProvider, cancellationToken);
                 }
             }
         }
 
-        return null;
+        return FetchOutcome.Unavailable();
     }
 
     /// <summary>Splits a cell into quarters.</summary>
@@ -217,6 +253,7 @@ internal sealed class OverpassBoundarySource(
     private async Task<JsonDocument> FetchChunkAsync(
         int adminLevel,
         BoundaryChunk chunk,
+        string endpoint,
         CancellationToken cancellationToken)
     {
         var query = string.Create(
@@ -224,7 +261,7 @@ internal sealed class OverpassBoundarySource(
             $"[out:json][timeout:{(int)options.BoundaryTimeout.TotalSeconds}];rel[\"boundary\"=\"administrative\"][\"admin_level\"=\"{adminLevel}\"]({chunk.South:F5},{chunk.West:F5},{chunk.North:F5},{chunk.East:F5});out geom;");
 
         using var content = new FormUrlEncodedContent([new KeyValuePair<string, string>("data", query)]);
-        using var response = await httpClient.PostAsync((Uri?)null, content, cancellationToken);
+        using var response = await httpClient.PostAsync(new Uri(endpoint), content, cancellationToken);
 
         response.EnsureSuccessStatusCode();
 
@@ -234,6 +271,19 @@ internal sealed class OverpassBoundarySource(
         {
             return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
         }
+    }
+
+    /// <param name="WasTooLarge">
+    /// True only when the request consumed its whole budget, which is the signature of a cell that needs
+    /// splitting rather than a server that needs waiting for.
+    /// </param>
+    private readonly record struct FetchOutcome(JsonDocument? Document, bool WasTooLarge)
+    {
+        public static FetchOutcome Served(JsonDocument document) => new(document, false);
+
+        public static FetchOutcome TooLarge() => new(null, true);
+
+        public static FetchOutcome Unavailable() => new(null, false);
     }
 
     /// <summary>
@@ -441,13 +491,21 @@ internal static partial class BoundaryLog
     [LoggerMessage(
         EventId = 7302,
         Level = LogLevel.Warning,
-        Message = "Boundary chunk {Label} attempt {Attempt} failed ({ExceptionType}): {Message}")]
-    public static partial void ChunkAttemptFailed(
+        Message = "Boundary chunk {Label} refused after {Seconds}s on attempt {Attempt} ({ExceptionType}). "
+            + "Too quick to be a size problem, so treated as load: waiting and trying another mirror.")]
+    public static partial void ChunkRefused(
         ILogger logger,
         string label,
         int attempt,
-        string exceptionType,
-        string message);
+        int seconds,
+        string exceptionType);
+
+    [LoggerMessage(
+        EventId = 7305,
+        Level = LogLevel.Information,
+        Message = "Boundary chunk {Label} used its whole {Seconds}s budget, so the cell is too large "
+            + "rather than the server too busy. Splitting it.")]
+    public static partial void ChunkTooLarge(ILogger logger, string label, int seconds);
 
     [LoggerMessage(
         EventId = 7304,

@@ -88,9 +88,12 @@ internal static class LguBoundaryPrinter
 
         Console.WriteLine();
         Console.WriteLine("GEOMETRY SANITY");
+        Console.WriteLine("  Areas are JURISDICTIONAL, not land: the OSM Philippine convention maps a");
+        Console.WriteLine("  municipality out to its municipal waters, 15 km from the coastline (RA 8550),");
+        Console.WriteLine("  so an island municipality's outline is mostly sea.");
         Console.WriteLine(string.Create(
             culture,
-            $"  Total area         {report.TotalAreaSquareKm:N0} km2  (Philippine land area is about 300,000 km2)"));
+            $"  Total area         {report.TotalAreaSquareKm:N0} km2 of jurisdiction"));
         Console.WriteLine(string.Create(
             culture,
             $"  Smallest outline   {report.SmallestAreaSquareKm:N2} km2"));

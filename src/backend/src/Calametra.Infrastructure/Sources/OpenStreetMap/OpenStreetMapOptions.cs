@@ -80,11 +80,45 @@ public sealed class OpenStreetMapOptions
     /// Timeout for one chunk of boundary geometry, and the server-side timeout asked of Overpass.
     /// </summary>
     /// <remarks>
-    /// Longer than <see cref="Timeout"/> because the payload is different in kind: a settlement query
-    /// returns a list of points, while one boundary chunk can be megabytes of coordinates that the server
-    /// has to assemble before sending anything.
+    /// Three minutes, and it is also the server-side timeout asked of Overpass. Chosen from measurement
+    /// rather than caution: a cell small enough to be served answers well inside it, and a cell that is
+    /// too large is better discovered quickly and quartered than waited out. A generous timeout here does
+    /// not buy the data — it only delays the split that actually gets it.
     /// </remarks>
-    public TimeSpan BoundaryTimeout { get; set; } = TimeSpan.FromMinutes(8);
+    public TimeSpan BoundaryTimeout { get; set; } = TimeSpan.FromMinutes(3);
+
+    /// <summary>
+    /// Endpoints to try for boundary geometry, in order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// More than one because the public instance publishes a two-slot limit and answers 504 within seconds
+    /// when it is busy — measured repeatedly on 2026-09-15, including for cells over open sea that can
+    /// contain almost nothing. That failure is load, not payload, and rotating to a mirror is both the
+    /// effective response and the polite one: it spreads a national read across volunteer infrastructure
+    /// rather than queueing against one host.
+    /// </para>
+    /// <para>
+    /// Kumi Systems runs a well-known mirror with more capacity than the main instance. Both serve the same
+    /// OSM data under ODbL, so which one answered changes nothing about provenance beyond the extract
+    /// timestamp, which is recorded per import.
+    /// </para>
+    /// </remarks>
+    public string[] BoundaryEndpoints { get; set; } =
+    [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+    ];
+
+    /// <summary>
+    /// Pause between boundary requests.
+    /// </summary>
+    /// <remarks>
+    /// Five seconds rather than one. This platform is a guest on volunteer infrastructure for a read it
+    /// performs once and then holds for months, so the polite pace is also the one that finishes: hammering
+    /// a loaded instance returns errors rather than data.
+    /// </remarks>
+    public TimeSpan BoundaryPause { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// How far a candidate town centre may be from the gazetteer's point and still be accepted as
