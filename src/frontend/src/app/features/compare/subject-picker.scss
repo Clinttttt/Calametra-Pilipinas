@@ -143,7 +143,8 @@
 
 .key--ring,
 .key--fault,
-.key--track {
+.key--track,
+.key--track-notable {
   inline-size: 12px;
   block-size: 0;
   border-radius: 0;
@@ -157,15 +158,16 @@
   border-block-start: 1.5px solid var(--fault-trace);
 }
 
-/* Mid-ramp again, for the same reason as the depth swatch: the Saffir–Simpson scale is keyed on the
-   Explore map, where a reader can compare a track against it. */
+/* The density field: the same ink and weight the map gives a single passage, so the key looks like
+   what it labels rather than like a brighter version of it. */
 .key--track {
-  border-block-start: 1.5px solid var(--cyclone-mid);
+  border-block-start: 1px solid rgb(200 216 232 / 45%);
 }
 
-.key--landfall {
-  background: var(--accent);
-  opacity: 0.6;
+/* Mid-ramp, for the same reason as the depth swatch: one swatch cannot show a gradient, and the
+   Saffir–Simpson scale is keyed on the Explore map where a track can be read against it. */
+.key--track-notable {
+  border-block-start: 1.5px solid var(--cyclone-mid);
 }
 
 .facts {

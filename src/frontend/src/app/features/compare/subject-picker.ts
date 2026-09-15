@@ -57,6 +57,9 @@ export class SubjectPicker {
   /** Stated rather than assumed, so the legend and the page cannot disagree about the floor. */
   readonly comparableMagnitude = input.required<number>();
 
+  /** How many passages the map emphasises, so the caption states the figure the map drew. */
+  protected readonly emphasisedTracks = LocatorMap.emphasisedTracks;
+
   readonly termChange = output<string>();
   readonly chosen = output<PlaceMatch>();
 

@@ -147,13 +147,14 @@ public static class GetCycloneTracksNearby
         /// How much wider than the selection radius the drawn segments reach.
         /// </summary>
         /// <remarks>
-        /// 1.6 rather than a fixed number of kilometres, so the margin scales with the view: at 50 km
-        /// a fixed 60 km margin would dominate the figure, and at 200 km it would be invisible.
-        /// Chosen against best-track spacing — a storm moving at 15 kt covers about 80 km between
-        /// six-hourly fixes, so at 100 km this margin adds roughly one fix at each end, which is
-        /// exactly enough to show a direction and not enough to clutter.
+        /// Enough to show a direction of travel and no more. It began at 1.6, and against Cebu City —
+        /// 99 storms within 100 km — that put every segment across the full width of a 13 rem canvas
+        /// and the figure became a thicket. 1.25 adds roughly one best-track fix at each end of the
+        /// ring, which is what makes the approach readable, without the paths dominating the frame
+        /// they are drawn in. A factor rather than a fixed distance so the margin scales with the
+        /// radius the reader chose.
         /// </remarks>
-        private const double DrawnRadiusFactor = 1.6d;
+        private const double DrawnRadiusFactor = 1.25d;
 
         /// <summary>See <see cref="GetCycloneDecades"/>: JTWC's own assessment of its best track.</summary>
         private const int ReliableFromSeason = 1985;

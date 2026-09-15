@@ -48,21 +48,23 @@
       <span><i class="key key--assigned"></i>Depth assigned</span>
       <span><i class="key key--fault"></i>Mapped fault</span>
       @if (tracks().length > 0) {
-        <span><i class="key key--track"></i>Storm track, by wind</span>
-        <span><i class="key key--landfall"></i>Landfall</span>
+        <span><i class="key key--track"></i>Storm passages</span>
+        <span><i class="key key--track-notable"></i>Strongest, by wind</span>
       }
     </p>
 
-    <!-- Stated rather than implied: the figure draws one line per storm out to a wider radius than
-         the count uses, and where the API's limit bit it draws fewer lines than there are storms. -->
+    <!-- Stated rather than implied. The figure draws one line per storm out to a wider radius than the
+         count uses, only the strongest few carry intensity colour, and where the API's limit bit it
+         draws fewer lines than there are storms. -->
     @if (tracks().length > 0) {
       <p class="caption">
         @if (stormCount() > tracks().length) {
-          {{ tracks().length }} of {{ stormCount() }} storm tracks, strongest first —
+          {{ tracks().length }} of {{ stormCount() }} storm passages, strongest first —
         } @else {
-          {{ tracks().length }} storm tracks —
+          {{ tracks().length }} storm passages —
         }
-        each cut to its passage near here, coloured by the strongest wind along that passage
+        each cut to its approach. The {{ emphasisedTracks }} strongest carry the wind ramp; the rest
+        show where storms went by.
       </p>
     }
 

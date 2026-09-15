@@ -420,9 +420,9 @@ describe('Compare storm tracks', () => {
 
     const caption = host.querySelector('cal-subject-picker .caption');
 
-    expect(caption?.textContent).toContain('1 storm tracks');
-    expect(caption?.textContent).toContain('cut to its passage near here');
-    expect(caption?.textContent).toContain('strongest wind along that passage');
+    expect(caption?.textContent).toContain('1 storm passages');
+    expect(caption?.textContent).toContain('each cut to its approach');
+    expect(caption?.textContent).toContain('carry the wind ramp');
   });
 
   it('discloses the truncation when fewer tracks are drawn than there are storms', async () => {
@@ -436,7 +436,7 @@ describe('Compare storm tracks', () => {
     });
 
     expect(host.querySelector('cal-subject-picker .caption')?.textContent).toContain(
-      '1 of 131 storm tracks, strongest first',
+      '1 of 131 storm passages, strongest first',
     );
   });
 

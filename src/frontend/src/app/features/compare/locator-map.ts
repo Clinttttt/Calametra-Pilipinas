@@ -140,7 +140,15 @@ export class LocatorMap {
   private static readonly eventsSourceId = 'locator-events';
   private static readonly faultsSourceId = 'locator-faults';
   private static readonly tracksSourceId = 'locator-tracks';
-  private static readonly landfallsSourceId = 'locator-landfalls';
+
+  /**
+   * How many passages keep their intensity colour.
+   *
+   * Six, because that is about as many lines as can be told apart on a canvas this size — and because
+   * the point of emphasising any is that a reader can follow one, which stops being true past a
+   * handful. Exposed on the component so the caption can state the number rather than repeat it.
+   */
+  static readonly emphasisedTracks = 6;
 
   /** The ring recomputed whenever the place or the radius changes; also the camera's target. */
   private readonly ring = computed(() =>
@@ -164,49 +172,63 @@ export class LocatorMap {
   }));
 
   /**
-   * One LineString per storm, plus the landfall fixes as their own points.
+   * One LineString per storm, split into a density field and a handful of emphasised paths.
+   *
+   * <b>Why not colour all of them by wind.</b> The first attempt did, and against Cebu City — 99
+   * storms within 100 km — it produced a thicket: the Saffir–Simpson ramp is bright at its cool end,
+   * most passages are tropical-storm strength, and ninety-nine bright cyan lines across a 13 rem
+   * canvas hid the coastline, the ring and the earthquakes the figure exists to show. Colour was doing
+   * no work either, because at that density no individual line could be traced.
+   *
+   * So the many become a <em>density</em> — one quiet ink, low opacity, so overlapping passages
+   * accumulate and the figure shows the grain of approach rather than ninety-nine unreadable
+   * individuals. Only the strongest few keep their intensity colour, which is the reading a
+   * professional actually wants from a locator: where storms come from, and which of them were
+   * severe. The caption states both, and the count and peak intensity remain in the profile below
+   * where they carry their averaging period.
    *
    * A segment of fewer than two fixes cannot be a line, and MapLibre renders a one-vertex LineString
-   * as nothing at all rather than as an error — so those storms are carried by their landfall mark
-   * where there is one, and are otherwise present only in the count. The API states the count
-   * separately for exactly this reason.
+   * as nothing rather than as an error, so those storms are present only in the count — which the API
+   * reports separately for exactly this reason.
    */
   private readonly trackCollections = computed(() => {
-    const lines: GeoJsonFeature[] = [];
-    const landfalls: GeoJsonFeature[] = [];
+    const features: GeoJsonFeature[] = [];
+
+    // The API returns strongest local peak first, so the emphasised set is simply the head of the
+    // list. Taken here rather than re-sorted, so the map and the API agree on what "strongest" means.
+    let emphasised = 0;
 
     for (const track of this.tracks()) {
       const coordinates = track.fixes.map(
         (fix) => [fix.longitude, fix.latitude] as [number, number],
       );
 
-      if (coordinates.length >= 2) {
-        lines.push({
-          type: 'Feature',
-          properties: {
-            colour: trackColourForWind(track.peakKnotsNearby),
-            // Two thirds of the Explore width: this canvas is a fifth of the width those widths were
-            // chosen for, and at full weight ninety overlapping tracks become one opaque mass.
-            width: Math.max(0.6, trackWidthForWind(track.peakKnotsNearby) * 0.66),
-          },
-          geometry: { type: 'LineString', coordinates },
-        });
+      if (coordinates.length < 2) {
+        continue;
       }
 
-      for (const fix of track.fixes) {
-        if (fix.isLandfall) {
-          landfalls.push({
-            type: 'Feature',
-            properties: {},
-            geometry: { type: 'Point', coordinates: [fix.longitude, fix.latitude] },
-          });
-        }
+      const notable = track.peakKnotsNearby !== null && emphasised < LocatorMap.emphasisedTracks;
+
+      if (notable) {
+        emphasised++;
       }
+
+      features.push({
+        type: 'Feature',
+        properties: {
+          notable,
+          colour: trackColourForWind(track.peakKnotsNearby),
+          // Two thirds of the Explore width: this canvas is a fifth of the width those widths were
+          // chosen for.
+          width: Math.max(0.7, trackWidthForWind(track.peakKnotsNearby) * 0.66),
+        },
+        geometry: { type: 'LineString', coordinates },
+      });
     }
 
     return {
-      lines: { type: 'FeatureCollection' as const, features: lines },
-      landfalls: { type: 'FeatureCollection' as const, features: landfalls },
+      collection: { type: 'FeatureCollection' as const, features },
+      emphasised,
     };
   });
 
@@ -243,11 +265,7 @@ export class LocatorMap {
       );
 
       (map.getSource(LocatorMap.tracksSourceId) as GeoJSONSource | undefined)?.setData(
-        storms.lines as never,
-      );
-
-      (map.getSource(LocatorMap.landfallsSourceId) as GeoJSONSource | undefined)?.setData(
-        storms.landfalls as never,
+        storms.collection as never,
       );
 
       this.frame();
@@ -341,11 +359,6 @@ export class LocatorMap {
       data: { type: 'FeatureCollection', features: [] },
     });
 
-    map.addSource(LocatorMap.landfallsSourceId, {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] },
-    });
-
     map.addSource(LocatorMap.ringSourceId, { type: 'geojson', data: this.ring() as never });
 
     map.addSource(LocatorMap.eventsSourceId, {
@@ -362,36 +375,55 @@ export class LocatorMap {
       } as never,
     });
 
-    // ── Storm tracks, first and therefore lowest ─────────────────────────────
+    // ── Storm passages, first and therefore lowest ───────────────────────────
     //
-    // Beneath the faults and well beneath the earthquakes. Ninety overlapping paths are the densest
-    // thing on this canvas, and the layer order is the claim about what the figure is of: the place
-    // and its earthquakes are the subject, the tracks are the weather that passed over them.
+    // Beneath the faults and well beneath the earthquakes. The layer order is the claim about what
+    // the figure is of: the place and its earthquakes are the subject, the storms are the weather that
+    // passed over them.
     //
-    // Rounded caps and joins so a three-fix segment does not read as a dash, and 55% opacity so
-    // crossings darken rather than occlude — where many storms took the same path the map says so.
+    // The many, as a density. One ink at 14%, so a single passage is a faint trace and a corridor
+    // many storms followed accumulates into something visible — which is the honest reading of
+    // ninety-nine paths on a canvas this size. Rounded caps so a two-fix segment reads as a path
+    // rather than as a dash.
     map.addLayer({
       id: 'locator-tracks',
       type: 'line',
       source: LocatorMap.tracksSourceId,
+      filter: ['!', ['get', 'notable']],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['get', 'colour'],
-        'line-width': ['get', 'width'],
+        'line-color': '#c8d8e8',
+        'line-width': 0.7,
+        'line-opacity': 0.14,
+      },
+    });
+
+    // The strongest few, in their intensity colour and drawn last of the three so they sit clear of
+    // the field beneath. A dark casing gives each one an edge against the density, the same technique
+    // the faults use and for the same reason.
+    map.addLayer({
+      id: 'locator-tracks-notable-casing',
+      type: 'line',
+      source: LocatorMap.tracksSourceId,
+      filter: ['get', 'notable'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': FAULT_CASING_COLOUR,
+        'line-width': ['+', ['get', 'width'], 1.4],
         'line-opacity': 0.55,
       },
     });
 
-    // Landfalls as their own mark, because "the track came near" and "the centre crossed the coast
-    // near here" are different claims and the second is the one that matters to a reader.
     map.addLayer({
-      id: 'locator-landfalls',
-      type: 'circle',
-      source: LocatorMap.landfallsSourceId,
+      id: 'locator-tracks-notable',
+      type: 'line',
+      source: LocatorMap.tracksSourceId,
+      filter: ['get', 'notable'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'circle-radius': 1.6,
-        'circle-color': '#ffffff',
-        'circle-opacity': 0.55,
+        'line-color': ['get', 'colour'],
+        'line-width': ['get', 'width'],
+        'line-opacity': 0.85,
       },
     });
 
