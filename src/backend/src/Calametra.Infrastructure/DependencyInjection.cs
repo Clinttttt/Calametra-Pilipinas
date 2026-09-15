@@ -7,6 +7,7 @@ using Calametra.Infrastructure.Sources.GeoNames;
 using Calametra.Infrastructure.Sources.Ibtracs;
 using Calametra.Infrastructure.Sources.Mgb;
 using Calametra.Infrastructure.Sources.OpenStreetMap;
+using Calametra.Infrastructure.Sources.Psgc;
 using Calametra.Infrastructure.Sources.Phivolcs;
 using Calametra.Infrastructure.Sources.Usgs;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +64,13 @@ public static class DependencyInjection
         // Two registrations would mean two change trackers per request, and writes
         // through one would be invisible to the other.
         services.AddScoped<IApplicationDbContext>(provider =>
+            provider.GetRequiredService<ApplicationDbContext>());
+
+        // The crosswalk review surface, delegating to the same instance for the same reason. Registered
+        // separately rather than folded into the interface above because the separation IS the read
+        // boundary ADR-005 D4 requires: analytics hold a surface on which an unreviewed proposal does
+        // not exist, and only the matcher, the review commands and the readiness report ask for this one.
+        services.AddScoped<ILguCrosswalkReviewContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
     }
 
@@ -194,10 +202,23 @@ public static class DependencyInjection
         // the transfer and the standard handler's per-attempt timeout would abort a slow but
         // healthy download — the same reasoning as the two adapters above.
 
+        services.AddOptions<PsgcRegisterOptions>()
+            .Bind(configuration.GetSection(PsgcRegisterOptions.SectionName));
+
+        // The register is three JSON documents fetched once per import, so the same reasoning as the
+        // gazetteer applies: no resilience handler, because a retry would restart the transfer and the
+        // per-attempt timeout would abort a slow but healthy download. The PSA route is probed first and
+        // its failure is recorded on the edition rather than retried into a success.
+        services.AddHttpClient<IPsgcRegisterSource, PsgcRegisterSource>(client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(2);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Calametra/1.0 (+https://github.com/calametra; research platform; PSGC register import)");
+        });
+
         services.AddOptions<OpenStreetMapOptions>()
             .Bind(configuration.GetSection(OpenStreetMapOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+            .ValidateDataAnnotations()            .ValidateOnStart();
 
         services.AddHttpClient<ISettlementCoordinateSource, OverpassSettlementSource>((provider, client) =>
             {

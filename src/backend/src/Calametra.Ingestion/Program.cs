@@ -1,6 +1,7 @@
 using System.Globalization;
 using Calametra.Application;
 using Calametra.Application.Abstractions.Messaging;
+using Calametra.Application.Features.Administrative;
 using Calametra.Application.Features.Ingestion;
 using Calametra.Ingestion;
 using Calametra.Infrastructure;
@@ -62,7 +63,38 @@ var isNameApplication = bool.TryParse(
     builder.Configuration["Ingestion:Cyclones:ApplyNames"],
     out var nameFlag) && nameFlag;
 
-if (!isBackfill && !isCycloneImport && !isPlaceImport && !isCoordinateRefinement && !isNameApplication)
+// ── ADR-005 PHASE 1 AND 2: ADMINISTRATIVE IDENTITY ──────────────────────────
+//
+// Three modes rather than one, because they are three decisions and the middle one must not be able
+// to make the third. Importing the register creates canonical identities; proposing pairings fills a
+// review queue and can establish nothing; the readiness report answers the four-condition gate that
+// stands between this work and any polygon ingestion.
+//
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Lgu:ImportRegister=true
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Lgu:ProposeLinks=true
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Lgu:Readiness=true
+var isRegisterImport = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ImportRegister"],
+    out var registerFlag) && registerFlag;
+
+var isLinkProposal = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ProposeLinks"],
+    out var proposeFlag) && proposeFlag;
+
+var isReadinessReport = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:Readiness"],
+    out var readinessFlag) && readinessFlag;
+
+var isOneShot = isBackfill
+    || isCycloneImport
+    || isPlaceImport
+    || isCoordinateRefinement
+    || isNameApplication
+    || isRegisterImport
+    || isLinkProposal
+    || isReadinessReport;
+
+if (!isOneShot)
 {
     builder.Services.AddHostedService<EarthquakeIngestionWorker>();
 }
@@ -201,6 +233,105 @@ if (isCoordinateRefinement){
         result.Value.AmbiguousCount);
 
     return 0;
+}
+
+// ── ADR-005 PHASE 1: THE REGISTER ───────────────────────────────────────────
+if (isRegisterImport)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var logger = host.Services.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Calametra.Ingestion.PsgcRegister");
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new ImportPsgcRegister.Command());
+
+    if (result.IsFailure)
+    {
+        LguLog.RegisterImportFailed(logger, result.Error!.Code, result.Error.Description);
+
+        return 1;
+    }
+
+    var summary = result.Value;
+
+    LguLog.RegisterImportCompleted(
+        logger,
+        summary.EditionLabel,
+        summary.Provenance,
+        summary.IsCitableAsAuthority,
+        summary.RegionCount,
+        summary.ProvinceCount,
+        summary.CityCount,
+        summary.MunicipalityCount,
+        summary.UnitsCreated,
+        summary.UnitsReconciled,
+        summary.UnitsRejected,
+        summary.RegisterStatedPairings);
+
+    return 0;
+}
+
+// ── ADR-005 PHASE 2: PROPOSALS ONLY ────────────────────────────────────────
+if (isLinkProposal)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var logger = host.Services.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Calametra.Ingestion.LguMatcher");
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new ProposeLguCodeLinks.Command());
+
+    if (result.IsFailure)
+    {
+        LguLog.ProposalFailed(logger, result.Error!.Code, result.Error.Description);
+
+        return 1;
+    }
+
+    var summary = result.Value;
+
+    LguLog.ProposalCompleted(
+        logger,
+        summary.RegisterUnits,
+        summary.DirectoryRows,
+        summary.ProposedRegisterMatch,
+        summary.ProposedDigitReslice,
+        summary.ResliceWithNameDisagreement,
+        summary.AlreadyProposed,
+        summary.UnitsWithNoCandidate,
+        summary.DirectoryRowsWithNoCandidate);
+
+    return 0;
+}
+
+// ── ADR-005: THE GATE ──────────────────────────────────────────────────────
+//
+// Printed rather than only logged, because this is the artefact a reader of the decision record
+// checks before geometry work begins, and a gate whose verdict is buried in a log line is a gate
+// nobody consults.
+if (isReadinessReport)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new GetLguCrosswalkReadiness.Query());
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine($"Readiness report failed: {result.Error!.Code} — {result.Error.Description}");
+
+        return 1;
+    }
+
+    LguReadinessPrinter.Write(result.Value);
+
+    // Non-zero while the gate is shut, so a script cannot proceed to geometry by ignoring the text.
+    return result.Value.MayBeginGeometryIngestion ? 0 : 2;
 }
 
 if (isBackfill)

@@ -90,7 +90,7 @@ jobs:
         run: npm run build
 
       # Vitest in a headless browser. The stylesheet budget overruns this project carries are
-      # warnings rather than errors, so they do not fail the build — they are tracked in
-      # docs/ROADMAP.md instead.
+      # warnings rather than errors, so they do not fail the build; the per-component error
+      # ceiling in angular.json is what actually gates them.
       - name: Test
         run: npm test

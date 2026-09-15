@@ -46,6 +46,13 @@ public sealed class DependencyInjectionTests
         // Ports are faked: this asserts on wiring, not on behaviour. Infrastructure
         // supplies the real adapters and is verified by integration tests.
         services.AddScoped(_ => Substitute.For<IApplicationDbContext>());
+
+        // The crosswalk review surface is faked separately from the analytics surface, which is the
+        // point of ADR-005 D4: they are two interfaces precisely so that a handler must ask for the one
+        // on which an unreviewed proposal exists. A single fake for both would erase the distinction
+        // this test is meant to keep honest.
+        services.AddScoped(_ => Substitute.For<ILguCrosswalkReviewContext>());
+        services.AddScoped(_ => Substitute.For<IPsgcRegisterSource>());
         services.AddScoped(_ => Substitute.For<IEarthquakeCatalogSource>());
         services.AddScoped(_ => Substitute.For<IActiveFaultSource>());
         services.AddScoped(_ => Substitute.For<IHazardMapService>());
@@ -131,6 +138,32 @@ public sealed class DependencyInjectionTests
         {
             typeof(GetCycloneTracksNearby.Query),
             typeof(Domain.Abstractions.Result<GetCycloneTracksNearby.NearbyTracksResponse>)
+        },
+        {
+            typeof(Features.Administrative.ImportPsgcRegister.Command),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.ImportPsgcRegister.RegisterImportSummary>)
+        },
+        {
+            typeof(Features.Administrative.ProposeLguCodeLinks.Command),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.ProposeLguCodeLinks.ProposalSummary>)
+        },
+        {
+            typeof(Features.Administrative.GetLguCrosswalkReadiness.Query),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.GetLguCrosswalkReadiness.ReadinessReport>)
+        },
+
+        // The two review commands return a bare Result: confirming or rejecting a pairing produces a
+        // decision, not a figure. One row at a time by design — ADR-005 D4 forbids bulk promotion.
+        {
+            typeof(Features.Administrative.ConfirmLguCodeLink.Command),
+            typeof(Domain.Abstractions.Result)
+        },
+        {
+            typeof(Features.Administrative.RejectLguCodeLink.Command),
+            typeof(Domain.Abstractions.Result)
         },
         {
             typeof(GetCycloneTrack.Query),

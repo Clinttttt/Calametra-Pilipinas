@@ -2,6 +2,7 @@ using Calametra.Domain.Hazards;
 using Calametra.Domain.Sources;
 using Calametra.Infrastructure.Sources.Gem;
 using Calametra.Infrastructure.Sources.GeoNames;
+using Calametra.Infrastructure.Sources.Psgc;
 using Calametra.Infrastructure.Sources.Ibtracs;
 using Calametra.Infrastructure.Sources.Mgb;
 using Calametra.Infrastructure.Sources.OpenStreetMap;
@@ -46,6 +47,7 @@ public sealed class ReferenceDataSeeder(
 
         await EnsureCycloneAgenciesAsync(now, cancellationToken);
         await EnsureGeoNamesAsync(now, cancellationToken);
+        await EnsurePsgcRegisterAsync(now, cancellationToken);
         await EnsureOpenStreetMapAsync(now, cancellationToken);
         await EnsurePagasaNamesAsync(now, cancellationToken);
 
@@ -220,6 +222,75 @@ public sealed class ReferenceDataSeeder(
             .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: false);
 
         context.DataSources.Add(created);
+
+        return created;
+    }
+
+    /// <summary>
+    /// The PSA's Philippine Standard Geographic Code — the authority for administrative identity.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Registered as authoritative for the Philippines, which GeoNames deliberately is not: the PSA
+    /// publishes the register, and every code this platform treats as canonical is theirs. It is
+    /// registered even before a citable edition has been loaded, because ADR-005's fourth gate condition
+    /// requires the source to exist as a row before any geometry is stored, and because the readiness
+    /// report needs something to bind an edition to.
+    /// </para>
+    /// <para>
+    /// The coverage note records the access position as measured rather than as hoped, and it is the note
+    /// a reader should see when a figure says which edition it was reconciled to.
+    /// </para>
+    /// </remarks>
+    private async Task<DataSource> EnsurePsgcRegisterAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(source => source.Slug == PsgcRegisterOptions.Slug, cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                PsgcRegisterOptions.Slug,
+                agency: "Philippine Statistics Authority",
+                datasetName: "Philippine Standard Geographic Code (PSGC)",
+                SourceAccessKind.RestApi,
+                attribution:
+                    "Administrative codes and unit names from the Philippine Standard Geographic Code, "
+                    + "Philippine Statistics Authority.",
+                now)
+            .Value;
+
+        created
+            .WithLinks(
+                sourceUrl: "https://classification.psa.gov.ph/psgc/api",
+                termsUrl: "https://psa.gov.ph/classification/psgc")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "The authority for Philippine administrative identity: the ten-digit PSGC code is the "
+                    + "canonical key this platform uses for a local government unit, and the register "
+                    + "changes quarterly as units are created, renamed and dissolved.\n\n"
+                    + "Access position, measured 2026-09-15. The PSA's classification API root responds "
+                    + "and advertises endpoints for regions, provinces and municipalities, but each of "
+                    + "those returned HTTP 400 to scripted access and the site root returned 403. No "
+                    + "PSA-direct route is therefore established, and the import falls back to a "
+                    + "third-party mirror which it records as a mirror. That distinction is enforced: a "
+                    + "crosswalk row cannot cite an edition whose provenance is not PSA-direct.\n\n"
+                    + "The best open mirror was last modified 27 August 2022 and serves 17 regions, 81 "
+                    + "provinces and 1,634 cities and municipalities. It therefore predates both the May "
+                    + "2022 division of Maguindanao and the 2024 creation of the Negros Island Region, "
+                    + "and shows an undivided Maguindanao with no NIR at all. It is loaded to exercise "
+                    + "reconciliation and is not fit to certify it.\n\n"
+                    + "Barangays are published by the register and are not imported, following ADR-005: "
+                    + "the boundary coverage available for them is uneven across the country, and a set "
+                    + "complete in Metro Manila and sparse in Caraga would make the interface most "
+                    + "confident where a national platform should be least.")
+            .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: true);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
 
         return created;
     }
@@ -988,9 +1059,8 @@ public sealed class ReferenceDataSeeder(
     /// layer, and raising the timeout further would only trade a visible failure for a minute-long
     /// hang while holding a connection open on an agency's server per tile. Both are catalogued only
     /// once there is a path that does not require a national-extent render — a minimum zoom per
-    /// layer, or stored geometry if the Data User Agreement is granted. Recorded in
-    /// <c>docs/ROADMAP.md</c> and asserted by <c>HazardCatalogueTests</c>, so re-adding either is a
-    /// deliberate act rather than an oversight.
+    /// layer, or stored geometry if the Data User Agreement is granted. Asserted by
+    /// <c>HazardCatalogueTests</c>, so re-adding either is a deliberate act rather than an oversight.
     /// </para>
     /// <para>
     /// Both registered layers belong to the <see cref="HazardLens.Seismic"/> lens, which the

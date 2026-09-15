@@ -1,0 +1,47 @@
+using Calametra.Domain.Administrative;
+using Microsoft.EntityFrameworkCore;
+
+namespace Calametra.Application.Abstractions.Data;
+
+/// <summary>
+/// The crosswalk <b>review</b> surface. Deliberately not the analytics surface.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This is the only interface in the application through which an unreviewed pairing is reachable, and
+/// it exists so that reachability is a deliberate choice rather than an accident of having one large
+/// context interface. Three kinds of handler take it: the matcher that writes proposals, the review
+/// commands that confirm or reject them, and the readiness report that counts them.
+/// </para>
+/// <para>
+/// <b>Nothing that renders a figure to a reader may take this interface.</b> That is the rule ADR-005 D4
+/// asks for, and separating the interfaces is what makes it checkable: an architecture test can assert
+/// that no query handler outside the crosswalk feature depends on it, which is a much stronger statement
+/// than "no query joins to that table".
+/// </para>
+/// <para>
+/// Registered against the same <c>ApplicationDbContext</c> instance as
+/// <see cref="IApplicationDbContext"/>, never as a second context. Two change trackers per request would
+/// mean writes through one were invisible to the other.
+/// </para>
+/// </remarks>
+public interface ILguCrosswalkReviewContext
+{
+    /// <summary>Register editions this platform has loaded, whatever their provenance.</summary>
+    DbSet<PsgcRegisterEdition> PsgcRegisterEditions { get; }
+
+    /// <summary>Canonical units as the register defines them.</summary>
+    DbSet<Lgu> Lgus { get; }
+
+    /// <summary>
+    /// Every pairing in every state, including proposals and rejections.
+    /// </summary>
+    /// <remarks>
+    /// Rejections are retained rather than deleted: the proportion of proposals a reviewer refused is a
+    /// required figure in the readiness report, because if a matcher proposes 1,600 pairings and 40 are
+    /// wrong, that number is the justification for the review gate existing.
+    /// </remarks>
+    DbSet<LguCodeLink> LguCodeLinks { get; }
+
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}

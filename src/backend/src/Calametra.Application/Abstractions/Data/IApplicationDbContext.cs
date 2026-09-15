@@ -1,3 +1,4 @@
+using Calametra.Domain.Administrative;
 using Calametra.Domain.Events;
 using Calametra.Domain.Hazards;
 using Calametra.Domain.Places;
@@ -46,6 +47,23 @@ public interface IApplicationDbContext
 
     /// <summary>Administrative places used as anchors for location history.</summary>
     DbSet<Place> Places { get; }
+
+    /// <summary>Canonical local government units, keyed on the current ten-digit PSGC code.</summary>
+    DbSet<Lgu> Lgus { get; }
+
+    /// <summary>Register editions loaded, so a figure can state which one it was reconciled to.</summary>
+    DbSet<PsgcRegisterEdition> PsgcRegisterEditions { get; }
+
+    /// <summary>
+    /// Reviewed code pairings only.
+    /// </summary>
+    /// <remarks>
+    /// Mapped to the <c>lgu_code_links_confirmed</c> view. The base table is deliberately absent from
+    /// this interface: ADR-005 D4 requires that no figure rendered to a reader can be derived from an
+    /// unreviewed proposal, and the cheapest way to guarantee that is to make the proposal unreachable
+    /// from the surface analytics hold. Proposals live on <see cref="ILguCrosswalkReviewContext"/>.
+    /// </remarks>
+    DbSet<ConfirmedLguLink> ConfirmedLguLinks { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using Calametra.Application.Abstractions.Data;
+using Calametra.Domain.Administrative;
 using Calametra.Domain.Events;
 using Calametra.Domain.Hazards;
 using Calametra.Domain.Places;
@@ -12,7 +13,7 @@ namespace Calametra.Infrastructure.Persistence;
 /// never name this type.
 /// </summary>
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-    : DbContext(options), IApplicationDbContext
+    : DbContext(options), IApplicationDbContext, ILguCrosswalkReviewContext
 {
     /// <summary>PostGIS extension name, created by the initial migration.</summary>
     public const string PostgisExtension = "postgis";
@@ -30,6 +31,22 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<HazardFeature> HazardFeatures => Set<HazardFeature>();
 
     public DbSet<Place> Places => Set<Place>();
+
+    public DbSet<Lgu> Lgus => Set<Lgu>();
+
+    public DbSet<PsgcRegisterEdition> PsgcRegisterEditions => Set<PsgcRegisterEdition>();
+
+    /// <summary>
+    /// Reviewed pairings only, from the <c>lgu_code_links_confirmed</c> view.
+    /// </summary>
+    /// <remarks>
+    /// The base table is reachable through <see cref="ILguCrosswalkReviewContext.LguCodeLinks"/> and
+    /// nowhere else. Both interfaces are implemented by this one context, so the review commands and the
+    /// analytics queries share a change tracker while holding different surfaces.
+    /// </remarks>
+    public DbSet<ConfirmedLguLink> ConfirmedLguLinks => Set<ConfirmedLguLink>();
+
+    public DbSet<LguCodeLink> LguCodeLinks => Set<LguCodeLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

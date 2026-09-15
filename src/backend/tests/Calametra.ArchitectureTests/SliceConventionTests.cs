@@ -108,12 +108,34 @@ public sealed class SliceConventionTests
     /// </remarks>
     private const string WorkerInvokedNamespace = "Calametra.Application.Features.Ingestion";
 
+    /// <summary>
+    /// The second exemption: administrative identity work, invoked by an operator through the ingestion
+    /// host and deliberately not exposed over HTTP.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Same reasoning as the ingestion exemption, applied to a different risk. These five use cases load
+    /// the PSGC register, propose crosswalk pairings, confirm or reject them, and report the ADR-005 gate.
+    /// The two review commands <em>decide what this platform treats as true</em> about administrative
+    /// identity, and exposing them as anonymous HTTP would let any caller confirm a pairing and see it
+    /// appear in figures rendered to readers. There is no authentication story on this API yet, so there
+    /// is no honest way to publish them.
+    /// </para>
+    /// <para>
+    /// The readiness report is the one that could reasonably become a read-only endpoint later; it is kept
+    /// with the others for now so the whole feature moves out of the exemption together, when there is an
+    /// authenticated administrative surface to move it to.
+    /// </para>
+    /// </remarks>
+    private const string OperatorInvokedNamespace = "Calametra.Application.Features.Administrative";
+
     private static HashSet<string> HttpUseCaseNames() =>
         Assemblies.Application
             .GetTypes()
             .Where(HasRequestType)
             .Where(type => type.Namespace is null
-                || !type.Namespace.StartsWith(WorkerInvokedNamespace, StringComparison.Ordinal))
+                || (!type.Namespace.StartsWith(WorkerInvokedNamespace, StringComparison.Ordinal)
+                    && !type.Namespace.StartsWith(OperatorInvokedNamespace, StringComparison.Ordinal)))
             .Select(type => type.Name)
             .ToHashSet(StringComparer.Ordinal);
 
