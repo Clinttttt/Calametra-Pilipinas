@@ -184,7 +184,7 @@ public static class ImportPsgcRegister
                 {
                     // Counted rather than thrown. A register row this platform's rules refuse is a fact
                     // about the register, and the readiness report is where it belongs — an import that
-                    // died on the first bad row would tell an operator nothing about the other 1,633.
+                    // died on the first bad row would say nothing about the thousands after it.
                     rejected++;
                     ImportLog.UnitRejected(logger, unit.CanonicalCode, unit.Name, candidate.Error!.Code);
 
@@ -296,21 +296,22 @@ public static class ImportPsgcRegister
                 .Where(edition => edition.Id != current.Id && edition.SupersededAt == null)
                 .ToListAsync(cancellationToken);
 
-            if (earlier.Count == 0)
-            {
-                return (0, 0);
-            }
-
-            var earlierIds = earlier.ConvertAll(edition => edition.Id);
-
             foreach (var edition in earlier)
             {
                 edition.Supersede(current.Id, now);
             }
 
+            // Stated as the invariant rather than as a consequence: no LIVE proposal may cite an edition
+            // other than the current one.
+            //
+            // Asking instead "which proposals belonged to the editions retired just now" looked equivalent
+            // and was not. It missed every row written before proposals carried an edition at all — those
+            // hold an empty id, belong to no edition, and were therefore retired by nothing while the
+            // matcher went on treating them as live work. Checked unconditionally so a run that retires no
+            // edition still repairs rows left behind by one that did.
             var stale = await context.LguCodeLinks
                 .Where(link => link.Status == LguLinkStatus.Proposed
-                    && earlierIds.Contains(link.ProposedAgainstEditionId))
+                    && link.ProposedAgainstEditionId != current.Id)
                 .ToListAsync(cancellationToken);
 
             foreach (var link in stale)
@@ -318,7 +319,10 @@ public static class ImportPsgcRegister
                 link.Supersede(now);
             }
 
-            ImportLog.PreviousEditionsSuperseded(logger, earlier.Count, stale.Count);
+            if (earlier.Count > 0 || stale.Count > 0)
+            {
+                ImportLog.PreviousEditionsSuperseded(logger, earlier.Count, stale.Count);
+            }
 
             return (earlier.Count, stale.Count);
         }

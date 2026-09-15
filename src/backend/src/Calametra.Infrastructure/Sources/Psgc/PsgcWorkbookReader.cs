@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using Calametra.Application.Abstractions.Sources;
@@ -55,15 +56,21 @@ internal static class PsgcWorkbookReader
         bool isPsaPublication)
     {
         var fileName = Path.GetFileName(path);
-        var hash = Sha256Of(path);
+        var lastWrite = File.GetLastWriteTimeUtc(path);
 
-        using var workbook = new XLWorkbook(path);
+        // Read ONCE, then hash and parse the same buffer.
+        //
+        // Two separate reads would let the digest describe bytes other than the ones imported — a
+        // provenance record that is worse than none, because it looks checkable. Buffering also lets the
+        // file be read while a spreadsheet application holds it open, which is the normal state of a file
+        // an operator has just downloaded and looked at.
+        var bytes = ReadAllBytesShared(path);
+        var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
 
-        var sheet = worksheetName is null
-            ? workbook.Worksheets.First()
-            : workbook.Worksheet(worksheetName);
+        using var buffer = new MemoryStream(bytes, writable: false);
+        using var workbook = new XLWorkbook(buffer);
 
-        var headerRow = FindHeaderRow(sheet, out var columns);
+        var (sheet, headerRow, columns) = SelectMasterlist(workbook, worksheetName);
 
         var units = new List<RegisterUnit>();
 
@@ -110,7 +117,7 @@ internal static class PsgcWorkbookReader
             // Declared by the operator. The reader will not promote a file to PSA-direct on its own.
             Provenance = isPsaPublication ? RegisterProvenance.PsaDirect : RegisterProvenance.LocalFile,
             AccessRoute = path,
-            UpstreamLastModified = File.GetLastWriteTimeUtc(path),
+            UpstreamLastModified = lastWrite,
             PublicationDate = publicationDate,
             OriginalFileName = fileName,
             FileSha256 = hash,
@@ -124,13 +131,28 @@ internal static class PsgcWorkbookReader
         };
     }
 
-    /// <summary>Hashes the file before it is parsed, so the digest is of the bytes as delivered.</summary>
-    private static string Sha256Of(string path)
+    /// <summary>
+    /// Reads the whole file, tolerating another process holding it open.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="FileShare.ReadWrite"/> rather than the default: an operator has usually just opened the
+    /// downloaded workbook to look at it, and Excel takes a lock that would otherwise fail the import for
+    /// no reason that matters. The bytes read are the bytes hashed and parsed, so what is imported is
+    /// still exactly what is fingerprinted.
+    /// </remarks>
+    private static byte[] ReadAllBytesShared(string path)
     {
-        using var stream = File.OpenRead(path);
-        using var sha = SHA256.Create();
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite);
 
-        return Convert.ToHexStringLower(sha.ComputeHash(stream));
+        using var buffer = new MemoryStream();
+
+        stream.CopyTo(buffer);
+
+        return buffer.ToArray();
     }
 
     /// <summary>
@@ -141,19 +163,70 @@ internal static class PsgcWorkbookReader
     /// its depth varies by publication. Only the first twenty rows are considered — beyond that the file
     /// is not the masterlist and saying so is more useful than reading further.
     /// </remarks>
-    private static int FindHeaderRow(IXLWorksheet sheet, out ColumnMap columns)
+    /// <summary>
+    /// Finds the sheet carrying the masterlist, or uses the one the operator named.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The PSA workbook leads with a metadata sheet, so "the first worksheet" is the wrong guess and
+    /// naming the sheet in configuration makes the operator responsible for a detail the file already
+    /// states. Every sheet is examined instead and the one carrying a code, a name and a geographic level
+    /// wins. An explicit <c>LocalFileWorksheet</c> still overrides, for a publication that somehow holds
+    /// two candidate tables.
+    /// </para>
+    /// <para>
+    /// On failure the message lists every sheet with the headers found in it, because the operator cannot
+    /// act on "no masterlist found" but can act on seeing what the file actually contains.
+    /// </para>
+    /// </remarks>
+    private static (IXLWorksheet Sheet, int HeaderRow, ColumnMap Columns) SelectMasterlist(
+        XLWorkbook workbook,
+        string? worksheetName)
     {
-        var seen = new List<string>();
+        var candidates = worksheetName is null
+            ? workbook.Worksheets.ToList()
+            : [workbook.Worksheet(worksheetName)];
+
+        var examined = new List<string>();
+
+        foreach (var sheet in candidates)
+        {
+            if (TryFindHeaderRow(sheet, out var headerRow, out var columns, out var headersSeen))
+            {
+                return (sheet, headerRow, columns);
+            }
+
+            examined.Add($"'{sheet.Name}' held: {(headersSeen.Count == 0 ? "no usable headers" : string.Join(", ", headersSeen))}");
+        }
+
+        throw new InvalidOperationException(
+            "No worksheet in this workbook carries the PSGC masterlist columns. Looked for a ten-digit "
+            + "code, a name and a geographic level in the first twenty rows of each sheet. Examined "
+            + $"{candidates.Count} sheet(s) — {string.Join(" | ", examined)}. If the masterlist uses "
+            + "column headings this reader does not recognise, they must be added to its header lists; "
+            + "Sources:PsgcRegister:LocalFileWorksheet restricts the search to one sheet.");
+    }
+
+    private static bool TryFindHeaderRow(
+        IXLWorksheet sheet,
+        out int headerRow,
+        [NotNullWhen(true)] out ColumnMap? columns,
+        out List<string> headersSeen)
+    {
+        headersSeen = [];
 
         foreach (var row in sheet.RowsUsed().Take(20))
         {
-            var headers = row.CellsUsed()
-                .ToDictionary(
-                    cell => Normalise(cell.GetString()),
-                    cell => cell.Address.ColumnNumber,
-                    StringComparer.Ordinal);
+            var headers = new Dictionary<string, int>(StringComparer.Ordinal);
 
-            seen = [.. headers.Keys];
+            foreach (var cell in row.CellsUsed())
+            {
+                // First occurrence wins. A merged title block can repeat a label across columns, and the
+                // leftmost is the one above the data.
+                headers.TryAdd(Normalise(cell.GetString()), cell.Address.ColumnNumber);
+            }
+
+            headersSeen = [.. headers.Keys];
 
             var canonical = Match(headers, CanonicalCodeHeaders);
             var name = Match(headers, NameHeaders);
@@ -166,16 +239,16 @@ internal static class PsgcWorkbookReader
                     Match(headers, HistoricalCodeHeaders),
                     name.Value,
                     level.Value);
+                headerRow = row.RowNumber();
 
-                return row.RowNumber();
+                return true;
             }
         }
 
-        throw new InvalidOperationException(
-            $"The worksheet '{sheet.Name}' does not carry the PSGC masterlist columns. Looked for a "
-            + $"ten-digit code, a name and a geographic level in the first twenty rows. The last row "
-            + $"examined held: {string.Join(", ", seen)}. Point "
-            + $"Sources:PsgcRegister:LocalFileWorksheet at the masterlist sheet.");
+        columns = null;
+        headerRow = 0;
+
+        return false;
     }
 
     private static int? Match(Dictionary<string, int> headers, string[] candidates)

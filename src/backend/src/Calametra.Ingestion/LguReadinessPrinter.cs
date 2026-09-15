@@ -141,7 +141,10 @@ internal static class LguReadinessPrinter
         Console.WriteLine("CROSSWALK");
         Console.WriteLine(string.Create(
             culture,
-            $"  Register units     {crosswalk.RegisterUnits}"));
+            $"  Register units     {crosswalk.RegisterUnits} in the active edition"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Superseded units   {crosswalk.SupersededUnits} held under codes the active edition no longer uses"));
         Console.WriteLine(string.Create(
             culture,
             $"  Directory rows     {crosswalk.DirectoryRowsWithCode} carrying a nine-digit code"));

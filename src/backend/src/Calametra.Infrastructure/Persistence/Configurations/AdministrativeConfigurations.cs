@@ -117,9 +117,17 @@ internal sealed class LguCodeLinkConfiguration : IEntityTypeConfiguration<LguCod
         builder.HasIndex(link => link.HistoricalPsgcCode);
         builder.HasIndex(link => link.ProposedAgainstEditionId);
 
-        // One proposal per (unit, historical code): a matcher re-run reconciles rather than duplicating,
+        // One LIVE claim per (unit, historical code): a matcher re-run reconciles rather than duplicating,
         // so the rejection rate stays a rate rather than an artefact of how many times it ran.
-        builder.HasIndex(link => new { link.LguId, link.HistoricalPsgcCode }).IsUnique();
+        //
+        // Filtered on status because a superseded row is not a live claim, it is the record of one. When a
+        // new edition retires the 2022 proposals and the matcher makes the same pairing again against the
+        // publication now in force, that is two rows describing two runs — and an unfiltered constraint
+        // would force the choice between losing the earlier run and refusing the later one.
+        builder.HasIndex(link => new { link.LguId, link.HistoricalPsgcCode })
+            .IsUnique()
+            .HasFilter("status <> 'Superseded'")
+            .HasDatabaseName("ux_lgu_code_links_live_per_unit_and_code");
 
         // At most one CONFIRMED pairing per unit, and at most one per gazetteer row. Partial unique
         // indexes rather than plain ones, because competing proposals are legitimate — that is what a

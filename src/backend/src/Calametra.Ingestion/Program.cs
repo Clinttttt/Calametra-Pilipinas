@@ -108,21 +108,44 @@ await using (var scope = host.Services.CreateAsyncScope())
 {
     await scope.ServiceProvider.GetRequiredService<ReferenceDataSeeder>().SeedAsync();
 
-    // Fault geometry is imported at startup rather than polled. A fault catalogue
-    // is revised on a timescale of years, so polling it would be pointless traffic
-    // against a volunteer-run research repository.
-    var faultImport = await scope.ServiceProvider
-        .GetRequiredService<IDispatcher>()
-        .Send(new ImportActiveFaults.Command());
+    var startupLogger = host.Services
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Calametra.Ingestion.Startup");
 
-    if (faultImport.IsFailure)
+    // The administrative modes read a PSGC publication and the place directory. Neither consults fault
+    // geometry, so fetching it would be a minute of pointless traffic and one more upstream service that
+    // could fail a run with nothing to do with faults — which is exactly what it did.
+    var needsFaultGeometry = !isRegisterImport && !isLinkProposal && !isReadinessReport;
+
+    if (needsFaultGeometry)
     {
-        // Non-fatal: earthquake ingestion is the primary job and must not be
-        // blocked because a fault catalogue was unreachable at boot.
-        WorkerLog.FaultImportFailed(
-            host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Calametra.Ingestion.Startup"),
-            faultImport.Error!.Code,
-            faultImport.Error.Description);
+        // Fault geometry is imported at startup rather than polled. A fault catalogue
+        // is revised on a timescale of years, so polling it would be pointless traffic
+        // against a volunteer-run research repository.
+        //
+        // Wrapped: the policy below is that an unreachable catalogue must not stop the run, and a
+        // transport that dies mid-response throws rather than returning a failed Result. Handling only
+        // the Result left the declared policy true of half the ways this can fail.
+        try
+        {
+            var faultImport = await scope.ServiceProvider
+                .GetRequiredService<IDispatcher>()
+                .Send(new ImportActiveFaults.Command());
+
+            if (faultImport.IsFailure)
+            {
+                // Non-fatal: earthquake ingestion is the primary job and must not be
+                // blocked because a fault catalogue was unreachable at boot.
+                WorkerLog.FaultImportFailed(
+                    startupLogger,
+                    faultImport.Error!.Code,
+                    faultImport.Error.Description);
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or HttpIOException or TaskCanceledException)
+        {
+            WorkerLog.FaultImportFailed(startupLogger, exception.GetType().Name, exception.Message);
+        }
     }
 }
 

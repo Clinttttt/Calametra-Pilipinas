@@ -72,6 +72,14 @@ public static class GetLguCrosswalkReadiness
         string? AcquisitionNote,
         int SupersededEditions);
 
+    /// <param name="RegisterUnits">
+    /// Units in the ACTIVE edition. Units held only under a superseded edition's codes are reported as
+    /// <paramref name="SupersededUnits"/>, because a recoding is not a deletion and neither is it part of
+    /// the population under review.
+    /// </param>
+    /// <param name="SupersededUnits">
+    /// Units held from an edition since replaced. Retained so figures derived from them stay explainable.
+    /// </param>
     public sealed record CrosswalkState(
         int RegisterUnits,
         int DirectoryRowsWithCode,
@@ -79,6 +87,7 @@ public static class GetLguCrosswalkReadiness
         int Confirmed,
         int Rejected,
         int Superseded,
+        int SupersededUnits,
         int ConfirmedOnRegisterMatch,
         int ConfirmedOnDigitReslice,
         int ConfirmedOnManualReview,
@@ -117,7 +126,25 @@ public static class GetLguCrosswalkReadiness
             var supersededEditions = await review.PsgcRegisterEditions
                 .CountAsync(candidate => candidate.SupersededAt != null, cancellationToken);
 
-            var registerUnits = await review.Lgus.CountAsync(cancellationToken);
+            // Units belonging to the ACTIVE edition, not every unit ever held.
+            //
+            // This distinction is not pedantic. Importing PSA 2Q 2026 over the 2022 mirror left 124 rows
+            // whose codes the new edition does not use — the Negros Island Region reassignment and the
+            // BARMM recodings changed the leading digits of every LGU in the affected provinces, so those
+            // units exist under new codes and their old rows are history. Counting them would inflate
+            // gate 2's denominator with places the register no longer identifies that way, and the gate
+            // could then never close.
+            var registerUnits = edition is null
+                ? 0
+                : await review.Lgus.CountAsync(
+                    lgu => lgu.RegisterEditionId == edition.Id,
+                    cancellationToken);
+
+            var supersededUnits = edition is null
+                ? await review.Lgus.CountAsync(cancellationToken)
+                : await review.Lgus.CountAsync(
+                    lgu => lgu.RegisterEditionId != edition.Id,
+                    cancellationToken);
 
             var directoryRows = await analytics.Places
                 .CountAsync(place => place.PsgcCode != null && place.Kind != PlaceKind.Barangay, cancellationToken);
@@ -143,9 +170,17 @@ public static class GetLguCrosswalkReadiness
                     })
                 .ToListAsync(cancellationToken);
 
-            var proposed = links.Count(link => link.Status == LguLinkStatus.Proposed);
-            var confirmed = links.Count(link => link.Status == LguLinkStatus.Confirmed);
-            var rejected = links.Count(link => link.Status == LguLinkStatus.Rejected);
+            // Scoped to the active edition for the same reason as the unit count: a pairing confirmed
+            // against a code the register has since stopped using does not help this edition's gate.
+            var editionId = edition?.Id;
+
+            var activeLinks = links
+                .Where(link => editionId is not null && link.RegisterEditionId == editionId)
+                .ToList();
+
+            var proposed = activeLinks.Count(link => link.Status == LguLinkStatus.Proposed);
+            var confirmed = activeLinks.Count(link => link.Status == LguLinkStatus.Confirmed);
+            var rejected = activeLinks.Count(link => link.Status == LguLinkStatus.Rejected);
 
             var reviewed = confirmed + rejected;
 
@@ -154,12 +189,12 @@ public static class GetLguCrosswalkReadiness
             // untested matcher look perfect.
             double? rejectionRate = reviewed == 0 ? null : (double)rejected / reviewed;
 
-            var confirmedLguIds = links
+            var confirmedLguIds = activeLinks
                 .Where(link => link.Status == LguLinkStatus.Confirmed)
                 .Select(link => link.LguId)
                 .ToHashSet();
 
-            var confirmedPlaceIds = links
+            var confirmedPlaceIds = activeLinks
                 .Where(link => link.Status == LguLinkStatus.Confirmed && link.PlaceId is not null)
                 .Select(link => link.PlaceId!.Value)
                 .ToHashSet();
@@ -168,7 +203,7 @@ public static class GetLguCrosswalkReadiness
             var unmatchedDirectory = directoryRows - confirmedPlaceIds.Count;
 
             // Per level, all derived from the active edition. Nothing here is a written-down target.
-            var confirmedByLevel = links
+            var confirmedByLevel = activeLinks
                 .Where(link => link.Status == LguLinkStatus.Confirmed)
                 .Select(link => link.Level)
                 .GroupBy(level => level)
@@ -222,6 +257,7 @@ public static class GetLguCrosswalkReadiness
                 confirmed,
                 rejected,
                 links.Count(link => link.Status == LguLinkStatus.Superseded),
+                supersededUnits,
                 links.Count(link => link.Status == LguLinkStatus.Confirmed
                     && link.Evidence == LguLinkEvidence.RegisterMatch),
                 links.Count(link => link.Status == LguLinkStatus.Confirmed
