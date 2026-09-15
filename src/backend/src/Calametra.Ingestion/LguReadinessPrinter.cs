@@ -20,6 +20,59 @@ namespace Calametra.Ingestion;
 /// </remarks>
 internal static class LguReadinessPrinter
 {
+    /// <summary>
+    /// Prints what one import changed, so a register edition arriving is a reviewable event rather than a
+    /// set of counts that silently replaced the previous ones.
+    /// </summary>
+    /// <remarks>
+    /// Renames, level changes and absences are separated because they mean different things. A rename is
+    /// the PSA relabelling a unit that persists; a level change alters what the unit is; an absence may be
+    /// a dissolution or the first half of a split, and it is the one an operator must look at by hand.
+    /// </remarks>
+    public static void PrintImport(ImportPsgcRegister.RegisterImportSummary summary)
+    {
+        var culture = CultureInfo.InvariantCulture;
+        var authority = summary.IsCitableAsAuthority
+            ? "MAY certify a crosswalk"
+            : "MAY NOT certify a crosswalk";
+
+        Console.WriteLine();
+        Console.WriteLine("CANONICAL REGISTER IMPORT");
+        Console.WriteLine("=========================");
+        Console.WriteLine();
+        Console.WriteLine($"  Edition            {summary.EditionLabel}");
+        Console.WriteLine($"  Provenance         {summary.Provenance} — {authority}");
+        Console.WriteLine($"  Publication date   {summary.PublicationDate?.ToString("yyyy-MM-dd", culture) ?? "not supplied"}");
+        Console.WriteLine($"  Original filename  {summary.OriginalFileName ?? "n/a"}");
+        Console.WriteLine($"  SHA-256            {summary.FileSha256 ?? "n/a"}");
+        Console.WriteLine();
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Composition        {summary.RegionCount} regions, {summary.ProvinceCount} provinces, {summary.CityCount} cities, {summary.MunicipalityCount} municipalities"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Cities + munis     {summary.CityCount + summary.MunicipalityCount} — gate 2's review population, derived from this edition"));
+        Console.WriteLine();
+        Console.WriteLine(string.Create(culture, $"  Units created      {summary.UnitsCreated}"));
+        Console.WriteLine(string.Create(culture, $"  Units reconciled   {summary.UnitsReconciled}"));
+        Console.WriteLine(string.Create(culture, $"  Units rejected     {summary.UnitsRejected}"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Stated pairings    {summary.RegisterStatedPairings} — the register published both editions of the code"));
+        Console.WriteLine();
+        Console.WriteLine("DELTA AGAINST THE PREVIOUS EDITION");
+        Console.WriteLine(string.Create(culture, $"  Renamed            {summary.UnitsRenamed}"));
+        Console.WriteLine(string.Create(culture, $"  Level changed      {summary.UnitsLevelChanged}"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Absent from new    {summary.UnitsRetiredFromRegister} — retained, not deleted; see the warnings above"));
+        Console.WriteLine(string.Create(culture, $"  Editions retired   {summary.EditionsSuperseded}"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Proposals retired  {summary.ProposalsSuperseded} — unreviewed only; confirmed and rejected rows untouched"));
+        Console.WriteLine();
+    }
+
     public static void Write(GetLguCrosswalkReadiness.ReadinessReport report)
     {
         ArgumentNullException.ThrowIfNull(report);
@@ -72,8 +125,8 @@ internal static class LguReadinessPrinter
                 $"  Upstream modified  {register.UpstreamLastModified?.ToString("yyyy-MM-dd", culture) ?? "not reported"}"));
 
             Console.WriteLine($"  Publication date   {register.PublicationDate?.ToString("yyyy-MM-dd", culture) ?? "not supplied"}");
-            Console.WriteLine($"  Original filename  {register.OriginalFileName ?? "n/a � not loaded from a file"}");
-            Console.WriteLine($"  SHA-256            {register.FileSha256 ?? "n/a � not loaded from a file"}");
+            Console.WriteLine($"  Original filename  {register.OriginalFileName ?? "n/a — not loaded from a file"}");
+            Console.WriteLine($"  SHA-256            {register.FileSha256 ?? "n/a — not loaded from a file"}");
             Console.WriteLine($"  Acquisition        {register.AcquisitionNote ?? "not declared"}");
 
             if (register.Notes is not null)

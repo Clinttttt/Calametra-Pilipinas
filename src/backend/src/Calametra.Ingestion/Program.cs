@@ -270,6 +270,8 @@ if (isRegisterImport)
         summary.UnitsRejected,
         summary.RegisterStatedPairings);
 
+    LguReadinessPrinter.PrintImport(summary);
+
     return 0;
 }
 

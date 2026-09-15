@@ -122,15 +122,25 @@ public static class GetLguCrosswalkReadiness
             var directoryRows = await analytics.Places
                 .CountAsync(place => place.PsgcCode != null && place.Kind != PlaceKind.Barangay, cancellationToken);
 
+            // Joined to the unit so confirmation can be counted PER LEVEL. Gate 2's required population
+            // is whatever the active edition holds: a city-and-municipality total is a property of one
+            // quarter's publication rather than a constant, and the register is the only thing entitled
+            // to state it.
             var links = await review.LguCodeLinks
-                .Select(link => new
-                {
-                    link.Status,
-                    link.Evidence,
-                    link.NamesAgree,
-                    link.LguId,
-                    link.PlaceId,
-                })
+                .Join(
+                    review.Lgus,
+                    link => link.LguId,
+                    lgu => lgu.Id,
+                    (link, lgu) => new
+                    {
+                        link.Status,
+                        link.Evidence,
+                        link.NamesAgree,
+                        link.LguId,
+                        link.PlaceId,
+                        lgu.Level,
+                        lgu.RegisterEditionId,
+                    })
                 .ToListAsync(cancellationToken);
 
             var proposed = links.Count(link => link.Status == LguLinkStatus.Proposed);
@@ -157,6 +167,21 @@ public static class GetLguCrosswalkReadiness
             var unmatchedUnits = registerUnits - confirmedLguIds.Count;
             var unmatchedDirectory = directoryRows - confirmedPlaceIds.Count;
 
+            // Per level, all derived from the active edition. Nothing here is a written-down target.
+            var confirmedByLevel = links
+                .Where(link => link.Status == LguLinkStatus.Confirmed)
+                .Select(link => link.Level)
+                .GroupBy(level => level)
+                .ToDictionary(group => group.Key, group => group.Count());
+
+            var localGovernmentUnitsRequired = edition is null
+                ? 0
+                : edition.CityCount + edition.MunicipalityCount;
+
+            var localGovernmentUnitsConfirmed =
+                confirmedByLevel.GetValueOrDefault(LguLevel.City)
+                + confirmedByLevel.GetValueOrDefault(LguLevel.Municipality);
+
             var boundary = await MeasureReadBoundaryAsync(cancellationToken);
 
             var conditions = BuildConditions(
@@ -164,7 +189,10 @@ public static class GetLguCrosswalkReadiness
                 registerUnits,
                 confirmed,
                 unmatchedUnits,
-                reviewed);
+                reviewed,
+                localGovernmentUnitsRequired,
+                localGovernmentUnitsConfirmed,
+                confirmedByLevel);
 
             var register = edition is null
                 ? new RegisterState(
@@ -220,7 +248,10 @@ public static class GetLguCrosswalkReadiness
             int registerUnits,
             int confirmed,
             int unmatchedUnits,
-            int reviewed)
+            int reviewed,
+            int localGovernmentUnitsRequired,
+            int localGovernmentUnitsConfirmed,
+            Dictionary<LguLevel, int> confirmedByLevel)
         {
             var editionDetail = edition is null
                 ? "No register edition has been loaded."
@@ -229,6 +260,19 @@ public static class GetLguCrosswalkReadiness
                     + (edition.UpstreamLastModified is { } stamp
                         ? $", upstream last modified {stamp:yyyy-MM-dd}."
                         : ", upstream last-modified not reported.");
+
+            // Every figure in gate 2's detail is read off the active edition. The city-and-municipality
+            // population is called out separately because it is the one a reviewer works through, and
+            // because it is the number most likely to be quoted from memory and be a quarter out of date.
+            var gate2Detail = edition is null
+                ? "No register edition is loaded, so there is no population to review against."
+                : $"{localGovernmentUnitsConfirmed} of {localGovernmentUnitsRequired} cities and "
+                    + $"municipalities confirmed ({edition.CityCount} cities, "
+                    + $"{edition.MunicipalityCount} municipalities in this edition); "
+                    + $"{confirmedByLevel.GetValueOrDefault(LguLevel.Province)} of "
+                    + $"{edition.ProvinceCount} provinces; "
+                    + $"{confirmedByLevel.GetValueOrDefault(LguLevel.Region)} of "
+                    + $"{edition.RegionCount} regions. {confirmed} of {registerUnits} units overall.";
 
             return
             [
@@ -240,9 +284,9 @@ public static class GetLguCrosswalkReadiness
 
                 new GateCondition(
                     2,
-                    "The crosswalk exists and is reviewed for every unit the register holds",
+                    "The crosswalk is reviewed for every unit the active canonical edition holds",
                     registerUnits > 0 && confirmed >= registerUnits,
-                    $"{confirmed} of {registerUnits} register units carry a confirmed pairing."),
+                    gate2Detail),
 
                 new GateCondition(
                     3,

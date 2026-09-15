@@ -176,7 +176,9 @@ caveat held only in a code comment is not a caveat.
 
 ### D6 — Delivery is zoom-banded; selection is independent of layer state
 
-Drawing 1,647 city and municipality outlines at national zoom turns the archipelago into a
+Drawing every city and municipality outline at national zoom — some sixteen hundred of them, and the
+exact figure is whatever the active register says rather than a number recorded here — turns the
+archipelago into a
 spiderweb and buries the data. So:
 
 | Zoom | Regions | Provinces | Cities / Municipalities |
@@ -209,8 +211,12 @@ Implementation is gated on the identity rules, not on the map work. The map work
 identity wrong is a defect that spreads into every figure derived from it.
 
 1. **The canonical register edition is fixed and dated** — a specific PSA PSGC publication, cited.
-2. **The crosswalk exists and is reviewed** for all 1,647 cities and municipalities, 86 provinces
-   and 17 regions, with every exception in D5 carrying a written reason.
+2. **The crosswalk exists and is reviewed** for every unit the active canonical edition holds, with
+   every exception in D5 carrying a written reason. **The required population is derived from that
+   edition, never written down here.** The register changes quarterly: the mirror this platform first
+   loaded reported 17 regions, 81 provinces and 1,634 cities and municipalities, while PSA 2Q 2026
+   reports 149 cities and 1,493 municipalities — 1,642 — against 82 provinces and 18 regions. A target
+   figure in this document would be wrong within a quarter and would go on being checked against.
 3. **The unmatched set is enumerated and accepted** — not zero, accepted. A known unmatched count is
    a fact about Philippine administrative history; a zero achieved by name-matching is a fiction.
 4. **The OSM extract is licence-checked and dated**, and registered as a `DataSource` row before any

@@ -48,6 +48,19 @@ public static class ImportPsgcRegister
     /// Unreviewed proposals retired with them. Confirmed and rejected rows are untouched: a review is a
     /// person's decision against a stated publication and an import does not retract it.
     /// </param>
+    /// <param name="UnitsRenamed">
+    /// Units the new edition names differently from the edition before it. A rename is not a new unit and
+    /// must not be counted as one.
+    /// </param>
+    /// <param name="UnitsLevelChanged">
+    /// Units whose administrative level changed — a municipality made a city, most often. Reported
+    /// separately because it changes what the unit IS, not merely what it is called.
+    /// </param>
+    /// <param name="UnitsRetiredFromRegister">
+    /// Units held from an earlier edition that the new edition does not contain: dissolved, merged, or
+    /// split into successors. Retained rather than deleted, so figures already derived from them stay
+    /// explainable, and reported because a silent disappearance is the worst way to learn about a split.
+    /// </param>
     public sealed record RegisterImportSummary(
         string EditionLabel,
         string Provenance,
@@ -65,7 +78,10 @@ public static class ImportPsgcRegister
         string? OriginalFileName,
         string? FileSha256,
         int EditionsSuperseded,
-        int ProposalsSuperseded);
+        int ProposalsSuperseded,
+        int UnitsRenamed,
+        int UnitsLevelChanged,
+        int UnitsRetiredFromRegister);
 
     internal sealed class Handler(
         ILguCrosswalkReviewContext context,
@@ -121,11 +137,34 @@ public static class ImportPsgcRegister
             var created = 0;
             var reconciled = 0;
             var rejected = 0;
+            var renamed = 0;
+            var levelChanged = 0;
+
+            // Codes seen in this publication, so what the new edition DOESN'T contain can be named.
+            var seen = new HashSet<string>(snapshot.Units.Count, StringComparer.Ordinal);
 
             foreach (var unit in snapshot.Units)
             {
+                seen.Add(unit.CanonicalCode);
+
                 if (existing.TryGetValue(unit.CanonicalCode, out var held))
                 {
+                    // Captured before reconciling: afterwards the previous values are gone, and a rename
+                    // is the difference between "the PSA renamed this" and "this is a different place".
+                    if (!string.Equals(held.Name, unit.Name, StringComparison.Ordinal))
+                    {
+                        renamed++;
+                        ImportLog.UnitRenamed(logger, unit.CanonicalCode, held.Name, unit.Name);
+                    }
+
+                    if (held.Level != unit.Level)
+                    {
+                        var from = held.Level.ToString();
+                        var to = unit.Level.ToString();
+                        levelChanged++;
+                        ImportLog.UnitLevelChanged(logger, unit.CanonicalCode, unit.Name, from, to);
+                    }
+
                     held.Reconcile(
                         unit.Name,
                         unit.Level,
@@ -159,6 +198,23 @@ public static class ImportPsgcRegister
                 context.Lgus.Add(lgu);
                 existing[lgu.CanonicalPsgcCode] = lgu;
                 created++;
+            }
+
+            // Held units this publication does not contain. Dissolved, merged, or split into successors —
+            // and a split is why these are reported rather than removed: Maguindanao's two halves exist
+            // because the undivided province stopped existing, and losing the old row would lose the
+            // explanation for every figure previously derived from it.
+            var retired = 0;
+
+            foreach (var held in existing.Values)
+            {
+                if (seen.Contains(held.CanonicalPsgcCode))
+                {
+                    continue;
+                }
+
+                retired++;
+                ImportLog.UnitAbsentFromNewEdition(logger, held.CanonicalPsgcCode, held.Name);
             }
 
             var regions = snapshot.Units.Count(unit => unit.Level == LguLevel.Region);
@@ -211,7 +267,10 @@ public static class ImportPsgcRegister
                 snapshot.OriginalFileName,
                 snapshot.FileSha256,
                 superseded.Editions,
-                superseded.Proposals));
+                superseded.Proposals,
+                renamed,
+                levelChanged,
+                retired));
         }
 
         /// <summary>
@@ -327,6 +386,34 @@ internal static partial class ImportLog
         string canonicalCode,
         string name,
         string errorCode);
+
+    [LoggerMessage(
+        EventId = 7103,
+        Level = LogLevel.Information,
+        Message = "Register unit {CanonicalCode} renamed by the PSA: '{PreviousName}' -> '{NewName}'")]
+    public static partial void UnitRenamed(
+        ILogger logger,
+        string canonicalCode,
+        string previousName,
+        string newName);
+
+    [LoggerMessage(
+        EventId = 7104,
+        Level = LogLevel.Information,
+        Message = "Register unit {CanonicalCode} '{Name}' changed level: {PreviousLevel} -> {NewLevel}")]
+    public static partial void UnitLevelChanged(
+        ILogger logger,
+        string canonicalCode,
+        string name,
+        string previousLevel,
+        string newLevel);
+
+    [LoggerMessage(
+        EventId = 7105,
+        Level = LogLevel.Warning,
+        Message = "Register unit {CanonicalCode} '{Name}' is held but absent from the new edition. "
+            + "Retained, not deleted — it may have been dissolved, merged, or split into successors.")]
+    public static partial void UnitAbsentFromNewEdition(ILogger logger, string canonicalCode, string name);
 
     [LoggerMessage(
         EventId = 7102,
