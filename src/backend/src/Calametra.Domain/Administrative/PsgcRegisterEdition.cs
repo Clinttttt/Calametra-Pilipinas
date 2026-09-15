@@ -132,6 +132,61 @@ public sealed class PsgcRegisterEdition : AuditableEntity
     /// <summary>What the operator or the importer observed about this edition. Rendered to readers.</summary>
     public string? Notes { get; private set; }
 
+    // ── ACQUISITION CHAIN ────────────────────────────────────────────────────
+    //
+    // Enough to answer "what exactly did we load, from where, and can we prove it hasn't changed?"
+    // without opening the file. A register edition is the foundation every canonical code rests on, so
+    // its provenance has to be as auditable as a magnitude's agency.
+
+    /// <summary>
+    /// The date the PSA states the publication is as of, where the operator supplies it.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="RetrievedAt"/>, and the distinction matters: the PSGC changes quarterly,
+    /// so "as of 30 June 2026" and "downloaded on 15 September 2026" answer different questions. Held as
+    /// a date rather than an instant because a publication is dated to a day.
+    /// </remarks>
+    public DateOnly? PublicationDate { get; private set; }
+
+    /// <summary>The file name as the publisher named it, kept verbatim.</summary>
+    /// <remarks>
+    /// Not cosmetic. The PSA encodes the quarter in the file name, so this is often the only place the
+    /// edition's own identity survives once the bytes are parsed — and it is what lets a reviewer check
+    /// that the hash below belongs to the publication they think it does.
+    /// </remarks>
+    public string? OriginalFileName { get; private set; }
+
+    /// <summary>Lowercase hex SHA-256 of the acquired file, exactly as it was read.</summary>
+    /// <remarks>
+    /// Of the original bytes, never of a converted copy. That is why the importer reads the PSA's own
+    /// workbook rather than asking an operator to export a CSV first: a hash over a derived file
+    /// describes something the PSA never published, which would make the whole chain decorative.
+    /// </remarks>
+    public string? FileSha256 { get; private set; }
+
+    /// <summary>How the file was obtained, in the operator's own words.</summary>
+    /// <remarks>
+    /// A declaration rather than a measurement, and it has to be. A file on disk carries no provenance
+    /// of its own; inferring one would let a downloaded mirror be presented as a PSA publication, which
+    /// is precisely the substitution gate 1 exists to prevent.
+    /// </remarks>
+    public string? AcquisitionNote { get; private set; }
+
+    // ── SUPERSESSION ─────────────────────────────────────────────────────────
+
+    /// <summary>When a later edition replaced this one. Null while this edition is current.</summary>
+    /// <remarks>
+    /// Superseded rather than deleted, for the same reason a rejected pairing is retained: the run made
+    /// against this edition produced figures, and those figures have to remain explainable after the
+    /// edition behind them is replaced.
+    /// </remarks>
+    public DateTimeOffset? SupersededAt { get; private set; }
+
+    public Guid? SupersededByEditionId { get; private set; }
+
+    /// <summary>Whether this edition is the one the platform is currently reconciled to.</summary>
+    public bool IsCurrent => SupersededAt is null;
+
     /// <summary>
     /// Whether this edition may be cited by a confirmed crosswalk row.
     /// </summary>
@@ -196,5 +251,42 @@ public sealed class PsgcRegisterEdition : AuditableEntity
         Notes = notes;
 
         return this;
+    }
+
+    /// <summary>
+    /// Records the acquisition chain: what the file was called, when it was published, its hash, and how
+    /// it was obtained.
+    /// </summary>
+    public PsgcRegisterEdition WithAcquisition(
+        DateOnly? publicationDate,
+        string? originalFileName,
+        string? fileSha256,
+        string? acquisitionNote)
+    {
+        PublicationDate = publicationDate;
+        OriginalFileName = string.IsNullOrWhiteSpace(originalFileName) ? null : originalFileName.Trim();
+        FileSha256 = string.IsNullOrWhiteSpace(fileSha256) ? null : fileSha256.Trim().ToLowerInvariant();
+        AcquisitionNote = string.IsNullOrWhiteSpace(acquisitionNote) ? null : acquisitionNote.Trim();
+
+        return this;
+    }
+
+    /// <summary>
+    /// Marks this edition as replaced by a later one.
+    /// </summary>
+    /// <remarks>
+    /// Idempotent and one-way: an edition already superseded stays pointing at the edition that first
+    /// replaced it, because rewriting that pointer would lose the order in which editions arrived.
+    /// </remarks>
+    public void Supersede(Guid supersededByEditionId, DateTimeOffset now)
+    {
+        if (SupersededAt is not null || supersededByEditionId == Id)
+        {
+            return;
+        }
+
+        SupersededAt = now;
+        SupersededByEditionId = supersededByEditionId;
+        Touch(now);
     }
 }

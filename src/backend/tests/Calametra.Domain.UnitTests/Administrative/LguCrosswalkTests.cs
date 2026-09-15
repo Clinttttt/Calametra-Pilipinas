@@ -36,6 +36,7 @@ public sealed class LguCodeLinkTests
             "test basis",
             namesAgree,
             "test-matcher/1.0",
+            Guid.CreateVersion7(),
             Now).Value;
 
     [Fact]
@@ -60,6 +61,7 @@ public sealed class LguCodeLinkTests
             "basis",
             namesAgree: true,
             proposedBy: "   ",
+            Guid.CreateVersion7(),
             Now);
 
         result.IsFailure.ShouldBeTrue();
@@ -80,6 +82,7 @@ public sealed class LguCodeLinkTests
             "basis",
             namesAgree: true,
             "test-matcher/1.0",
+            Guid.CreateVersion7(),
             Now);
 
         result.IsFailure.ShouldBeTrue();
@@ -235,6 +238,55 @@ public sealed class LguCodeLinkTests
         link.IsReadable.ShouldBeFalse();
         link.Reason.ShouldNotBeNullOrWhiteSpace();
     }
+
+    [Fact]
+    public void Supersede_retires_an_unreviewed_proposal_without_deleting_it()
+    {
+        var link = Proposal();
+
+        link.Supersede(Now).IsSuccess.ShouldBeTrue();
+
+        link.Status.ShouldBe(LguLinkStatus.Superseded);
+        link.IsReadable.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Supersede_leaves_a_confirmed_pairing_alone()
+    {
+        // A review is a person's decision against a stated publication. A newer register arriving may make
+        // it worth revisiting, which is a judgement for a reviewer — an import does not retract it.
+        var link = Proposal();
+
+        link.Confirm(
+            LguLinkEvidence.RegisterMatch,
+            "A. Reviewer",
+            null,
+            Edition(RegisterProvenance.PsaDirect),
+            Now).IsSuccess.ShouldBeTrue();
+
+        var result = link.Supersede(Now.AddDays(1));
+
+        result.IsFailure.ShouldBeTrue();
+        link.Status.ShouldBe(LguLinkStatus.Confirmed);
+    }
+
+    [Fact]
+    public void A_proposal_must_name_the_edition_it_was_made_against()
+    {
+        var result = LguCodeLink.Propose(
+            Guid.CreateVersion7(),
+            "012801000",
+            null,
+            LguLinkEvidence.RegisterMatch,
+            "basis",
+            namesAgree: true,
+            "test-matcher/1.0",
+            proposedAgainstEditionId: Guid.Empty,
+            Now);
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error!.Code.ShouldBe("lgu_link.edition_required");
+    }
 }
 
 /// <summary>
@@ -322,4 +374,62 @@ public sealed class PsgcRegisterEditionTests
         edition.ProvinceCount.ShouldBe(81);
         edition.UpstreamLastModified!.Value.Year.ShouldBe(2022);
     }
+
+    [Fact]
+    public void The_acquisition_chain_is_recorded_and_the_hash_is_normalised()
+    {
+        var edition = Edition(RegisterProvenance.PsaDirect)
+            .WithAcquisition(
+                new DateOnly(2026, 6, 30),
+                "PSGC-2Q-2026-Publication-Datafile.xlsx",
+                "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789",
+                "Downloaded from psa.gov.ph in a browser session on 2026-09-15.");
+
+        edition.PublicationDate.ShouldBe(new DateOnly(2026, 6, 30));
+        edition.OriginalFileName.ShouldBe("PSGC-2Q-2026-Publication-Datafile.xlsx");
+
+        // Lowercased on the way in, so two records of the same file cannot differ by case alone.
+        edition.FileSha256.ShouldBe("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789");
+        edition.AcquisitionNote.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void An_edition_is_current_until_it_is_superseded()
+    {
+        var mirror = Edition(RegisterProvenance.Mirror);
+        var replacement = Guid.CreateVersion7();
+
+        mirror.IsCurrent.ShouldBeTrue();
+
+        mirror.Supersede(replacement, Now);
+
+        mirror.IsCurrent.ShouldBeFalse();
+        mirror.SupersededByEditionId.ShouldBe(replacement);
+        mirror.SupersededAt.ShouldBe(Now);
+    }
+
+    [Fact]
+    public void Superseding_twice_keeps_the_edition_that_first_replaced_it()
+    {
+        // Order of arrival is the fact worth keeping. Rewriting the pointer on a second import would lose
+        // which edition actually retired this one.
+        var mirror = Edition(RegisterProvenance.Mirror);
+        var first = Guid.CreateVersion7();
+        var second = Guid.CreateVersion7();
+
+        mirror.Supersede(first, Now);
+        mirror.Supersede(second, Now.AddDays(1));
+
+        mirror.SupersededByEditionId.ShouldBe(first);
+        mirror.SupersededAt.ShouldBe(Now);
+    }
+
+    private static PsgcRegisterEdition Edition(RegisterProvenance provenance) =>
+        PsgcRegisterEdition.Create(
+            "PSGC test edition",
+            provenance,
+            "C:/psgc/test.xlsx",
+            Guid.CreateVersion7(),
+            Now,
+            Now).Value;
 }

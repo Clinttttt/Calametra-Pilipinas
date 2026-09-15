@@ -81,13 +81,34 @@ public static class ProposeLguCodeLinks
             "No canonical units are held. The PSGC register must be imported before pairings can be "
             + "proposed.");
 
+        private static readonly Error NoCurrentEdition = new(
+            ErrorType.Validation,
+            "lgu_matcher.no_current_edition",
+            "No current register edition is held. Every proposal must name the edition it was made "
+            + "against, so a run cannot be attributed to a superseded one.");
+
         public async Task<Result<ProposalSummary>> Handle(
             Command request,
             CancellationToken cancellationToken)
         {
             var now = timeProvider.GetUtcNow();
 
-            var units = await context.Lgus.ToListAsync(cancellationToken);
+            // The edition this run is attributed to. Proposals are claims about two specific editions of
+            // the code, so a run against a replaced register would be producing claims nobody could act
+            // on — which is why supersession is recorded rather than silently re-pointed.
+            var edition = await context.PsgcRegisterEditions
+                .Where(candidate => candidate.SupersededAt == null)
+                .OrderByDescending(candidate => candidate.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (edition is null)
+            {
+                return Result<ProposalSummary>.Failure(NoCurrentEdition);
+            }
+
+            var units = await context.Lgus
+                .Where(lgu => lgu.RegisterEditionId == edition.Id)
+                .ToListAsync(cancellationToken);
 
             if (units.Count == 0)
             {
@@ -108,7 +129,10 @@ public static class ProposeLguCodeLinks
                 .GroupBy(row => row.PsgcCode, StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
 
+            // Only live rows count as "already proposed". A superseded row belonged to a replaced edition
+            // and must not stop this run from making the claim again against the current one.
             var existingKeys = (await context.LguCodeLinks
+                    .Where(link => link.Status != LguLinkStatus.Superseded)
                     .Select(link => new { link.LguId, link.HistoricalPsgcCode })
                     .ToListAsync(cancellationToken))
                 .Select(link => (link.LguId, link.HistoricalPsgcCode))
@@ -164,6 +188,7 @@ public static class ProposeLguCodeLinks
                         basis,
                         namesAgree,
                         MatcherName,
+                        edition.Id,
                         now);
 
                     if (proposal.IsFailure)

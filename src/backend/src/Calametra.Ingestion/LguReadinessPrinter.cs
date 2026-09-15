@@ -50,7 +50,9 @@ internal static class LguReadinessPrinter
 
         if (!report.Register.AnyEditionLoaded)
         {
-            Console.WriteLine("  No edition loaded.");
+            Console.WriteLine(string.Create(
+                culture,
+                $"  No CURRENT edition loaded. {report.Register.SupersededEditions} superseded edition(s) on record."));
         }
         else
         {
@@ -68,6 +70,11 @@ internal static class LguReadinessPrinter
             Console.WriteLine(string.Create(
                 culture,
                 $"  Upstream modified  {register.UpstreamLastModified?.ToString("yyyy-MM-dd", culture) ?? "not reported"}"));
+
+            Console.WriteLine($"  Publication date   {register.PublicationDate?.ToString("yyyy-MM-dd", culture) ?? "not supplied"}");
+            Console.WriteLine($"  Original filename  {register.OriginalFileName ?? "n/a — not loaded from a file"}");
+            Console.WriteLine($"  SHA-256            {register.FileSha256 ?? "n/a — not loaded from a file"}");
+            Console.WriteLine($"  Acquisition        {register.AcquisitionNote ?? "not declared"}");
 
             if (register.Notes is not null)
             {
@@ -95,6 +102,9 @@ internal static class LguReadinessPrinter
             + $"re-slice {crosswalk.ConfirmedOnDigitReslice}, "
             + $"manual {crosswalk.ConfirmedOnManualReview}]"));
         Console.WriteLine(string.Create(culture, $"  Rejected           {crosswalk.Rejected}"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Superseded         {crosswalk.Superseded}  (proposed against a register edition since replaced)"));
         var rate = report.ProposalRejectionRate;
 
         // Formatted before interpolation: a null rate is "not measurable", which is a different claim

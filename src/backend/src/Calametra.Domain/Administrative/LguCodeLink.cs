@@ -23,6 +23,17 @@ public enum LguLinkStatus
 
     /// <summary>Reviewed and refused, with a reason. Retained so the rejection rate is measurable.</summary>
     Rejected = 3,
+
+    /// <summary>
+    /// Proposed against a register edition that has since been replaced.
+    /// </summary>
+    /// <remarks>
+    /// Retained rather than deleted, and deliberately not silently re-pointed at the new edition. A
+    /// proposal is a claim about two specific editions of the code; when one of them is replaced the
+    /// claim has to be remade rather than inherited, because the newer register may pair the unit
+    /// differently, may have split it, or may not contain it at all.
+    /// </remarks>
+    Superseded = 4,
 }
 
 /// <summary>
@@ -192,6 +203,16 @@ public sealed class LguCodeLink : AuditableEntity
     public Guid? ConfirmedAgainstEditionId { get; private set; }
 
     /// <summary>
+    /// The register edition this pairing was <em>proposed</em> against.
+    /// </summary>
+    /// <remarks>
+    /// Recorded so a run can be superseded wholesale when a new edition arrives. Without it there would
+    /// be no way to tell a proposal made against the 2022 mirror from one made against a current PSA
+    /// publication, and the two are not interchangeable claims.
+    /// </remarks>
+    public Guid ProposedAgainstEditionId { get; private set; }
+
+    /// <summary>
     /// Whether analytics may read this row.
     /// </summary>
     /// <remarks>
@@ -212,11 +233,17 @@ public sealed class LguCodeLink : AuditableEntity
         string proposalBasis,
         bool namesAgree,
         string proposedBy,
+        Guid proposedAgainstEditionId,
         DateTimeOffset now)
     {
         if (lguId == Guid.Empty)
         {
             return Result<LguCodeLink>.Failure(LguCodeLinkErrors.LguRequired);
+        }
+
+        if (proposedAgainstEditionId == Guid.Empty)
+        {
+            return Result<LguCodeLink>.Failure(LguCodeLinkErrors.EditionRequired);
         }
 
         var code = historicalPsgcCode?.Trim() ?? string.Empty;
@@ -239,6 +266,7 @@ public sealed class LguCodeLink : AuditableEntity
         var link = new LguCodeLink(Guid.CreateVersion7(), lguId, code, proposedBy.Trim(), now, now)
         {
             PlaceId = placeId,
+            ProposedAgainstEditionId = proposedAgainstEditionId,
             // The candidate evidence a matcher suggests. Carried so a reviewer can see what rule fired,
             // and deliberately not treated as established: `Confirm` re-states the evidence, because the
             // reviewer is the one who is accountable for it.
@@ -309,6 +337,28 @@ public sealed class LguCodeLink : AuditableEntity
         ReviewedAt = now;
         Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         ConfirmedAgainstEditionId = edition.Id;
+        Touch(now);
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Marks an unreviewed proposal as belonging to a replaced edition.
+    /// </summary>
+    /// <remarks>
+    /// Only a <see cref="LguLinkStatus.Proposed"/> row is superseded. A confirmed pairing keeps its
+    /// status and its cited edition: it was a reviewed decision against a stated publication, and a
+    /// later register arriving does not retract the review — it may make it worth revisiting, which is a
+    /// judgement for a person rather than for an import.
+    /// </remarks>
+    public Result Supersede(DateTimeOffset now)
+    {
+        if (Status != LguLinkStatus.Proposed)
+        {
+            return Result.Failure(LguCodeLinkErrors.NotProposed);
+        }
+
+        Status = LguLinkStatus.Superseded;
         Touch(now);
 
         return Result.Success();

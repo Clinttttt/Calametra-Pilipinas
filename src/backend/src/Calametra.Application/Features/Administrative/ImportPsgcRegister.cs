@@ -43,6 +43,11 @@ public static class ImportPsgcRegister
     /// Units for which the register itself published both editions of the code. This is the population
     /// that can eventually be confirmed on <c>RegisterMatch</c> — the strongest evidence available.
     /// </param>
+    /// <param name="EditionsSuperseded">Earlier editions retired by this import.</param>
+    /// <param name="ProposalsSuperseded">
+    /// Unreviewed proposals retired with them. Confirmed and rejected rows are untouched: a review is a
+    /// person's decision against a stated publication and an import does not retract it.
+    /// </param>
     public sealed record RegisterImportSummary(
         string EditionLabel,
         string Provenance,
@@ -55,7 +60,12 @@ public static class ImportPsgcRegister
         int UnitsReconciled,
         int UnitsRejected,
         int RegisterStatedPairings,
-        DateTimeOffset? UpstreamLastModified);
+        DateTimeOffset? UpstreamLastModified,
+        DateOnly? PublicationDate,
+        string? OriginalFileName,
+        string? FileSha256,
+        int EditionsSuperseded,
+        int ProposalsSuperseded);
 
     internal sealed class Handler(
         ILguCrosswalkReviewContext context,
@@ -99,6 +109,11 @@ public static class ImportPsgcRegister
             }
 
             var edition = await ReconcileEditionAsync(snapshot, source.Id, now, cancellationToken);
+
+            // A new edition retires the previous one and every unreviewed proposal made against it. Done
+            // before the units are read so the run cannot half-happen: if the import fails later, nothing
+            // has been marked current that is not.
+            var superseded = await SupersedePreviousAsync(edition, now, cancellationToken);
 
             var existing = await context.Lgus
                 .ToDictionaryAsync(lgu => lgu.CanonicalPsgcCode, cancellationToken);
@@ -159,6 +174,12 @@ public static class ImportPsgcRegister
                 snapshot.UpstreamLastModified,
                 snapshot.Notes);
 
+            edition.WithAcquisition(
+                snapshot.PublicationDate,
+                snapshot.OriginalFileName,
+                snapshot.FileSha256,
+                snapshot.AcquisitionNote);
+
             await context.SaveChangesAsync(cancellationToken);
 
             var statedPairings = snapshot.Units.Count(unit => unit.StatedHistoricalCode is not null);
@@ -185,7 +206,62 @@ public static class ImportPsgcRegister
                 reconciled,
                 rejected,
                 statedPairings,
-                snapshot.UpstreamLastModified));
+                snapshot.UpstreamLastModified,
+                snapshot.PublicationDate,
+                snapshot.OriginalFileName,
+                snapshot.FileSha256,
+                superseded.Editions,
+                superseded.Proposals));
+        }
+
+        /// <summary>
+        /// Retires every earlier edition and the unreviewed proposals made against them.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Confirmed and rejected rows are left alone. They record a person's decision against a stated
+        /// publication, and a newer register arriving does not retract a review — it may make one worth
+        /// revisiting, which is a judgement for a reviewer rather than for an import.
+        /// </para>
+        /// <para>
+        /// Superseded rather than deleted, so the figures the earlier run produced stay explainable after
+        /// the edition behind them is replaced. That is the same reason a rejected pairing is retained.
+        /// </para>
+        /// </remarks>
+        private async Task<(int Editions, int Proposals)> SupersedePreviousAsync(
+            PsgcRegisterEdition current,
+            DateTimeOffset now,
+            CancellationToken cancellationToken)
+        {
+            var earlier = await context.PsgcRegisterEditions
+                .Where(edition => edition.Id != current.Id && edition.SupersededAt == null)
+                .ToListAsync(cancellationToken);
+
+            if (earlier.Count == 0)
+            {
+                return (0, 0);
+            }
+
+            var earlierIds = earlier.ConvertAll(edition => edition.Id);
+
+            foreach (var edition in earlier)
+            {
+                edition.Supersede(current.Id, now);
+            }
+
+            var stale = await context.LguCodeLinks
+                .Where(link => link.Status == LguLinkStatus.Proposed
+                    && earlierIds.Contains(link.ProposedAgainstEditionId))
+                .ToListAsync(cancellationToken);
+
+            foreach (var link in stale)
+            {
+                link.Supersede(now);
+            }
+
+            ImportLog.PreviousEditionsSuperseded(logger, earlier.Count, stale.Count);
+
+            return (earlier.Count, stale.Count);
         }
 
         /// <summary>
@@ -251,4 +327,11 @@ internal static partial class ImportLog
         string canonicalCode,
         string name,
         string errorCode);
+
+    [LoggerMessage(
+        EventId = 7102,
+        Level = LogLevel.Information,
+        Message = "{Editions} earlier register edition(s) superseded, retiring {Proposals} unreviewed "
+            + "proposal(s). Confirmed and rejected pairings are untouched.")]
+    public static partial void PreviousEditionsSuperseded(ILogger logger, int editions, int proposals);
 }

@@ -44,6 +44,13 @@ internal sealed class PsgcRegisterSource(
 
     public async Task<RegisterSnapshot> ReadAsync(CancellationToken cancellationToken)
     {
+        // A single PSA publication file takes precedence over everything: it is the only route that can
+        // satisfy ADR-005 gate 1, so if an operator has put one on disk, nothing else should be consulted.
+        if (!string.IsNullOrWhiteSpace(options.LocalPublicationFile))
+        {
+            return ReadPublicationFile(options.LocalPublicationFile);
+        }
+
         if (!string.IsNullOrWhiteSpace(options.LocalFileDirectory))
         {
             return await ReadLocalAsync(options.LocalFileDirectory, cancellationToken);
@@ -80,6 +87,45 @@ internal sealed class PsgcRegisterSource(
     /// A probe rather than an exception-driven fallback, so the reason lands in the edition's notes and in
     /// the readiness report instead of only in a log line an operator has to go looking for.
     /// </remarks>
+    /// <summary>
+    /// Reads a PSA publication workbook, hashing the file before parsing it.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous because the workbook is opened as a whole and there is no partial read to await, and
+    /// because failing here should fail the import loudly rather than being wrapped: a missing file or an
+    /// unrecognised worksheet is an operator error with a one-line fix, and the reader's exception says
+    /// which columns it looked for and what it found instead.
+    /// </remarks>
+    private RegisterSnapshot ReadPublicationFile(string path)
+    {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException(
+                $"The PSGC publication was not found at '{path}'. Sources:PsgcRegister:"
+                + "LocalPublicationFile must point at the workbook as downloaded from the PSA.",
+                path);
+        }
+
+        var snapshot = PsgcWorkbookReader.Read(
+            path,
+            options.LocalFileWorksheet,
+            options.LocalFileLabel,
+            options.LocalFilePublicationDate,
+            options.LocalFileAcquisitionNote,
+            options.LocalFileIsPsaPublication);
+
+        var provenance = snapshot.Provenance.ToString();
+
+        RegisterLog.PublicationRead(
+            logger,
+            snapshot.OriginalFileName ?? path,
+            snapshot.FileSha256 ?? "not hashed",
+            snapshot.Units.Count,
+            provenance);
+
+        return snapshot;
+    }
+
     private async Task<string?> ProbePsaAsync(CancellationToken cancellationToken)
     {
         try
@@ -348,4 +394,16 @@ internal static partial class RegisterLog
         Message = "The PSA register route {PsaUrl} did not serve the register ({Failure}). Falling back "
             + "to the mirror; the resulting edition cannot certify a crosswalk.")]
     public static partial void PsaUnavailable(ILogger logger, string psaUrl, string failure);
+
+    [LoggerMessage(
+        EventId = 7131,
+        Level = LogLevel.Information,
+        Message = "Read PSGC publication {FileName} (SHA-256 {Sha256}): {UnitCount} units at region, "
+            + "province, city and municipality level. Provenance {Provenance}.")]
+    public static partial void PublicationRead(
+        ILogger logger,
+        string fileName,
+        string sha256,
+        int unitCount,
+        string provenance);
 }

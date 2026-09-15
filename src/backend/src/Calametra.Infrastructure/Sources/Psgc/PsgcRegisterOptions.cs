@@ -51,4 +51,38 @@ public sealed class PsgcRegisterOptions
 
     /// <summary>How the operator labels the local file, e.g. <c>PSGC 2Q 2026</c>.</summary>
     public string? LocalFileLabel { get; init; }
+
+    /// <summary>
+    /// A single PSA publication file — the workbook as downloaded — read in preference to a directory.
+    /// </summary>
+    /// <remarks>
+    /// The route ADR-005 gate 1 is actually completed through. The PSA distributes the PSGC as an
+    /// <c>.xlsx</c> workbook and its site refuses automated download: measured 2026-09-15,
+    /// <c>psa.gov.ph</c> returned 403 to two different clients and the classification API's own
+    /// endpoints returned 400. A browser session passes; a script does not. So the file arrives by hand,
+    /// and this is where it is pointed at.
+    /// </remarks>
+    public string? LocalPublicationFile { get; init; }
+
+    /// <summary>
+    /// The date the PSA states the publication is as of, e.g. <c>2026-06-30</c>.
+    /// </summary>
+    /// <remarks>
+    /// Supplied by the operator because it is on the publication's own cover rather than in its data, and
+    /// it is not the download date. The register changes quarterly, so which quarter this is decides
+    /// whether a reconciliation is current.
+    /// </remarks>
+    public DateOnly? LocalFilePublicationDate { get; init; }
+
+    /// <summary>How the file was obtained, in the operator's words. Recorded verbatim.</summary>
+    public string? LocalFileAcquisitionNote { get; init; }
+
+    /// <summary>
+    /// The worksheet holding the masterlist. Null takes the first sheet.
+    /// </summary>
+    /// <remarks>
+    /// Named rather than assumed, because the PSA workbook carries several sheets and which one holds
+    /// the masterlist has changed between publications.
+    /// </remarks>
+    public string? LocalFileWorksheet { get; init; }
 }

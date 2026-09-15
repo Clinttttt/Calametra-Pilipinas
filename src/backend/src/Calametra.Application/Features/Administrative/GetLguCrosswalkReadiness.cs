@@ -65,7 +65,12 @@ public static class GetLguCrosswalkReadiness
         int CityCount,
         int MunicipalityCount,
         DateTimeOffset? UpstreamLastModified,
-        string? Notes);
+        string? Notes,
+        DateOnly? PublicationDate,
+        string? OriginalFileName,
+        string? FileSha256,
+        string? AcquisitionNote,
+        int SupersededEditions);
 
     public sealed record CrosswalkState(
         int RegisterUnits,
@@ -73,6 +78,7 @@ public static class GetLguCrosswalkReadiness
         int Proposed,
         int Confirmed,
         int Rejected,
+        int Superseded,
         int ConfirmedOnRegisterMatch,
         int ConfirmedOnDigitReslice,
         int ConfirmedOnManualReview,
@@ -101,9 +107,15 @@ public static class GetLguCrosswalkReadiness
             Query request,
             CancellationToken cancellationToken)
         {
+            // The CURRENT edition, not merely the newest row: a superseded edition is a historical record
+            // and reporting readiness against it would answer a question nobody asked.
             var edition = await review.PsgcRegisterEditions
+                .Where(candidate => candidate.SupersededAt == null)
                 .OrderByDescending(candidate => candidate.CreatedAt)
                 .FirstOrDefaultAsync(cancellationToken);
+
+            var supersededEditions = await review.PsgcRegisterEditions
+                .CountAsync(candidate => candidate.SupersededAt != null, cancellationToken);
 
             var registerUnits = await review.Lgus.CountAsync(cancellationToken);
 
@@ -155,7 +167,9 @@ public static class GetLguCrosswalkReadiness
                 reviewed);
 
             var register = edition is null
-                ? new RegisterState(false, null, null, false, 0, 0, 0, 0, null, null)
+                ? new RegisterState(
+                    false, null, null, false, 0, 0, 0, 0, null, null, null, null, null, null,
+                    supersededEditions)
                 : new RegisterState(
                     true,
                     edition.Label,
@@ -166,7 +180,12 @@ public static class GetLguCrosswalkReadiness
                     edition.CityCount,
                     edition.MunicipalityCount,
                     edition.UpstreamLastModified,
-                    edition.Notes);
+                    edition.Notes,
+                    edition.PublicationDate,
+                    edition.OriginalFileName,
+                    edition.FileSha256,
+                    edition.AcquisitionNote,
+                    supersededEditions);
 
             var crosswalk = new CrosswalkState(
                 registerUnits,
@@ -174,6 +193,7 @@ public static class GetLguCrosswalkReadiness
                 proposed,
                 confirmed,
                 rejected,
+                links.Count(link => link.Status == LguLinkStatus.Superseded),
                 links.Count(link => link.Status == LguLinkStatus.Confirmed
                     && link.Evidence == LguLinkEvidence.RegisterMatch),
                 links.Count(link => link.Status == LguLinkStatus.Confirmed

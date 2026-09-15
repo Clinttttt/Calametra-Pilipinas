@@ -51,6 +51,18 @@ public sealed record RegisterSnapshot
     /// <summary>What the adapter observed about this edition. Rendered to readers verbatim.</summary>
     public string? Notes { get; init; }
 
+    /// <summary>The date the publisher states the edition is as of, where it is known.</summary>
+    public DateOnly? PublicationDate { get; init; }
+
+    /// <summary>The file name as the publisher named it, where the edition came from a file.</summary>
+    public string? OriginalFileName { get; init; }
+
+    /// <summary>Lowercase hex SHA-256 of the acquired file, over the original bytes.</summary>
+    public string? FileSha256 { get; init; }
+
+    /// <summary>How the file was obtained, declared by the operator rather than inferred.</summary>
+    public string? AcquisitionNote { get; init; }
+
     public required IReadOnlyList<RegisterUnit> Units { get; init; }
 }
 

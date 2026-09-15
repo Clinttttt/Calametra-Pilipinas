@@ -37,6 +37,17 @@
     <!-- snake_case column naming so the database is readable in psql without quoting. -->
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.11" />
+    <!--
+      Reads the PSA's PSGC publication, which is distributed as an .xlsx workbook.
+
+      Taken so the operator can point the importer at the PSA file ITSELF: ADR-005 gate 1 requires the
+      edition to be a cited PSA publication, and the SHA-256 recorded against it has to be the hash of
+      the bytes the PSA served. Asking an operator to convert the workbook to CSV first would break that
+      chain — the hash would then describe a file the PSA never published.
+
+      MIT licensed. Pinned exactly, as everything here is.
+    -->
+    <PackageVersion Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">

@@ -27,6 +27,24 @@ internal sealed class PsgcRegisterEditionConfiguration : IEntityTypeConfiguratio
         builder.Property(edition => edition.AccessRoute).HasMaxLength(500).IsRequired();
         builder.Property(edition => edition.Notes).HasMaxLength(4000);
 
+        // The acquisition chain. Length-bounded rather than free text so a mis-set option fails at the
+        // database instead of storing a stack trace as a provenance note.
+        builder.Property(edition => edition.OriginalFileName).HasMaxLength(300);
+        builder.Property(edition => edition.AcquisitionNote).HasMaxLength(2000);
+
+        // Exactly 64 lowercase hex characters. Fixed length because a truncated digest is worse than no
+        // digest: it looks verifiable and is not.
+        builder.Property(edition => edition.FileSha256).HasMaxLength(64).IsFixedLength();
+
+        builder.HasIndex(edition => edition.FileSha256);
+
+        // Which edition the platform is reconciled to, asked on every readiness report.
+        builder.HasIndex(edition => edition.SupersededAt);
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_psgc_register_editions_hash_is_hex",
+            "file_sha256 IS NULL OR file_sha256 ~ '^[0-9a-f]{64}$'"));
+
         // One row per label and access route: re-reading the same publication reconciles rather than
         // accumulating, so "which edition are we on" has one answer.
         builder.HasIndex(edition => new { edition.Label, edition.AccessRoute }).IsUnique();
@@ -97,6 +115,7 @@ internal sealed class LguCodeLinkConfiguration : IEntityTypeConfiguration<LguCod
 
         builder.HasIndex(link => link.Status);
         builder.HasIndex(link => link.HistoricalPsgcCode);
+        builder.HasIndex(link => link.ProposedAgainstEditionId);
 
         // One proposal per (unit, historical code): a matcher re-run reconciles rather than duplicating,
         // so the rejection rate stays a rate rather than an artefact of how many times it ran.
