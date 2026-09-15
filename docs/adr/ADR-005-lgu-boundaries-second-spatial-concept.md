@@ -152,6 +152,32 @@ proportion of proposals a reviewer *rejected* is recorded in this ADR. If a matc
 pairings and 40 are wrong, that number is the reason the review gate exists and it belongs in the
 record.
 
+#### Measured, 2026-09-15, against the PSA 2Q 2026 publication
+
+| | |
+|---|---|
+| Proposals reviewed | 1,729 |
+| Confirmed on `RegisterMatch` | 1,728 |
+| Confirmed on `DigitReslice` | 0 |
+| Rejected | 1 |
+| **Rejection rate** | **0.06%** |
+| Units accepted as having no nine-digit code | 14 |
+| Directory rows accepted as having no register unit | 17 |
+
+The rate is low because the evidence was strong: every confirmed pairing is the PSA publishing both
+codes for the same unit in the same row, which is transcription rather than inference. That is the
+result the design predicted, and it is not a claim that matching is easy — it is a measurement of
+one edition where the register did the work itself.
+
+**The single rejection is the more informative figure.** The matcher's only `DigitReslice`
+proposal paired the Negros Island Region, `1800000000`, with `100000000` — which is Northern
+Mindanao. Re-slicing dropped a digit and landed on an unrelated region's code. NIR was created in
+2024 and has no nine-digit counterpart at all, so there was nothing correct for the matcher to find.
+It was caught because the names disagreed and this ADR forbids confirming `DigitReslice` where they
+do, which means the guard that stopped it was the one written for exactly this failure. Had that rule
+not existed, one region of the Philippines would now be silently identified as another.
+
+
 **An unpaired unit is valid, not broken.** An LGU with no historical code is a valid LGU; a directory
 row with no canonical code is a valid row. Neither is backfilled to make a join tidy, and neither is
 hidden from the reader to make a count look complete.

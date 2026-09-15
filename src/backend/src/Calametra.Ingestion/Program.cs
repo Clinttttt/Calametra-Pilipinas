@@ -3,6 +3,7 @@ using Calametra.Application;
 using Calametra.Application.Abstractions.Messaging;
 using Calametra.Application.Features.Administrative;
 using Calametra.Application.Features.Ingestion;
+using Calametra.Domain.Administrative;
 using Calametra.Ingestion;
 using Calametra.Infrastructure;
 using Calametra.Infrastructure.Persistence.Seed;
@@ -85,6 +86,26 @@ var isReadinessReport = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:Readiness"],
     out var readinessFlag) && readinessFlag;
 
+// ── ADR-005 D4 AND D5: THE REVIEW PATH ───────────────────────────────────────
+//
+// Three separate modes because they are three separate acts. Showing the queue decides nothing.
+// Confirming a class is one attributed judgement about one kind of evidence. Accepting an exception
+// is a written finding that no pairing exists. Collapsing them into one command would be the bulk
+// promotion D4 refuses, wearing a different name.
+var isReviewQueue = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ReviewQueue"],
+    out var queueFlag) && queueFlag;
+
+var confirmClass = builder.Configuration["Ingestion:Lgu:ConfirmClass"];
+var isClassConfirmation = !string.IsNullOrWhiteSpace(confirmClass);
+
+var isExceptionAcceptance = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:AcceptExceptions"],
+    out var exceptionFlag) && exceptionFlag;
+
+var rejectLinkId = builder.Configuration["Ingestion:Lgu:RejectLink"];
+var isLinkRejection = !string.IsNullOrWhiteSpace(rejectLinkId);
+
 var isOneShot = isBackfill
     || isCycloneImport
     || isPlaceImport
@@ -92,7 +113,11 @@ var isOneShot = isBackfill
     || isNameApplication
     || isRegisterImport
     || isLinkProposal
-    || isReadinessReport;
+    || isReadinessReport
+    || isReviewQueue
+    || isClassConfirmation
+    || isExceptionAcceptance
+    || isLinkRejection;
 
 if (!isOneShot)
 {
@@ -115,7 +140,13 @@ await using (var scope = host.Services.CreateAsyncScope())
     // The administrative modes read a PSGC publication and the place directory. Neither consults fault
     // geometry, so fetching it would be a minute of pointless traffic and one more upstream service that
     // could fail a run with nothing to do with faults — which is exactly what it did.
-    var needsFaultGeometry = !isRegisterImport && !isLinkProposal && !isReadinessReport;
+    var needsFaultGeometry = !isRegisterImport
+        && !isLinkProposal
+        && !isReadinessReport
+        && !isReviewQueue
+        && !isClassConfirmation
+        && !isExceptionAcceptance
+        && !isLinkRejection;
 
     if (needsFaultGeometry)
     {
@@ -329,6 +360,152 @@ if (isLinkProposal)
         summary.AlreadyProposed,
         summary.UnitsWithNoCandidate,
         summary.DirectoryRowsWithNoCandidate);
+
+    return 0;
+}
+
+// ── ADR-005 D4: THE REVIEW QUEUE ───────────────────────────────────────────
+//
+// Read-only. Exists because "1,729 proposals" is not reviewable information: a reviewer needs to see
+// what kind of evidence each row rests on before deciding anything.
+if (isReviewQueue)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new GetLguReviewQueue.Query());
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine($"Review queue failed: {result.Error!.Code} — {result.Error.Description}");
+
+        return 1;
+    }
+
+    LguReviewPrinter.WriteQueue(result.Value);
+
+    return 0;
+}
+
+// ── ADR-005 D5: ACCEPT THE UNMATCHED SET ───────────────────────────────────
+//
+// The reasons are not invented here. Each is administrative history already documented in this
+// repository or its data, and each is published to the reader.
+if (isExceptionAcceptance)
+{
+    var acceptedBy = builder.Configuration["Ingestion:Lgu:ReviewedBy"];
+
+    if (string.IsNullOrWhiteSpace(acceptedBy))
+    {
+        Console.WriteLine(
+            "Ingestion:Lgu:ReviewedBy is required. An exception is a person's finding and the reason is "
+            + "published with their name on it.");
+
+        return 1;
+    }
+
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var exitCode = await LguExceptionRunner.AcceptKnownExceptionsAsync(
+        scope.ServiceProvider.GetRequiredService<IDispatcher>(),
+        acceptedBy);
+
+    return exitCode;
+}
+
+// ── ADR-005 D4: CONFIRM ONE EVIDENCE CLASS AS A NAMED, DATED BATCH ─────────
+if (isClassConfirmation)
+{
+    var reviewedBy = builder.Configuration["Ingestion:Lgu:ReviewedBy"];
+    var sources = builder.Configuration["Ingestion:Lgu:SourcesConsulted"];
+    var expected = builder.Configuration["Ingestion:Lgu:ExpectedCount"];
+
+    if (string.IsNullOrWhiteSpace(reviewedBy) || string.IsNullOrWhiteSpace(sources))
+    {
+        Console.WriteLine(
+            "Ingestion:Lgu:ReviewedBy and Ingestion:Lgu:SourcesConsulted are both required. ADR-005 D4 "
+            + "permits a batch only when it records who decided and which sources were consulted.");
+
+        return 1;
+    }
+
+    if (!int.TryParse(expected, CultureInfo.InvariantCulture, out var expectedCount))
+    {
+        Console.WriteLine(
+            "Ingestion:Lgu:ExpectedCount is required and must be a number. The reviewer states how many "
+            + "rows they are settling, so a population that changed since they read the queue aborts the "
+            + "batch instead of confirming work they never saw.");
+
+        return 1;
+    }
+
+    if (!Enum.TryParse<LguLinkEvidence>(confirmClass, ignoreCase: true, out var evidence))
+    {
+        Console.WriteLine(
+            $"'{confirmClass}' is not an evidence class. Expected RegisterMatch or DigitReslice.");
+
+        return 1;
+    }
+
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new ConfirmLguCodeLinkClass.Command(evidence, reviewedBy, sources, expectedCount));
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine(
+            $"Class confirmation refused: {result.Error!.Code} — {result.Error.Description}");
+
+        return 1;
+    }
+
+    LguReviewPrinter.WriteClassConfirmation(result.Value);
+
+    return 0;
+}
+
+// ── ADR-005 D4: REJECT ONE PAIRING ─────────────────────────────────────────
+//
+// The individual half of the review. A rejection is retained rather than deleted, because the
+// proportion of proposals a reviewer refused is what justifies the review gate existing.
+if (isLinkRejection)
+{
+    var reviewedBy = builder.Configuration["Ingestion:Lgu:ReviewedBy"];
+    var reason = builder.Configuration["Ingestion:Lgu:Reason"];
+
+    if (string.IsNullOrWhiteSpace(reviewedBy) || string.IsNullOrWhiteSpace(reason))
+    {
+        Console.WriteLine(
+            "Ingestion:Lgu:ReviewedBy and Ingestion:Lgu:Reason are both required. A rejection without a "
+            + "reason is a number nobody can explain.");
+
+        return 1;
+    }
+
+    if (!Guid.TryParse(rejectLinkId, out var linkId))
+    {
+        Console.WriteLine($"'{rejectLinkId}' is not a link id. The review queue prints them.");
+
+        return 1;
+    }
+
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new RejectLguCodeLink.Command(linkId, reviewedBy, reason));
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine($"Rejection refused: {result.Error!.Code} — {result.Error.Description}");
+
+        return 1;
+    }
+
+    Console.WriteLine($"Pairing {linkId} rejected by {reviewedBy}.");
 
     return 0;
 }

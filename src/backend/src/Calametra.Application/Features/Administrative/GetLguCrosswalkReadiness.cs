@@ -80,6 +80,15 @@ public static class GetLguCrosswalkReadiness
     /// <param name="SupersededUnits">
     /// Units held from an edition since replaced. Retained so figures derived from them stay explainable.
     /// </param>
+    /// <param name="ExceptedUnits">
+    /// Units a reviewer examined and recorded as having no directory counterpart, each with a written
+    /// reason. Per ADR-005 D5 an unpaired unit is valid, not broken.
+    /// </param>
+    /// <param name="ExceptedDirectoryRows">Directory rows recorded as having no register counterpart.</param>
+    /// <param name="UnitsNeitherPairedNorExcepted">
+    /// The figure gate 3 turns on: units with no pairing and no written reason for having none.
+    /// </param>
+    /// <param name="DirectoryRowsNeitherPairedNorExcepted">The same, on the gazetteer side.</param>
     public sealed record CrosswalkState(
         int RegisterUnits,
         int DirectoryRowsWithCode,
@@ -88,6 +97,10 @@ public static class GetLguCrosswalkReadiness
         int Rejected,
         int Superseded,
         int SupersededUnits,
+        int ExceptedUnits,
+        int ExceptedDirectoryRows,
+        int UnitsNeitherPairedNorExcepted,
+        int DirectoryRowsNeitherPairedNorExcepted,
         int ConfirmedOnRegisterMatch,
         int ConfirmedOnDigitReslice,
         int ConfirmedOnManualReview,
@@ -217,6 +230,53 @@ public static class GetLguCrosswalkReadiness
                 confirmedByLevel.GetValueOrDefault(LguLevel.City)
                 + confirmedByLevel.GetValueOrDefault(LguLevel.Municipality);
 
+            // Accepted exceptions for this edition, per ADR-005 D5. Counted here rather than inferred from
+            // the unmatched total, because "we could not pair it" and "a person examined it and wrote down
+            // why it cannot be paired" are the two states gate 3 distinguishes between.
+            var exceptions = await review.LguCrosswalkExceptions
+                .Where(item => editionId != null && item.RegisterEditionId == editionId)
+                .Select(item => new { item.Kind, item.LguId, item.PlaceId })
+                .ToListAsync(cancellationToken);
+
+            var exceptedUnitIds = exceptions
+                .Where(item => item.LguId is not null)
+                .Select(item => item.LguId!.Value)
+                .ToHashSet();
+
+            var exceptedPlaceIds = exceptions
+                .Where(item => item.PlaceId is not null)
+                .Select(item => item.PlaceId!.Value)
+                .ToHashSet();
+
+            // A unit with a live pairing of any kind is accounted for: confirmed means paired, proposed
+            // means still under review. What gate 3 counts is what is neither.
+            var accountedUnitIds = activeLinks
+                .Where(link => link.Status is LguLinkStatus.Confirmed or LguLinkStatus.Proposed)
+                .Select(link => link.LguId)
+                .ToHashSet();
+
+            var accountedPlaceIds = activeLinks
+                .Where(link => link.Status is LguLinkStatus.Confirmed or LguLinkStatus.Proposed
+                    && link.PlaceId is not null)
+                .Select(link => link.PlaceId!.Value)
+                .ToHashSet();
+
+            var unitsNeitherPairedNorExcepted = editionId is null
+                ? 0
+                : await review.Lgus.CountAsync(
+                    lgu => lgu.RegisterEditionId == editionId
+                        && !accountedUnitIds.Contains(lgu.Id)
+                        && !exceptedUnitIds.Contains(lgu.Id),
+                    cancellationToken);
+
+            var directoryRowsNeitherPairedNorExcepted = await analytics.Places
+                .CountAsync(
+                    place => place.PsgcCode != null
+                        && place.Kind != PlaceKind.Barangay
+                        && !accountedPlaceIds.Contains(place.Id)
+                        && !exceptedPlaceIds.Contains(place.Id),
+                    cancellationToken);
+
             var boundary = await MeasureReadBoundaryAsync(cancellationToken);
 
             var conditions = BuildConditions(
@@ -227,7 +287,11 @@ public static class GetLguCrosswalkReadiness
                 reviewed,
                 localGovernmentUnitsRequired,
                 localGovernmentUnitsConfirmed,
-                confirmedByLevel);
+                confirmedByLevel,
+                proposed,
+                exceptedUnitIds.Count,
+                unitsNeitherPairedNorExcepted,
+                directoryRowsNeitherPairedNorExcepted);
 
             var register = edition is null
                 ? new RegisterState(
@@ -258,6 +322,10 @@ public static class GetLguCrosswalkReadiness
                 rejected,
                 links.Count(link => link.Status == LguLinkStatus.Superseded),
                 supersededUnits,
+                exceptedUnitIds.Count,
+                exceptedPlaceIds.Count,
+                unitsNeitherPairedNorExcepted,
+                directoryRowsNeitherPairedNorExcepted,
                 links.Count(link => link.Status == LguLinkStatus.Confirmed
                     && link.Evidence == LguLinkEvidence.RegisterMatch),
                 links.Count(link => link.Status == LguLinkStatus.Confirmed
@@ -287,7 +355,11 @@ public static class GetLguCrosswalkReadiness
             int reviewed,
             int localGovernmentUnitsRequired,
             int localGovernmentUnitsConfirmed,
-            Dictionary<LguLevel, int> confirmedByLevel)
+            Dictionary<LguLevel, int> confirmedByLevel,
+            int proposed,
+            int exceptedUnits,
+            int unitsNeitherPairedNorExcepted,
+            int directoryRowsNeitherPairedNorExcepted)
         {
             var editionDetail = edition is null
                 ? "No register edition has been loaded."
@@ -308,7 +380,38 @@ public static class GetLguCrosswalkReadiness
                     + $"{confirmedByLevel.GetValueOrDefault(LguLevel.Province)} of "
                     + $"{edition.ProvinceCount} provinces; "
                     + $"{confirmedByLevel.GetValueOrDefault(LguLevel.Region)} of "
-                    + $"{edition.RegionCount} regions. {confirmed} of {registerUnits} units overall.";
+                    + $"{edition.RegionCount} regions. {confirmed} of {registerUnits} units overall, plus "
+                    + $"{exceptedUnits} accepted as having no counterpart.";
+
+            // Gate 3 asks whether the unmatched set is enumerated AND accepted. Both halves are required
+            // and neither is implied by the other.
+            //
+            // Nothing may still be proposed: a pending proposal means the set is not yet known, since a
+            // reviewer may confirm it or reject it and only the second outcome leaves the unit unmatched.
+            // Then every unit and every directory row without a pairing must carry a written exception —
+            // "enumerated" is not the same as "counted", and a number with no reasons behind it is exactly
+            // the silent gap D5 exists to prevent.
+            var gate3Met = edition is not null
+                && reviewed > 0
+                && proposed == 0
+                && unitsNeitherPairedNorExcepted == 0
+                && directoryRowsNeitherPairedNorExcepted == 0;
+
+            var gate3Detail = edition is null
+                ? "Nothing to enumerate: no register is loaded."
+                : proposed > 0
+                    ? $"{proposed} pairings are still proposed, so the unmatched set is not yet known — a "
+                        + "reviewer may confirm or reject each one, and only rejection leaves a unit "
+                        + $"unmatched. {unitsNeitherPairedNorExcepted} units and "
+                        + $"{directoryRowsNeitherPairedNorExcepted} directory rows currently have neither a "
+                        + "pairing nor an accepted exception."
+                    : unitsNeitherPairedNorExcepted == 0 && directoryRowsNeitherPairedNorExcepted == 0
+                        ? $"Review is complete. Every unit and directory row is either paired or covered by "
+                            + $"a written exception ({exceptedUnits} units excused)."
+                        : $"{unitsNeitherPairedNorExcepted} units and "
+                            + $"{directoryRowsNeitherPairedNorExcepted} directory rows have neither a "
+                            + "pairing nor an accepted exception. Each needs a written reason before this "
+                            + "condition is met.";
 
             return
             [
@@ -321,17 +424,14 @@ public static class GetLguCrosswalkReadiness
                 new GateCondition(
                     2,
                     "The crosswalk is reviewed for every unit the active canonical edition holds",
-                    registerUnits > 0 && confirmed >= registerUnits,
+                    registerUnits > 0 && confirmed + exceptedUnits >= registerUnits,
                     gate2Detail),
 
                 new GateCondition(
                     3,
                     "The unmatched set is enumerated and accepted",
-                    reviewed > 0,
-                    unmatchedUnits == 0 && registerUnits == 0
-                        ? "Nothing to enumerate: no register is loaded."
-                        : $"{unmatchedUnits} register units are unmatched. Enumeration requires review to "
-                            + "have taken place, so this condition is unmet while nothing has been reviewed."),
+                    gate3Met,
+                    gate3Detail),
 
                 new GateCondition(
                     4,

@@ -161,6 +161,12 @@ internal static class LguReadinessPrinter
         Console.WriteLine(string.Create(
             culture,
             $"  Superseded         {crosswalk.Superseded}  (proposed against a register edition since replaced)"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Excepted           {crosswalk.ExceptedUnits} units and {crosswalk.ExceptedDirectoryRows} directory rows, each with a written reason"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Unaccounted for    {crosswalk.UnitsNeitherPairedNorExcepted} units and {crosswalk.DirectoryRowsNeitherPairedNorExcepted} directory rows have neither a pairing nor a reason"));
         var rate = report.ProposalRejectionRate;
 
         // Formatted before interpolation: a null rate is "not measurable", which is a different claim

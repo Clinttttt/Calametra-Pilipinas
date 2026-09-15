@@ -155,14 +155,35 @@ public sealed class DependencyInjectionTests
                 Features.Administrative.GetLguCrosswalkReadiness.ReadinessReport>)
         },
 
-        // The two review commands return a bare Result: confirming or rejecting a pairing produces a
-        // decision, not a figure. One row at a time by design — ADR-005 D4 forbids bulk promotion.
+        // The two single-row review commands return a bare Result: confirming or rejecting a pairing
+        // produces a decision, not a figure.
         {
             typeof(Features.Administrative.ConfirmLguCodeLink.Command),
             typeof(Domain.Abstractions.Result)
         },
         {
             typeof(Features.Administrative.RejectLguCodeLink.Command),
+            typeof(Domain.Abstractions.Result)
+        },
+
+        // The review queue decides nothing; it presents the evidence so a person can.
+        {
+            typeof(Features.Administrative.GetLguReviewQueue.Query),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.GetLguReviewQueue.ReviewQueue>)
+        },
+
+        // A class confirmation returns a summary because a named, dated batch has to report what it
+        // settled and what the domain refused. ADR-005 D4 permits the batch and forbids the threshold.
+        {
+            typeof(Features.Administrative.ConfirmLguCodeLinkClass.Command),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.ConfirmLguCodeLinkClass.ClassConfirmationSummary>)
+        },
+
+        // Accepting an exception is a finding, not a measurement.
+        {
+            typeof(Features.Administrative.AcceptLguCrosswalkException.Command),
             typeof(Domain.Abstractions.Result)
         },
         {

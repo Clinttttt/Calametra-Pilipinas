@@ -43,5 +43,15 @@ public interface ILguCrosswalkReviewContext
     /// </remarks>
     DbSet<LguCodeLink> LguCodeLinks { get; }
 
+    /// <summary>
+    /// Written records that one side of the crosswalk has no counterpart, with the reason each.
+    /// </summary>
+    /// <remarks>
+    /// On the review surface because accepting an exception is a review decision, and because gate 3 —
+    /// "the unmatched set is enumerated and accepted" — is answered by counting these against the units
+    /// and directory rows that carry no confirmed pairing.
+    /// </remarks>
+    DbSet<LguCrosswalkException> LguCrosswalkExceptions { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

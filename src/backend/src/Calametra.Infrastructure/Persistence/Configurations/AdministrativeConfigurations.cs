@@ -173,6 +173,68 @@ internal sealed class LguCodeLinkConfiguration : IEntityTypeConfiguration<LguCod
 }
 
 /// <summary>
+/// Accepted exceptions: the written record that one side of the crosswalk has no counterpart.
+/// </summary>
+internal sealed class LguCrosswalkExceptionConfiguration
+    : IEntityTypeConfiguration<LguCrosswalkException>
+{
+    public void Configure(EntityTypeBuilder<LguCrosswalkException> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("lgu_crosswalk_exceptions");
+
+        builder.HasKey(item => item.Id);
+
+        builder.Property(item => item.Kind).HasConversion<string>().HasMaxLength(40).IsRequired();
+        builder.Property(item => item.CanonicalPsgcCode).HasMaxLength(10);
+        builder.Property(item => item.DirectoryPsgcCode).HasMaxLength(9);
+        builder.Property(item => item.SubjectName).HasMaxLength(200).IsRequired();
+        builder.Property(item => item.AcceptedBy).HasMaxLength(200).IsRequired();
+
+        // Long enough for a paragraph of administrative history, because several of these need one: the
+        // Bangsamoro Special Geographic Area municipalities exist because 63 barangays voted to change
+        // province in 2019 and were constituted as eight municipalities in 2023.
+        builder.Property(item => item.Reason).HasMaxLength(2000).IsRequired();
+
+        builder.HasIndex(item => item.RegisterEditionId);
+
+        // One exception per subject per edition. A second would mean two different published reasons for
+        // the same gap, and there would be no way to tell which one the reader should be shown.
+        builder.HasIndex(item => new { item.LguId, item.RegisterEditionId })
+            .IsUnique()
+            .HasFilter("lgu_id IS NOT NULL")
+            .HasDatabaseName("ux_lgu_crosswalk_exceptions_per_unit_and_edition");
+
+        builder.HasIndex(item => new { item.PlaceId, item.RegisterEditionId })
+            .IsUnique()
+            .HasFilter("place_id IS NOT NULL")
+            .HasDatabaseName("ux_lgu_crosswalk_exceptions_per_place_and_edition");
+
+        builder.ToTable(table =>
+        {
+            // Exactly one subject, matching the kind. A row excusing both sides at once, or neither, is not
+            // a claim anyone can act on — and the reader would be shown a reason with nothing attached.
+            table.HasCheckConstraint(
+                "ck_lgu_crosswalk_exceptions_has_one_subject",
+                """
+                (kind = 'RegisterUnitHasNoHistoricalCode'
+                    AND lgu_id IS NOT NULL AND canonical_psgc_code IS NOT NULL AND place_id IS NULL)
+                OR (kind = 'DirectoryRowHasNoRegisterUnit'
+                    AND place_id IS NOT NULL AND directory_psgc_code IS NOT NULL AND lgu_id IS NULL)
+                """);
+
+            // The reason is published, so the database refuses one too short to explain anything. This
+            // mirrors the domain rule rather than trusting it: the constraint is what holds if a future
+            // write path bypasses the factory.
+            table.HasCheckConstraint(
+                "ck_lgu_crosswalk_exceptions_reason_is_written",
+                "char_length(btrim(reason)) >= 20");
+        });
+    }
+}
+
+/// <summary>
 /// The confirmed-only read boundary, mapped to a view rather than to the base table.
 /// </summary>
 /// <remarks>

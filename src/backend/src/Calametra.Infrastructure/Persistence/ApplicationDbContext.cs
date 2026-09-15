@@ -48,6 +48,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<LguCodeLink> LguCodeLinks => Set<LguCodeLink>();
 
+    public DbSet<LguCrosswalkException> LguCrosswalkExceptions => Set<LguCrosswalkException>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

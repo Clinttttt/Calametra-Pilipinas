@@ -164,4 +164,27 @@ internal static partial class ReviewLog
         string historicalCode,
         string reviewedBy,
         string reason);
+
+    [LoggerMessage(
+        EventId = 7122,
+        Level = LogLevel.Information,
+        Message = "Evidence class {Evidence} confirmed as a named batch by {ReviewedBy} against edition "
+            + "'{EditionLabel}': {Confirmed} confirmed, {Refused} refused by the domain and left proposed")]
+    public static partial void ClassConfirmed(
+        ILogger logger,
+        string evidence,
+        int confirmed,
+        int refused,
+        string reviewedBy,
+        string editionLabel);
+
+    [LoggerMessage(
+        EventId = 7123,
+        Level = LogLevel.Information,
+        Message = "Exception accepted by {AcceptedBy} for {Subject}: {Reason}")]
+    public static partial void ExceptionAccepted(
+        ILogger logger,
+        string acceptedBy,
+        string subject,
+        string reason);
 }
