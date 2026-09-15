@@ -3,7 +3,9 @@ import { DecimalPipe, PercentPipe } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 
 import { CalametraApi } from '../../core/api/calametra-api';
+import { BasemapStore } from '../../core/basemap/basemap-store';
 import { Icon } from '../../shared/ui/icon/icon';
+import { PageBackdrop } from '../../shared/ui/page-backdrop/page-backdrop';
 import type { CatalogueCompleteness, DecadeSummary } from '../../core/api/contracts';
 
 /**
@@ -23,13 +25,22 @@ import type { CatalogueCompleteness, DecadeSummary } from '../../core/api/contra
 @Component({
   selector: 'cal-time',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon, DecimalPipe, PercentPipe],
+  imports: [Icon, PageBackdrop, DecimalPipe, PercentPipe],
   host: { class: 'c-page-wash' },
   templateUrl: './time.html',
   styleUrl: './time.scss',
 })
 export class TimeView {
   private readonly api = inject(CalametraApi);
+  private readonly basemaps = inject(BasemapStore);
+
+  /**
+   * The credit the active base layer requires, printed in the page's own flow.
+   *
+   * Read from the store rather than written here, so it changes with the reader's choice and cannot
+   * drift from the source actually being fetched.
+   */
+  protected readonly basemapCredit = computed(() => this.basemaps.selected().attribution);
 
   protected readonly data = signal<CatalogueCompleteness | null>(null);
   protected readonly loading = signal(true);

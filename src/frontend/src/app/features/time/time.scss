@@ -4,12 +4,6 @@
 
 /* Its own scroll container, for the reason the catalogue page records: the shell clips its stage so the
    map cannot scroll, which leaves a long page unreachable below the fold. */
-:host {
-  display: block;
-  height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
 
 .time {
   display: flex;

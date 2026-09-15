@@ -225,6 +225,48 @@ export interface CycloneDecades {
   readonly totalCount: number;
 }
 
+/** One agency's fix inside a nearby-track segment. */
+export interface NearbyCycloneFix {
+  readonly capturedAt: string;
+  readonly latitude: number;
+  readonly longitude: number;
+  /** Null when this agency reported a position but no wind. */
+  readonly windKnots: number | null;
+  readonly isLandfall: boolean;
+}
+
+/**
+ * The part of one storm's track that passed near a point.
+ *
+ * Clipped, not whole: see `GET /api/cyclones/nearby`. `peakKnotsNearby` is the strongest reading
+ * within this segment, with the averaging period that produced it — not the storm's peak intensity.
+ */
+export interface NearbyCycloneTrack {
+  readonly eventId: string;
+  readonly name: string | null;
+  readonly localName: string | null;
+  readonly season: number;
+  readonly agency: string;
+  readonly averagingPeriod: string;
+  readonly peakKnotsNearby: number | null;
+  /** Upper bound: best-track fixes are three- or six-hourly, so the true minimum falls between two. */
+  readonly closestApproachKm: number;
+  /** Across every agency's fixes inside the radius, so it agrees with the place context's count. */
+  readonly landfallNearby: boolean;
+  readonly fixes: readonly NearbyCycloneFix[];
+}
+
+export interface NearbyCycloneTracks {
+  readonly tracks: readonly NearbyCycloneTrack[];
+  /** Storms within the radius. Exceeds `tracks.length` when the limit bit. */
+  readonly stormCount: number;
+  readonly fixCount: number;
+  readonly radiusKm: number;
+  /** The wider radius the segments are drawn to, so a track can visibly enter and leave. */
+  readonly drawnRadiusKm: number;
+  readonly reliableFromSeason: number;
+}
+
 /** One decade of the catalogue's own history. */
 export interface DecadeSummary {
   readonly decade: number;

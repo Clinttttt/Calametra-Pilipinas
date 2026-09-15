@@ -129,6 +129,10 @@ public sealed class DependencyInjectionTests
             typeof(Domain.Abstractions.Result<GetCycloneDecades.CycloneDecadesResponse>)
         },
         {
+            typeof(GetCycloneTracksNearby.Query),
+            typeof(Domain.Abstractions.Result<GetCycloneTracksNearby.NearbyTracksResponse>)
+        },
+        {
             typeof(GetCycloneTrack.Query),
             typeof(Domain.Abstractions.Result<GetCycloneTrack.CycloneTrackResponse>)
         },

@@ -1,343 +1,173 @@
-<section class="events" aria-labelledby="events-title">
-  <header class="events__head">
-    <div>
-      <h1 class="events__title" id="events-title">Event catalogue</h1>
-      @if (hazard() === 'earthquakes') {
-        <!-- The count states its own catalogue and floor. A bare "27,242" would read as every
-             earthquake that happened here, which is false: the USGS record holds effectively nothing
-             below magnitude 4.0 anywhere in the archipelago. -->
-        <p class="events__lede">
-          {{ total() | number }} readings from the USGS catalogue, 1901–2026. Each row is one agency's
-          reading of one earthquake, with the scale it was measured on.
-        </p>
-      } @else {
-        <p class="events__lede">
-          {{ total() | number }} tropical cyclones from NOAA IBTrACS, compiled from the agencies that
-          analysed them. Each row is one storm; the peak wind is given once per averaging period,
-          because a one-minute mean and a ten-minute mean are not the same measurement.
-        </p>
-      }
-    </div>
-  </header>
+<!-- The archipelago behind the page, at low opacity, on the reader's own base layer. Sourced
+     rather than decorative: see PageBackdrop. -->
+<cal-page-backdrop />
 
-  <div class="events__hazards" role="group" aria-label="Hazard">
-    <button
-      class="control__choice"
-      type="button"
-      [class.control__choice--active]="hazard() === 'earthquakes'"
-      [attr.aria-pressed]="hazard() === 'earthquakes'"
-      (click)="setHazard('earthquakes')"
-    >
-      Earthquakes
-    </button>
-    <button
-      class="control__choice"
-      type="button"
-      [class.control__choice--active]="hazard() === 'cyclones'"
-      [attr.aria-pressed]="hazard() === 'cyclones'"
-      (click)="setHazard('cyclones')"
-    >
-      Tropical cyclones
-    </button>
-  </div>
-
-  @if (hazard() === 'earthquakes') {
-  <div class="events__controls">
-    <div class="control">
-      <span class="c-label">Order</span>
-      <div class="control__choices" role="group" aria-label="Order">
-        @for (option of sorts; track option.id) {
-          <button
-            class="control__choice"
-            type="button"
-            [class.control__choice--active]="sort() === option.id"
-            [attr.aria-pressed]="sort() === option.id"
-            (click)="setSort(option.id)"
-          >
-            {{ option.label }}
-          </button>
+<div class="c-page-scroll">
+  <section class="events" aria-labelledby="events-title">
+    <header class="events__head">
+      <div>
+        <h1 class="events__title" id="events-title">Event catalogue</h1>
+        @if (hazard() === 'earthquakes') {
+          <!-- The count states its own catalogue and floor. A bare "27,242" would read as every
+               earthquake that happened here, which is false: the USGS record holds effectively nothing
+               below magnitude 4.0 anywhere in the archipelago. -->
+          <p class="events__lede">
+            {{ total() | number }} readings from the USGS catalogue, 1901–2026. Each row is one agency's
+            reading of one earthquake, with the scale it was measured on.
+          </p>
+        } @else {
+          <p class="events__lede">
+            {{ total() | number }} tropical cyclones from NOAA IBTrACS, compiled from the agencies that
+            analysed them. Each row is one storm; the peak wind is given once per averaging period,
+            because a one-minute mean and a ten-minute mean are not the same measurement.
+          </p>
         }
       </div>
+    </header>
+
+    <div class="events__hazards" role="group" aria-label="Hazard">
+      <button
+        class="control__choice"
+        type="button"
+        [class.control__choice--active]="hazard() === 'earthquakes'"
+        [attr.aria-pressed]="hazard() === 'earthquakes'"
+        (click)="setHazard('earthquakes')"
+      >
+        Earthquakes
+      </button>
+      <button
+        class="control__choice"
+        type="button"
+        [class.control__choice--active]="hazard() === 'cyclones'"
+        [attr.aria-pressed]="hazard() === 'cyclones'"
+        (click)="setHazard('cyclones')"
+      >
+        Tropical cyclones
+      </button>
     </div>
 
-    <div class="control">
-      <span class="c-label">Magnitude scale</span>
-      <div class="control__choices" role="group" aria-label="Magnitude scale family">
-        <button
-          class="control__choice"
-          type="button"
-          [class.control__choice--active]="family() === null"
-          [attr.aria-pressed]="family() === null"
-          (click)="setFamily(null)"
-        >
-          All scales
-        </button>
-        @for (option of families; track option.id) {
-          <button
-            class="control__choice"
-            type="button"
-            [class.control__choice--active]="family() === option.id"
-            [attr.aria-pressed]="family() === option.id"
-            (click)="setFamily(option.id)"
-          >
-            {{ option.label }}
-          </button>
-        }
-      </div>
-    </div>
-
-    <div class="control">
-      <span class="c-label">Minimum magnitude</span>
-      <div class="control__choices" role="group" aria-label="Minimum magnitude">
-        @for (floor of [null, 5, 6, 7]; track floor) {
-          <button
-            class="control__choice"
-            type="button"
-            [class.control__choice--active]="minMagnitude() === floor"
-            [attr.aria-pressed]="minMagnitude() === floor"
-            (click)="setMinMagnitude(floor)"
-          >
-            {{ floor === null ? 'Any' : 'M' + floor + '.0+' }}
-          </button>
-        }
-      </div>
-    </div>
-  </div>
-
-  @if (sort() === 'Strongest') {
-    <!-- Stated rather than silently applied: the ranking is only valid inside one family, so
-         choosing it narrowed the list. -->
-    <p class="events__note events__note--caution">
-      <cal-icon name="caution" [size]="13" />
-      <span>
-        Ranked within one scale family. Body-wave and moment magnitudes are different quantities, so a
-        ranking across both would order events on a property of the scale rather than of the
-        earthquake.
-      </span>
-    </p>
-  }
-
-  <div class="events__table-wrap">
-    <table class="table">
-      <caption class="table__caption">
-        @if (total() > 0) {
-          Showing {{ firstRow() | number }}–{{ lastRow() | number }} of {{ total() | number }}
-        } @else if (!loading()) {
-          No readings match these filters
-        }
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">Date</th>
-          <th scope="col">Time (UTC)</th>
-          <th scope="col">Magnitude</th>
-          <th scope="col">Depth</th>
-          <th scope="col">Epicentre</th>
-          <th scope="col">Reported by</th>
-          <th scope="col"><span class="table__sr">Open</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.id) {
-          <!-- The row is a link, not a button with a handler: an event has a URL, so it can be opened
-               in a tab, shared, and returned to. -->
-          <tr class="table__row--link" (click)="openEarthquake(row.id)">
-            <td class="table__figure">{{ formatDate(row.occurredAt) }}</td>
-            <td class="table__figure table__muted">{{ formatTime(row.occurredAt) }}</td>
-            <td class="table__figure">
-              {{ row.magnitude?.display ?? '—' }}
-              @if (row.hasMagnitudeDisagreement) {
-                <!-- More than one agency reported this event and they do not agree, or reported on
-                     scales that cannot be compared. -->
-                <span class="table__flag" title="Agencies disagree on this magnitude">±</span>
-              }
-            </td>
-            <td class="table__figure">
-              {{ row.depth.display }}
-              @if (!row.depth.isMeasured) {
-                <span class="table__flag table__flag--caution" title="Depth assigned by the agency, not measured">
-                  ⚑
-                </span>
-              }
-            </td>
-            <td class="table__figure table__muted">{{ coordinates(row) }}</td>
-            <td class="table__muted">{{ row.sourceAgency }}</td>
-            <td class="table__open" aria-hidden="true">→</td>
-          </tr>
-        }
-      </tbody>
-    </table>
-
-    @if (loading()) {
-      <p class="events__note">Loading…</p>
-    } @else if (failed()) {
-      <p class="events__note events__note--caution">
-        <cal-icon name="caution" [size]="13" />
-        <span>The archive could not be read. <button class="c-button c-button--quiet" type="button" (click)="load()">Try again</button></span>
-      </p>
-    }
-  </div>
-
-  <!-- The two qualifications that apply to every row, stated once beneath the table rather than
-       repeated per row. -->
-  <ul class="events__legend">
-    <li><span class="table__flag table__flag--caution">⚑</span> Depth assigned by the agency rather than measured — 43% of the archive. It marks that an earthquake occurred, not how deep it was.</li>
-    <li><span class="table__flag">±</span> More than one agency reported this event, and the readings differ or sit on scales that cannot be compared.</li>
-  </ul>
-
-  <nav class="pager" aria-label="Pages">
-    <button
-      class="c-button c-button--quiet"
-      type="button"
-      [disabled]="page() <= 1 || loading()"
-      (click)="goToPage(page() - 1)"
-    >
-      Previous
-    </button>
-    <span class="pager__position">Page {{ page() | number }} of {{ lastPage() | number }}</span>
-    <button
-      class="c-button c-button--quiet"
-      type="button"
-      [disabled]="page() >= lastPage() || loading()"
-      (click)="goToPage(page() + 1)"
-    >
-      Next
-    </button>
-  </nav>
-  } @else {
+    @if (hazard() === 'earthquakes') {
     <div class="events__controls">
       <div class="control">
         <span class="c-label">Order</span>
         <div class="control__choices" role="group" aria-label="Order">
-          <button
-            class="control__choice"
-            type="button"
-            [class.control__choice--active]="stormOrder() === 'Intensity'"
-            [attr.aria-pressed]="stormOrder() === 'Intensity'"
-            (click)="setStormOrder('Intensity')"
-          >
-            Strongest first
-          </button>
-          <button
-            class="control__choice"
-            type="button"
-            [class.control__choice--active]="stormOrder() === 'Recent'"
-            [attr.aria-pressed]="stormOrder() === 'Recent'"
-            (click)="setStormOrder('Recent')"
-          >
-            Most recent
-          </button>
-        </div>
-      </div>
-
-      <div class="control">
-        <span class="c-label">Season</span>
-        <div class="control__choices" role="group" aria-label="Season">
-          <button
-            class="control__choice"
-            type="button"
-            [class.control__choice--active]="season() === null"
-            [attr.aria-pressed]="season() === null"
-            (click)="setSeason(null)"
-          >
-            All seasons
-          </button>
-          @for (decade of decades; track decade) {
+          @for (option of sorts; track option.id) {
             <button
               class="control__choice"
               type="button"
-              [class.control__choice--active]="season() === decade"
-              [attr.aria-pressed]="season() === decade"
-              (click)="setSeason(decade)"
+              [class.control__choice--active]="sort() === option.id"
+              [attr.aria-pressed]="sort() === option.id"
+              (click)="setSort(option.id)"
             >
-              {{ decade }}s
+              {{ option.label }}
             </button>
           }
         </div>
       </div>
 
       <div class="control">
-        <span class="c-label">Landfall</span>
-        <div class="control__choices">
+        <span class="c-label">Magnitude scale</span>
+        <div class="control__choices" role="group" aria-label="Magnitude scale family">
           <button
             class="control__choice"
             type="button"
-            [class.control__choice--active]="landfallOnly()"
-            [attr.aria-pressed]="landfallOnly()"
-            (click)="toggleLandfallOnly()"
+            [class.control__choice--active]="family() === null"
+            [attr.aria-pressed]="family() === null"
+            (click)="setFamily(null)"
           >
-            Made landfall only
+            All scales
           </button>
+          @for (option of families; track option.id) {
+            <button
+              class="control__choice"
+              type="button"
+              [class.control__choice--active]="family() === option.id"
+              [attr.aria-pressed]="family() === option.id"
+              (click)="setFamily(option.id)"
+            >
+              {{ option.label }}
+            </button>
+          }
         </div>
       </div>
 
       <div class="control">
-        <label class="c-label" for="storm-name">Name</label>
-        <input
-          class="c-input control__input"
-          id="storm-name"
-          type="search"
-          placeholder="Yolanda, Haiyan…"
-          [value]="stormName()"
-          (change)="setStormName($any($event.target).value)"
-        />
+        <span class="c-label">Minimum magnitude</span>
+        <div class="control__choices" role="group" aria-label="Minimum magnitude">
+          @for (floor of [null, 5, 6, 7]; track floor) {
+            <button
+              class="control__choice"
+              type="button"
+              [class.control__choice--active]="minMagnitude() === floor"
+              [attr.aria-pressed]="minMagnitude() === floor"
+              (click)="setMinMagnitude(floor)"
+            >
+              {{ floor === null ? 'Any' : 'M' + floor + '.0+' }}
+            </button>
+          }
+        </div>
       </div>
     </div>
 
-    <!-- Stated because the control is coarser than the query: a decade button asks for its first
-         season, which is the only granularity the endpoint takes. -->
-    @if (season() !== null) {
-      <p class="events__note">
-        Showing season {{ season() }}. The endpoint filters one season at a time, so a decade button
-        asks for its first year.
+    @if (sort() === 'Strongest') {
+      <!-- Stated rather than silently applied: the ranking is only valid inside one family, so
+           choosing it narrowed the list. -->
+      <p class="events__note events__note--caution">
+        <cal-icon name="caution" [size]="13" />
+        <span>
+          Ranked within one scale family. Body-wave and moment magnitudes are different quantities, so a
+          ranking across both would order events on a property of the scale rather than of the
+          earthquake.
+        </span>
       </p>
     }
 
     <div class="events__table-wrap">
       <table class="table">
         <caption class="table__caption">
-          @if (storms().length > 0) {
-            {{ storms().length | number }} storms, strongest first
+          @if (total() > 0) {
+            Showing {{ firstRow() | number }}–{{ lastRow() | number }} of {{ total() | number }}
           } @else if (!loading()) {
-            No storms to show
+            No readings match these filters
           }
         </caption>
         <thead>
           <tr>
-            <th scope="col">Season</th>
-            <th scope="col">Name</th>
-            <th scope="col">Philippine name</th>
-            <th scope="col">Began</th>
-            <th scope="col">Duration</th>
-            <th scope="col">Peak wind, per averaging period</th>
-            <th scope="col">Lowest pressure</th>
-            <th scope="col">Landfall</th>
+            <th scope="col">Date</th>
+            <th scope="col">Time (UTC)</th>
+            <th scope="col">Magnitude</th>
+            <th scope="col">Depth</th>
+            <th scope="col">Epicentre</th>
+            <th scope="col">Reported by</th>
+            <th scope="col"><span class="table__sr">Open</span></th>
           </tr>
         </thead>
         <tbody>
-          @for (storm of storms(); track storm.id) {
-            <tr>
-              <td class="table__figure">{{ storm.season }}</td>
-              <td>{{ storm.name ?? 'Unnamed' }}</td>
-              <!-- Blank rather than repeated: only 69 of 1,391 storms carry a verified Philippine name,
-                   and showing the international name here would imply PAGASA assigned it. -->
-              <td class="table__muted">{{ storm.localName ?? '—' }}</td>
-              <td class="table__figure">{{ formatDate(storm.startedAt) }}</td>
-              <td class="table__figure table__muted">{{ durationDays(storm) }} d</td>
+          @for (row of rows(); track row.id) {
+            <!-- The row is a link, not a button with a handler: an event has a URL, so it can be opened
+                 in a tab, shared, and returned to. -->
+            <tr class="table__row--link" (click)="openEarthquake(row.id)">
+              <td class="table__figure">{{ formatDate(row.occurredAt) }}</td>
+              <td class="table__figure table__muted">{{ formatTime(row.occurredAt) }}</td>
               <td class="table__figure">
-                @for (peak of storm.peaks; track peak.agency) {
-                  <span class="peak">
-                    {{ peak.knots }} kt
-                    <span class="table__muted">{{ peak.period }} · {{ peak.agency }}</span>
-                  </span>
-                } @empty {
-                  —
+                {{ row.magnitude?.display ?? '—' }}
+                @if (row.hasMagnitudeDisagreement) {
+                  <!-- More than one agency reported this event and they do not agree, or reported on
+                       scales that cannot be compared. -->
+                  <span class="table__flag" title="Agencies disagree on this magnitude">±</span>
                 }
               </td>
               <td class="table__figure">
-                {{ storm.minimumPressureMillibars ? storm.minimumPressureMillibars + ' mb' : '—' }}
+                {{ row.depth.display }}
+                @if (!row.depth.isMeasured) {
+                  <span class="table__flag table__flag--caution" title="Depth assigned by the agency, not measured">
+                    ⚑
+                  </span>
+                }
               </td>
-              <td class="table__muted">{{ storm.madeLandfall ? 'Yes' : '—' }}</td>
+              <td class="table__figure table__muted">{{ coordinates(row) }}</td>
+              <td class="table__muted">{{ row.sourceAgency }}</td>
+              <td class="table__open" aria-hidden="true">→</td>
             </tr>
           }
         </tbody>
@@ -345,25 +175,204 @@
 
       @if (loading()) {
         <p class="events__note">Loading…</p>
+      } @else if (failed()) {
+        <p class="events__note events__note--caution">
+          <cal-icon name="caution" [size]="13" />
+          <span>The archive could not be read. <button class="c-button c-button--quiet" type="button" (click)="load()">Try again</button></span>
+        </p>
       }
     </div>
 
+    <!-- The two qualifications that apply to every row, stated once beneath the table rather than
+         repeated per row. -->
     <ul class="events__legend">
-      <li>
-        <strong>Peak wind is given per averaging period, never merged.</strong> JTWC analyses a
-        one-minute mean and JMA a ten-minute mean; the same storm is 170 kt to one and 125 kt to the
-        other. Neither is wrong and neither converts into the other, so both are shown with the agency
-        that produced them.
-      </li>
-      <li>
-        <strong>This is best-track data, not the warnings issued at the time.</strong> A post-season
-        reanalysis is the best retrospective estimate of where a storm went and how strong it was, and
-        it differs from what was forecast during the event.
-      </li>
-      <li>
-        <strong>No impact figures are held.</strong> Casualties and damage are recorded by NDRRMC and
-        OCHA, not by this platform, and are deliberately not restated here.
-      </li>
+      <li><span class="table__flag table__flag--caution">⚑</span> Depth assigned by the agency rather than measured — 43% of the archive. It marks that an earthquake occurred, not how deep it was.</li>
+      <li><span class="table__flag">±</span> More than one agency reported this event, and the readings differ or sit on scales that cannot be compared.</li>
     </ul>
-  }
-</section>
+
+    <nav class="pager" aria-label="Pages">
+      <button
+        class="c-button c-button--quiet"
+        type="button"
+        [disabled]="page() <= 1 || loading()"
+        (click)="goToPage(page() - 1)"
+      >
+        Previous
+      </button>
+      <span class="pager__position">Page {{ page() | number }} of {{ lastPage() | number }}</span>
+      <button
+        class="c-button c-button--quiet"
+        type="button"
+        [disabled]="page() >= lastPage() || loading()"
+        (click)="goToPage(page() + 1)"
+      >
+        Next
+      </button>
+    </nav>
+    } @else {
+      <div class="events__controls">
+        <div class="control">
+          <span class="c-label">Order</span>
+          <div class="control__choices" role="group" aria-label="Order">
+            <button
+              class="control__choice"
+              type="button"
+              [class.control__choice--active]="stormOrder() === 'Intensity'"
+              [attr.aria-pressed]="stormOrder() === 'Intensity'"
+              (click)="setStormOrder('Intensity')"
+            >
+              Strongest first
+            </button>
+            <button
+              class="control__choice"
+              type="button"
+              [class.control__choice--active]="stormOrder() === 'Recent'"
+              [attr.aria-pressed]="stormOrder() === 'Recent'"
+              (click)="setStormOrder('Recent')"
+            >
+              Most recent
+            </button>
+          </div>
+        </div>
+
+        <div class="control">
+          <span class="c-label">Season</span>
+          <div class="control__choices" role="group" aria-label="Season">
+            <button
+              class="control__choice"
+              type="button"
+              [class.control__choice--active]="season() === null"
+              [attr.aria-pressed]="season() === null"
+              (click)="setSeason(null)"
+            >
+              All seasons
+            </button>
+            @for (decade of decades; track decade) {
+              <button
+                class="control__choice"
+                type="button"
+                [class.control__choice--active]="season() === decade"
+                [attr.aria-pressed]="season() === decade"
+                (click)="setSeason(decade)"
+              >
+                {{ decade }}s
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="control">
+          <span class="c-label">Landfall</span>
+          <div class="control__choices">
+            <button
+              class="control__choice"
+              type="button"
+              [class.control__choice--active]="landfallOnly()"
+              [attr.aria-pressed]="landfallOnly()"
+              (click)="toggleLandfallOnly()"
+            >
+              Made landfall only
+            </button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label class="c-label" for="storm-name">Name</label>
+          <input
+            class="c-input control__input"
+            id="storm-name"
+            type="search"
+            placeholder="Yolanda, Haiyan…"
+            [value]="stormName()"
+            (change)="setStormName($any($event.target).value)"
+          />
+        </div>
+      </div>
+
+      <!-- Stated because the control is coarser than the query: a decade button asks for its first
+           season, which is the only granularity the endpoint takes. -->
+      @if (season() !== null) {
+        <p class="events__note">
+          Showing season {{ season() }}. The endpoint filters one season at a time, so a decade button
+          asks for its first year.
+        </p>
+      }
+
+      <div class="events__table-wrap">
+        <table class="table">
+          <caption class="table__caption">
+            @if (storms().length > 0) {
+              {{ storms().length | number }} storms, strongest first
+            } @else if (!loading()) {
+              No storms to show
+            }
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Season</th>
+              <th scope="col">Name</th>
+              <th scope="col">Philippine name</th>
+              <th scope="col">Began</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Peak wind, per averaging period</th>
+              <th scope="col">Lowest pressure</th>
+              <th scope="col">Landfall</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (storm of storms(); track storm.id) {
+              <tr>
+                <td class="table__figure">{{ storm.season }}</td>
+                <td>{{ storm.name ?? 'Unnamed' }}</td>
+                <!-- Blank rather than repeated: only 69 of 1,391 storms carry a verified Philippine name,
+                     and showing the international name here would imply PAGASA assigned it. -->
+                <td class="table__muted">{{ storm.localName ?? '—' }}</td>
+                <td class="table__figure">{{ formatDate(storm.startedAt) }}</td>
+                <td class="table__figure table__muted">{{ durationDays(storm) }} d</td>
+                <td class="table__figure">
+                  @for (peak of storm.peaks; track peak.agency) {
+                    <span class="peak">
+                      {{ peak.knots }} kt
+                      <span class="table__muted">{{ peak.period }} · {{ peak.agency }}</span>
+                    </span>
+                  } @empty {
+                    —
+                  }
+                </td>
+                <td class="table__figure">
+                  {{ storm.minimumPressureMillibars ? storm.minimumPressureMillibars + ' mb' : '—' }}
+                </td>
+                <td class="table__muted">{{ storm.madeLandfall ? 'Yes' : '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (loading()) {
+          <p class="events__note">Loading…</p>
+        }
+      </div>
+
+      <ul class="events__legend">
+        <li>
+          <strong>Peak wind is given per averaging period, never merged.</strong> JTWC analyses a
+          one-minute mean and JMA a ten-minute mean; the same storm is 170 kt to one and 125 kt to the
+          other. Neither is wrong and neither converts into the other, so both are shown with the agency
+          that produced them.
+        </li>
+        <li>
+          <strong>This is best-track data, not the warnings issued at the time.</strong> A post-season
+          reanalysis is the best retrospective estimate of where a storm went and how strong it was, and
+          it differs from what was forecast during the event.
+        </li>
+        <li>
+          <strong>No impact figures are held.</strong> Casualties and damage are recorded by NDRRMC and
+          OCHA, not by this platform, and are deliberately not restated here.
+        </li>
+      </ul>
+    }
+
+    <!-- The tile service's own required credit, in the flow: the page backdrop draws this base layer. -->
+    <p class="c-basemap-credit">Basemap {{ basemapCredit() }}</p>
+  </section>
+</div>

@@ -14,6 +14,8 @@ import {
 import { LngLatBounds, Map as MapLibreMap, type GeoJSONSource } from 'maplibre-gl';
 
 import { APP_CONFIG } from '../../core/config/app-config';
+import { BasemapStore } from '../../core/basemap/basemap-store';
+import { applyBasemap } from '../../core/basemap/apply-basemap';
 import { FAULT_CASING_COLOUR, faultColourExpression } from '../../core/visual/fault-style';
 import {
   UNMEASURED_DEPTH_COLOUR,
@@ -21,7 +23,8 @@ import {
   markerRadiusForMagnitude,
 } from '../../core/visual/depth-scale';
 import { radiusRing } from '../../core/places/radius-ring';
-import type { HazardFeatureCollection } from '../../core/api/contracts';
+import { trackColourForWind, trackWidthForWind } from '../../core/visual/cyclone-intensity';
+import type { HazardFeatureCollection, NearbyCycloneTrack } from '../../core/api/contracts';
 
 /** One plotted earthquake, reduced to what a circle needs. */
 export interface LocatorEvent {
@@ -30,6 +33,15 @@ export interface LocatorEvent {
   readonly magnitude: number | null;
   readonly depthKm: number | null;
   readonly depthMeasured: boolean;
+}
+
+/** Structural GeoJSON, typed loosely because MapLibre's own types want a mutable shape. */
+interface GeoJsonFeature {
+  readonly type: 'Feature';
+  readonly properties: Record<string, unknown>;
+  readonly geometry:
+    | { readonly type: 'Point'; readonly coordinates: readonly [number, number] }
+    | { readonly type: 'LineString'; readonly coordinates: readonly (readonly [number, number])[] };
 }
 
 /**
@@ -89,9 +101,15 @@ export interface LocatorEvent {
 })
 export class LocatorMap {
   private readonly config = inject(APP_CONFIG);
+  private readonly basemaps = inject(BasemapStore);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly canvas = viewChild.required<ElementRef<HTMLDivElement>>('canvas');
+
+  /** Distinguishes the two maps' raster layers, so neither can remove the other's. */
+  private static nextInstance = 0;
+
+  private readonly instance = LocatorMap.nextInstance++;
 
   readonly latitude = input.required<number>();
   readonly longitude = input.required<number>();
@@ -103,6 +121,16 @@ export class LocatorMap {
   /** GEM fault traces. Shared between both maps: 155 traces fetched once, filtered by neither. */
   readonly faults = input<HazardFeatureCollection | null>(null);
 
+  /**
+   * Storm track segments near the place, already clipped by the API.
+   *
+   * Drawn as structural context beneath the earthquakes, one line per storm, coloured by the peak
+   * wind <em>within the segment</em> — which is what the API returns and what the legend says. A
+   * per-vertex gradient would be truer to the data and MapLibre cannot express one per feature, so
+   * the honest option is one colour per segment with the figure named accordingly.
+   */
+  readonly tracks = input<readonly NearbyCycloneTrack[]>([]);
+
   protected readonly ready = signal(false);
 
   private map: MapLibreMap | null = null;
@@ -111,6 +139,8 @@ export class LocatorMap {
   private static readonly markSourceId = 'locator-mark';
   private static readonly eventsSourceId = 'locator-events';
   private static readonly faultsSourceId = 'locator-faults';
+  private static readonly tracksSourceId = 'locator-tracks';
+  private static readonly landfallsSourceId = 'locator-landfalls';
 
   /** The ring recomputed whenever the place or the radius changes; also the camera's target. */
   private readonly ring = computed(() =>
@@ -133,6 +163,53 @@ export class LocatorMap {
     })),
   }));
 
+  /**
+   * One LineString per storm, plus the landfall fixes as their own points.
+   *
+   * A segment of fewer than two fixes cannot be a line, and MapLibre renders a one-vertex LineString
+   * as nothing at all rather than as an error — so those storms are carried by their landfall mark
+   * where there is one, and are otherwise present only in the count. The API states the count
+   * separately for exactly this reason.
+   */
+  private readonly trackCollections = computed(() => {
+    const lines: GeoJsonFeature[] = [];
+    const landfalls: GeoJsonFeature[] = [];
+
+    for (const track of this.tracks()) {
+      const coordinates = track.fixes.map(
+        (fix) => [fix.longitude, fix.latitude] as [number, number],
+      );
+
+      if (coordinates.length >= 2) {
+        lines.push({
+          type: 'Feature',
+          properties: {
+            colour: trackColourForWind(track.peakKnotsNearby),
+            // Two thirds of the Explore width: this canvas is a fifth of the width those widths were
+            // chosen for, and at full weight ninety overlapping tracks become one opaque mass.
+            width: Math.max(0.6, trackWidthForWind(track.peakKnotsNearby) * 0.66),
+          },
+          geometry: { type: 'LineString', coordinates },
+        });
+      }
+
+      for (const fix of track.fixes) {
+        if (fix.isLandfall) {
+          landfalls.push({
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'Point', coordinates: [fix.longitude, fix.latitude] },
+          });
+        }
+      }
+    }
+
+    return {
+      lines: { type: 'FeatureCollection' as const, features: lines },
+      landfalls: { type: 'FeatureCollection' as const, features: landfalls },
+    };
+  });
+
   constructor() {
     afterNextRender(() => this.initialise());
 
@@ -142,6 +219,7 @@ export class LocatorMap {
       const ring = this.ring();
       const events = this.eventCollection();
       const faults = this.faults();
+      const storms = this.trackCollections();
       const map = this.map;
 
       if (map === null || !this.ready()) {
@@ -164,6 +242,14 @@ export class LocatorMap {
         (faults ?? { type: 'FeatureCollection', features: [] }) as never,
       );
 
+      (map.getSource(LocatorMap.tracksSourceId) as GeoJSONSource | undefined)?.setData(
+        storms.lines as never,
+      );
+
+      (map.getSource(LocatorMap.landfallsSourceId) as GeoJSONSource | undefined)?.setData(
+        storms.landfalls as never,
+      );
+
       this.frame();
     });
 
@@ -171,6 +257,24 @@ export class LocatorMap {
       this.map?.remove();
       this.map = null;
     });
+
+    // Follows the reader's base layer choice, so a locator figure is drawn on the same earth as the
+    // Explore map. Its own source and layer ids per instance, since the two maps on the page would
+    // otherwise tear down each other's imagery.
+    effect(() => {
+      const option = this.basemaps.selected();
+
+      if (this.map !== null && this.ready()) {
+        applyBasemap(this.map, option, this.basemapTargets());
+      }
+    });
+  }
+
+  private basemapTargets(): { imagerySourceId: string; imageryLayerId: string } {
+    return {
+      imagerySourceId: `locator-imagery-${this.instance}`,
+      imageryLayerId: `locator-imagery-layer-${this.instance}`,
+    };
   }
 
   private initialise(): void {
@@ -180,7 +284,10 @@ export class LocatorMap {
       center: [this.longitude(), this.latitude()],
       zoom: 6,
       interactive: false,
-      attributionControl: { compact: true },
+      // Credited in the page's own flow instead. MapLibre's compact control renders a white pill
+      // that opens over the figure and covered a quarter of a 13 rem canvas — on a map this small the
+      // control obscures the very thing it is attached to.
+      attributionControl: false,
     });
 
     // The upstream style asks for sprite icons it does not always ship. Same placeholder as the
@@ -195,6 +302,7 @@ export class LocatorMap {
       this.addLayers(map);
       this.map = map;
       this.ready.set(true);
+      applyBasemap(map, this.basemaps.selected(), this.basemapTargets());
       this.frame();
     });
   }
@@ -228,6 +336,16 @@ export class LocatorMap {
       data: { type: 'FeatureCollection', features: [] },
     });
 
+    map.addSource(LocatorMap.tracksSourceId, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    map.addSource(LocatorMap.landfallsSourceId, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
     map.addSource(LocatorMap.ringSourceId, { type: 'geojson', data: this.ring() as never });
 
     map.addSource(LocatorMap.eventsSourceId, {
@@ -242,6 +360,39 @@ export class LocatorMap {
         properties: {},
         geometry: { type: 'Point', coordinates: [this.longitude(), this.latitude()] },
       } as never,
+    });
+
+    // ── Storm tracks, first and therefore lowest ─────────────────────────────
+    //
+    // Beneath the faults and well beneath the earthquakes. Ninety overlapping paths are the densest
+    // thing on this canvas, and the layer order is the claim about what the figure is of: the place
+    // and its earthquakes are the subject, the tracks are the weather that passed over them.
+    //
+    // Rounded caps and joins so a three-fix segment does not read as a dash, and 55% opacity so
+    // crossings darken rather than occlude — where many storms took the same path the map says so.
+    map.addLayer({
+      id: 'locator-tracks',
+      type: 'line',
+      source: LocatorMap.tracksSourceId,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['get', 'colour'],
+        'line-width': ['get', 'width'],
+        'line-opacity': 0.55,
+      },
+    });
+
+    // Landfalls as their own mark, because "the track came near" and "the centre crossed the coast
+    // near here" are different claims and the second is the one that matters to a reader.
+    map.addLayer({
+      id: 'locator-landfalls',
+      type: 'circle',
+      source: LocatorMap.landfallsSourceId,
+      paint: {
+        'circle-radius': 1.6,
+        'circle-color': '#ffffff',
+        'circle-opacity': 0.55,
+      },
     });
 
     // Casing then trace: the standard technique for a line over a busy ground, and what keeps a

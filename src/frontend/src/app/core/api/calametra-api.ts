@@ -20,6 +20,7 @@ import {
   type HazardFeatureCollection,
   type HazardLayer,
   type MapDataResponse,
+  type NearbyCycloneTracks,
   type PaginatedList,
   type PlaceContext,
   type PlaceMatch,
@@ -111,6 +112,24 @@ export class CalametraApi {
   /** Storm counts by decade, with the landfalling series beside the total. */
   getCycloneDecades(): Observable<CycloneDecades> {
     return this.http.get<CycloneDecades>('/api/cyclones/decades');
+  }
+
+  /**
+   * The portions of storm tracks that passed near a point.
+   *
+   * Each track is cut to the fixes near the point rather than returned whole: a place with 91 storms
+   * within 100 km has some fifteen thousand fixes spanning the basin, which answers where storms go
+   * rather than how they passed this place.
+   */
+  getCycloneTracksNearby(
+    latitude: number,
+    longitude: number,
+    radiusKm: number,
+    limit?: number,
+  ): Observable<NearbyCycloneTracks> {
+    return this.http.get<NearbyCycloneTracks>('/api/cyclones/nearby', {
+      params: toHttpParams({ latitude, longitude, radiusKm, limit }),
+    });
   }
 
   /**

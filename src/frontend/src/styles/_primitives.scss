@@ -27,15 +27,30 @@
 }
 
 /* ── READING PAGE WASH ────────────────────────────────────────────────────
-   A backdrop for the pages that are read rather than flown over — the catalogue, the record. The map
-   supplies its own ground; a full-bleed table on flat black reads as a terminal, and the eye has
-   nothing to place the content against.
+   A backdrop for the pages that are read rather than flown over — the catalogue, the record, the
+   comparison. The map supplies its own ground; a full-bleed table on flat black reads as a terminal,
+   and the eye has nothing to place the content against.
 
    <b>Gradients rather than a decorative coastline.</b> An outline of the archipelago drawn for effect
    would be a map on this platform that answers to no source, which is exactly what everything else
    here refuses. So the depth comes from the interface's own cool ramp: two wide, very low-opacity
-   pools, warm-cool as the terrain palette is, fixed so they do not travel with the scroll. */
+   pools, warm-cool as the terrain palette is, fixed so they do not travel with the scroll.
+
+   Where the page also carries `<cal-page-backdrop>` this wash sits beneath it and still does its
+   work — the backdrop is held at low opacity, so both layers compose.
+
+   <b>The wash clips; `.c-page-scroll` scrolls.</b> The shell clips its stage so the map can never
+   scroll, which leaves a long reading page unreachable below the fold. That page therefore has to be
+   its own scroll container — but it also has to be the positioning context for an absolutely placed
+   backdrop, and one element cannot be both without the backdrop scrolling away. So the two roles are
+   split: the wash establishes the frame, the inner scroller moves. The scroller is full-bleed rather
+   than inside the centred measure, so the scrollbar sits at the edge of the window. */
 .c-page-wash {
+  position: relative;
+  display: block;
+  block-size: 100%;
+  overflow: hidden;
+
   /* A base tint under the pools. Without it the gradients sat on flat black at single-digit opacity and
      the page read as unlit — the wash has to lift the ground, not merely mottle it. */
   background-color: #0c1219;
@@ -45,6 +60,14 @@
     radial-gradient(150% 130% at 50% 112%, rgb(74 120 152 / 16%), transparent 64%);
   background-attachment: fixed;
   background-repeat: no-repeat;
+}
+
+.c-page-scroll {
+  position: relative;
+  z-index: 1;
+  block-size: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* ── INSTRUMENT FRAME ─────────────────────────────────────────────────────
@@ -599,6 +622,27 @@
   max-inline-size: 82ch;
 }
 
+/* Two columns once there is room for two comfortable measures.
+
+   A single column capped at a readable width left half the panel empty, which reads as an oversight
+   rather than as restraint. Widening the column instead would have been worse: 130 characters is past
+   the point where the eye loses the line. So the measure is kept and the width is used. No column
+   rule — the gap separates them, and a hairline here would draw structure where none exists. */
+@media (width >= 68rem) {
+  .c-disclosure__body {
+    display: block;
+    columns: 2;
+    column-gap: var(--space-6);
+  }
+
+  /* `break-inside` because a caveat split across a column boundary is read as two half-caveats. */
+  .c-disclosure__body p {
+    margin-block-end: var(--space-3);
+    max-inline-size: none;
+    break-inside: avoid;
+  }
+}
+
 .c-disclosure__body strong {
   font-weight: 500;
   color: var(--text-primary);
@@ -631,6 +675,24 @@
   display: block;
   block-size: 100%;
   background-color: var(--text-secondary);
+}
+
+/* ── BASEMAP CREDIT ───────────────────────────────────────────────────────
+   The required credit for the base layer, printed in the page's own flow.
+
+   MapLibre's own control is switched off on the reading pages, and this is what replaces it. Not a
+   cosmetic preference: on a 13 rem locator figure the compact control renders a white pill that opens
+   over a quarter of the map, and behind a page backdrop it would sit beneath the content entirely. An
+   attribution obscured by the thing it credits, or hidden behind it, is not attribution — so it moves
+   into the flow where it is always reachable.
+
+   Quiet, because a credit is not a finding. The Sources page carries the full licence position for
+   every dataset; this is the acknowledgement the tile services themselves require. */
+.c-basemap-credit {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
 }
 
 /* ── SCREEN-READER ONLY ───────────────────────────────────────────────────*/

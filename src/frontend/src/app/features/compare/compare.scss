@@ -20,12 +20,6 @@
    Colour still carries meaning and chrome still does not: the only hue on the page is `--caution` on
    the caveats, and the depth ramp inside the two locator maps. */
 
-:host {
-  display: block;
-  height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
 
 .compare {
   display: flex;

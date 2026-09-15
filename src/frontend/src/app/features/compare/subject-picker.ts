@@ -2,7 +2,12 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
 import { Icon } from '../../shared/ui/icon/icon';
 import { LocatorMap, type LocatorEvent } from './locator-map';
-import type { HazardFeatureCollection, PlaceContext, PlaceMatch } from '../../core/api/contracts';
+import type {
+  HazardFeatureCollection,
+  NearbyCycloneTrack,
+  PlaceContext,
+  PlaceMatch,
+} from '../../core/api/contracts';
 
 /**
  * ONE SIDE OF THE COMPARISON: FIND A PLACE, THEN SHOW WHAT IT IS
@@ -42,6 +47,12 @@ export class SubjectPicker {
   /** The M6.0+ events plotted on the map — the same series the page's headline count reports. */
   readonly events = input<readonly LocatorEvent[]>([]);
   readonly faults = input<HazardFeatureCollection | null>(null);
+
+  /** Storm track segments near this place, already clipped by the API. */
+  readonly tracks = input<readonly NearbyCycloneTrack[]>([]);
+
+  /** Storms within the radius, which exceeds the tracks drawn when the API's limit bit. */
+  readonly stormCount = input(0);
 
   /** Stated rather than assumed, so the legend and the page cannot disagree about the floor. */
   readonly comparableMagnitude = input.required<number>();

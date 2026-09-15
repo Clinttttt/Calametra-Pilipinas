@@ -6,12 +6,6 @@
    own scroll container: without this the table simply ran off the bottom of the viewport with no way
    to reach it. Declared on the host rather than on `.events` so the scrollbar sits at the edge of the
    window instead of inside the centred measure. */
-:host {
-  display: block;
-  height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
 
 .events {
   display: flex;

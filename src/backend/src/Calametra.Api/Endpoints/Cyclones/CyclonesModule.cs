@@ -149,6 +149,58 @@ internal static class GetCycloneDecadesEndpoint
             .Produces<object>(StatusCodes.Status200OK);
 }
 
+/// <summary>
+/// GET /api/cyclones/nearby — the portions of storm tracks that passed near a point.
+/// </summary>
+internal static class GetCycloneTracksNearbyEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/nearby", async (
+                double latitude,
+                double longitude,
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken,
+                double radiusKm = 100d,
+                int limit = 150) =>
+            {
+                var query = new GetCycloneTracksNearby.Query
+                {
+                    Latitude = latitude,
+                    Longitude = longitude,
+                    RadiusKm = radiusKm,
+                    Limit = limit,
+                };
+
+                var result = await dispatcher.Send(query, cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("GetCycloneTracksNearby")
+            .WithSummary("Storm track segments passing near a point")
+            .WithDescription(
+                "Returns each nearby storm's track cut to the fixes near the point, not its whole "
+                + "path. A place with 91 storms within 100 km has some fifteen thousand fixes "
+                + "spanning the basin from Micronesia to the Chinese coast; drawn in full they "
+                + "answer where storms in this basin go, while the question asked here is how they "
+                + "passed this place.\n\n"
+                + "Segments extend to a wider radius than the one that selects the storms — "
+                + "reported as drawnRadiusKm — because a line cut exactly at the ring looks like a "
+                + "storm that began and ended there. The margin lets each track visibly enter and "
+                + "leave, which is what makes its direction of travel readable.\n\n"
+                + "One agency per storm, chosen as the one with the most fixes near the point on "
+                + "the ground that it has the finest spatial resolution here. That is a choice, "
+                + "not a claim of authority: agencies disagree on where the centre was, and the "
+                + "per-agency comparison is at /api/cyclones/{eventId}.\n\n"
+                + "peakKnotsNearby is the strongest reading within the returned segment, with the "
+                + "averaging period that produced it. It is not the storm's peak intensity — for a "
+                + "storm that passed early and intensified later the difference is large.\n\n"
+                + "stormCount is the full number of storms within the radius and matches the place "
+                + "context for the same point; it exceeds the number of tracks returned when the "
+                + "limit bit, so a caller can state the truncation rather than hide it.")
+            .Produces<object>(StatusCodes.Status200OK)
+            .ProducesValidationProblem();
+}
+
 /// <summary>Route group for the cyclone endpoints.</summary>
 internal static class CyclonesModule
 {
@@ -161,6 +213,7 @@ internal static class CyclonesModule
 
         SearchCyclonesEndpoint.Map(group);
         GetCycloneDecadesEndpoint.Map(group);
+        GetCycloneTracksNearbyEndpoint.Map(group);
 
         // Literal route before the {eventId:guid} route for readability. Ordering is not
         // load-bearing: the guid constraint means "external" cannot match it.

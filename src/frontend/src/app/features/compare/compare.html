@@ -1,516 +1,120 @@
-<section class="compare" aria-labelledby="compare-title">
-  <header class="compare__head">
-    <h1 class="compare__title" id="compare-title">Compare</h1>
-    <p class="compare__lede">
-      Two evidence profiles, side by side. Every figure is labelled with what it may be used for,
-      because only some of them survive the archive's own limits — and nothing here is scored or
-      ranked.
-    </p>
-  </header>
+<!-- The archipelago behind the page, at low opacity, on the reader's own base layer. Sourced
+     rather than decorative: see PageBackdrop. -->
+<cal-page-backdrop />
 
-  <div class="compare__modes" role="group" aria-label="What to compare">
-    <button
-      class="choice"
-      type="button"
-      [class.choice--active]="mode() === 'places'"
-      [attr.aria-pressed]="mode() === 'places'"
-      (click)="setMode('places')"
-    >
-      Two places
-    </button>
-    <button
-      class="choice"
-      type="button"
-      [class.choice--active]="mode() === 'eras'"
-      [attr.aria-pressed]="mode() === 'eras'"
-      (click)="setMode('eras')"
-    >
-      Two eras
-    </button>
-  </div>
+<div class="c-page-scroll">
+  <section class="compare" aria-labelledby="compare-title">
+    <header class="compare__head">
+      <h1 class="compare__title" id="compare-title">Compare</h1>
+      <p class="compare__lede">
+        Two evidence profiles, side by side. Every figure is labelled with what it may be used for,
+        because only some of them survive the archive's own limits — and nothing here is scored or
+        ranked.
+      </p>
+    </header>
 
-  <!-- ══ TWO PLACES ══════════════════════════════════════════════════════ -->
-  @if (mode() === 'places') {
-    <!-- Identity before evidence: a reader has to know which two records they are reading before a
-         number means anything. The maps sit inside the cards for the same reason. -->
-    <div class="subjects">
-      <cal-subject-picker
-        class="subjects__slot"
-        heading="First place"
-        fieldId="place-left"
-        [comparableMagnitude]="comparableMagnitude"
-        [term]="leftTerm()"
-        [matches]="leftMatches()"
-        [context]="leftPlace()"
-        [loading]="leftLoading()"
-        [events]="leftEvents()"
-        [faults]="faults()"
-        (termChange)="search('left', $event)"
-        (chosen)="choose('left', $event)"
-      />
-
-      <cal-subject-picker
-        class="subjects__slot"
-        heading="Second place"
-        fieldId="place-right"
-        [comparableMagnitude]="comparableMagnitude"
-        [term]="rightTerm()"
-        [matches]="rightMatches()"
-        [context]="rightPlace()"
-        [loading]="rightLoading()"
-        [events]="rightEvents()"
-        [faults]="faults()"
-        (termChange)="search('right', $event)"
-        (chosen)="choose('right', $event)"
-      />
-
+    <div class="compare__modes" role="group" aria-label="What to compare">
       <button
-        class="swap"
+        class="choice"
         type="button"
-        [disabled]="bothPlaces() === null"
-        (click)="swap()"
+        [class.choice--active]="mode() === 'places'"
+        [attr.aria-pressed]="mode() === 'places'"
+        (click)="setMode('places')"
       >
-        <cal-icon name="swap" [size]="16" label="Exchange the two places" />
+        Two places
+      </button>
+      <button
+        class="choice"
+        type="button"
+        [class.choice--active]="mode() === 'eras'"
+        [attr.aria-pressed]="mode() === 'eras'"
+        (click)="setMode('eras')"
+      >
+        Two eras
       </button>
     </div>
 
-    <div class="compare__radius">
-      <span class="c-label">Radius, both sides</span>
-      <div class="compare__choices">
-        @for (km of radii; track km) {
-          <button
-            class="choice"
-            type="button"
-            [class.choice--active]="radiusKm() === km"
-            [attr.aria-pressed]="radiusKm() === km"
-            (click)="setRadius(km)"
-          >
-            {{ km }} km
-          </button>
-        }
-      </div>
-    </div>
-
-    @if (bothPlaces(); as pair) {
-      <!-- ── WHAT CAN BE COMPARED ─────────────────────────────────────── -->
-      <!-- The headline band. Only figures that survive the caveats appear here; the rest are
-           demoted to the profiles below and labelled with why. -->
-      <section class="band" aria-labelledby="signals-title">
-        <header class="band__head">
-          <h2 class="band__title" id="signals-title">What can be compared</h2>
-          <p class="band__sub">
-            Three figures, chosen because they are not artefacts of how the record was gathered.
-          </p>
-        </header>
-
-        <div class="band__names">
-          <span>{{ pair.left.name }}</span>
-          <span>{{ pair.right.name }}</span>
-        </div>
-
-        @for (row of comparableSignals(); track row.label) {
-          <div class="metric metric--lead">
-            <span class="metric__value">{{ row.left | number }}</span>
-            <span class="metric__mid">
-              <span class="metric__label">{{ row.label }}</span>
-              <span class="standing standing--comparable">Comparable</span>
-              @if (row.note) {
-                <span class="metric__note">{{ row.note }}</span>
-              }
-            </span>
-            <span class="metric__value metric__value--right">{{ row.right | number }}</span>
-
-            <span class="metric__track">
-              <i class="metric__fill" [style.width.%]="share(row.left, row.right)"></i>
-            </span>
-            <span class="metric__track metric__track--right">
-              <i class="metric__fill" [style.width.%]="share(row.right, row.left)"></i>
-            </span>
-          </div>
-        }
-      </section>
-
-      <!-- ── EARTHQUAKE PROFILE ───────────────────────────────────────── -->
-      <section class="panel" aria-labelledby="quake-title">
-        <header class="panel__head">
-          <cal-icon name="lens-seismic" [size]="16" />
-          <h2 class="panel__title" id="quake-title">Earthquake profile</h2>
-          <span class="panel__scope">within {{ radiusKm() }} km</span>
-        </header>
-
-        @for (row of earthquakeRows(); track row.label) {
-          <div class="metric">
-            <span class="metric__value">
-              {{ row.left | number }}<span class="metric__unit">{{ row.unit }}</span>
-            </span>
-            <span class="metric__mid">
-              <span class="metric__label">{{ row.label }}</span>
-              <span class="standing" [class]="'standing standing--' + row.standing">
-                {{ row.standing === 'comparable' ? 'Comparable' : row.standing === 'context' ? 'Catalogue context' : 'Data quality' }}
-              </span>
-              @if (row.note) {
-                <span class="metric__note">{{ row.note }}</span>
-              }
-            </span>
-            <span class="metric__value metric__value--right">
-              {{ row.right | number }}<span class="metric__unit">{{ row.unit }}</span>
-            </span>
-
-            @if (row.plotted) {
-              <span class="metric__track">
-                <i class="metric__fill" [style.width.%]="share(row.left, row.right)"></i>
-              </span>
-              <span class="metric__track metric__track--right">
-                <i class="metric__fill" [style.width.%]="share(row.right, row.left)"></i>
-              </span>
-            }
-          </div>
-        }
-
-        <!-- A segmented bar rather than a proportional one: this is a composition, not a quantity,
-             and the two segments have to add to the whole for the reader to see the split. -->
-        @if (depthQuality(); as quality) {
-          <div class="quality">
-            <span class="c-label quality__label">Depth resolved against depth assigned</span>
-            <div class="quality__pair">
-              @for (share of [quality.left, quality.right]; track $index) {
-                <div class="quality__side">
-                  @if (share !== null) {
-                    <div class="c-resolved-bar" role="img" [attr.aria-label]="'Measured depths: ' + (share * 100).toFixed(0) + ' per cent'">
-                      <i [style.width.%]="share * 100"></i>
-                    </div>
-                    <span class="quality__figure">{{ share | percent }} measured</span>
-                  } @else {
-                    <span class="quality__figure">No readings</span>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- ── Strongest per scale family ─────────────────────────────── -->
-        <h3 class="panel__sub">Strongest reading, per scale family</h3>
-        <p class="panel__aside">
-          Per family, never as one “largest earthquake nearby”: body-wave magnitude saturates near M6
-          and is not on the same scale as a moment magnitude.
-        </p>
-
-        @for (row of familyRows(); track row.family) {
-          <div class="metric metric--plain">
-            <span class="metric__value">
-              @if (row.left) {
-                <strong>{{ row.left.event.magnitudeDisplay }}</strong>
-                <span class="metric__meta">
-                  {{ row.left.event.occurredAt | slice: 0 : 4 }} ·
-                  {{ row.left.event.depthDisplay }} ·
-                  {{ row.left.event.distanceKm }} km ·
-                  {{ row.left.readingsInFamily }} readings
-                </span>
-              } @else {
-                <span class="metric__absent">—</span>
-              }
-            </span>
-            <span class="metric__mid"><span class="metric__label">{{ familyLabels[row.family] ?? row.family }}</span></span>
-            <span class="metric__value metric__value--right">
-              @if (row.right) {
-                <strong>{{ row.right.event.magnitudeDisplay }}</strong>
-                <span class="metric__meta">
-                  {{ row.right.event.occurredAt | slice: 0 : 4 }} ·
-                  {{ row.right.event.depthDisplay }} ·
-                  {{ row.right.event.distanceKm }} km ·
-                  {{ row.right.readingsInFamily }} readings
-                </span>
-              } @else {
-                <span class="metric__absent">—</span>
-              }
-            </span>
-          </div>
-        }
-
-        <!-- ── Most recent ────────────────────────────────────────────── -->
-        <h3 class="panel__sub">Most recent reading</h3>
-        <div class="metric metric--plain">
-          @for (context of [pair.left, pair.right]; track $index) {
-            <span class="metric__value" [class.metric__value--right]="$index === 1">
-              @if (context.mostRecentEvent; as recent) {
-                <strong>{{ recent.magnitudeDisplay }}</strong>
-                <span class="metric__meta">
-                  {{ recent.occurredAt | slice: 0 : 10 }} ·
-                  {{ recent.depthDisplay }} ·
-                  {{ recent.distanceKm }} km · {{ recent.agency }}
-                </span>
-              } @else {
-                <span class="metric__absent">No reading in range</span>
-              }
-            </span>
-          }
-        </div>
-
-        <!-- ── Nearest mapped faults ──────────────────────────────────── -->
-        <h3 class="panel__sub">Nearest mapped faults</h3>
-        <div class="faults">
-          @for (context of [pair.left, pair.right]; track $index) {
-            <ul class="faults__list" [class.faults__list--right]="$index === 1">
-              @for (fault of context.nearestFaults.slice(0, 4); track fault.name) {
-                <li>
-                  <span class="faults__name">
-                    <cal-icon name="fault-trace" [size]="12" />
-                    {{ fault.name }}
-                    @if (fault.classification) {
-                      <em class="faults__kind">{{ fault.classification }}</em>
-                    }
-                  </span>
-                  <span class="faults__distance">
-                    {{ fault.distanceKm }} km
-                    @if (!fault.withinRadius) {
-                      <em>outside</em>
-                    }
-                  </span>
-                </li>
-              } @empty {
-                <li>No mapped trace within range</li>
-              }
-            </ul>
-          }
-        </div>
-      </section>
-
-      <!-- ── TROPICAL CYCLONE PROFILE ─────────────────────────────────── -->
-      <section class="panel" aria-labelledby="storm-title">
-        <header class="panel__head">
-          <cal-icon name="lens-cyclone" [size]="16" />
-          <h2 class="panel__title" id="storm-title">Tropical cyclone profile</h2>
-          <span class="panel__scope">tracks within {{ radiusKm() }} km</span>
-        </header>
-
-        <div class="metric">
-          <span class="metric__value">{{ pair.left.cyclones.stormCount | number }}</span>
-          <span class="metric__mid">
-            <span class="metric__label">Storms whose track came within range</span>
-            <span class="standing standing--comparable">Comparable</span>
-          </span>
-          <span class="metric__value metric__value--right">{{ pair.right.cyclones.stormCount | number }}</span>
-          <span class="metric__track">
-            <i class="metric__fill" [style.width.%]="share(pair.left.cyclones.stormCount, pair.right.cyclones.stormCount)"></i>
-          </span>
-          <span class="metric__track metric__track--right">
-            <i class="metric__fill" [style.width.%]="share(pair.right.cyclones.stormCount, pair.left.cyclones.stormCount)"></i>
-          </span>
-        </div>
-
-        <div class="metric">
-          <span class="metric__value">{{ pair.left.cyclones.landfallCount | number }}</span>
-          <span class="metric__mid">
-            <span class="metric__label">Of those, recorded crossing land nearby</span>
-            <span class="standing standing--comparable">Comparable</span>
-          </span>
-          <span class="metric__value metric__value--right">{{ pair.right.cyclones.landfallCount | number }}</span>
-          <span class="metric__track">
-            <i class="metric__fill" [style.width.%]="share(pair.left.cyclones.landfallCount, pair.right.cyclones.landfallCount)"></i>
-          </span>
-          <span class="metric__track metric__track--right">
-            <i class="metric__fill" [style.width.%]="share(pair.right.cyclones.landfallCount, pair.left.cyclones.landfallCount)"></i>
-          </span>
-        </div>
-
-        <!-- Wind carries no bar. Two agencies' peaks may sit on different averaging periods, and a
-             bar pair would assert one scale where there are two. -->
-        <div class="metric metric--plain">
-          <span class="metric__value">
-            @if (pair.left.cyclones.strongestKnots !== null) {
-              <strong>{{ pair.left.cyclones.strongestKnots }} kt</strong>
-              <span class="metric__meta">
-                {{ pair.left.cyclones.strongestPeriod }} mean · {{ pair.left.cyclones.strongestAgency }}
-              </span>
-            } @else {
-              <span class="metric__absent">No wind reading</span>
-            }
-          </span>
-          <span class="metric__mid">
-            <span class="metric__label">Strongest wind recorded in range</span>
-            <span class="standing standing--quality">Data quality</span>
-            <span class="metric__note">
-              Stated with its averaging period, which does not convert into another agency's
-            </span>
-          </span>
-          <span class="metric__value metric__value--right">
-            @if (pair.right.cyclones.strongestKnots !== null) {
-              <strong>{{ pair.right.cyclones.strongestKnots }} kt</strong>
-              <span class="metric__meta">
-                {{ pair.right.cyclones.strongestPeriod }} mean · {{ pair.right.cyclones.strongestAgency }}
-              </span>
-            } @else {
-              <span class="metric__absent">No wind reading</span>
-            }
-          </span>
-        </div>
-
-        <div class="metric metric--plain">
-          <span class="metric__value">
-            @if (pair.left.cyclones.firstSeason !== null) {
-              {{ pair.left.cyclones.firstSeason }}–{{ pair.left.cyclones.lastSeason }}
-            } @else {
-              —
-            }
-          </span>
-          <span class="metric__mid">
-            <span class="metric__label">Seasons represented</span>
-            <span class="standing standing--context">Catalogue context</span>
-          </span>
-          <span class="metric__value metric__value--right">
-            @if (pair.right.cyclones.firstSeason !== null) {
-              {{ pair.right.cyclones.firstSeason }}–{{ pair.right.cyclones.lastSeason }}
-            } @else {
-              —
-            }
-          </span>
-        </div>
-      </section>
-
-      <!-- ── WHAT STANDS OUT ──────────────────────────────────────────── -->
-      <section class="stands" aria-labelledby="stands-title">
-        <h2 class="band__title" id="stands-title">What stands out</h2>
-        <ul class="stands__list">
-          @for (observation of standsOut(); track observation; let last = $last) {
-            <li [class.stands__limit]="last">
-              @if (last) {
-                <cal-icon name="caution" [size]="13" />
-              }
-              <span>{{ observation }}</span>
-            </li>
-          }
-        </ul>
-      </section>
-
-      <!-- ── READING NOTES ────────────────────────────────────────────── -->
-      <!-- Collapsed, and one place rather than four amber paragraphs interleaved with the figures.
-           A caveat repeated beside every number is read as decoration. -->
-      <section class="c-disclosure">
-        <button
-          class="c-disclosure__toggle"
-          type="button"
-          [attr.aria-expanded]="notesOpen()"
-          (click)="notesOpen.set(!notesOpen())"
-        >
-          <cal-icon name="caution" [size]="13" />
-          <span>How these figures should be read</span>
-          <cal-icon [name]="notesOpen() ? 'chevron-up' : 'chevron-down'" [size]="14" />
-        </button>
-
-        @if (notesOpen()) {
-          <div class="c-disclosure__body">
-            <p>
-              <strong>Why {{ pair.left.eventsWithinRadius | number }} against
-              {{ pair.right.eventsWithinRadius | number }} is not a fair comparison.</strong>
-              The catalogue holds effectively nothing below M4.0 anywhere in the archipelago, and
-              detection improved 285-fold across the last century. Two places watched by different
-              numbers of instruments produce different totals from the same seismicity. Read the
-              M{{ comparableMagnitude.toFixed(1) }}+ row.
-            </p>
-            <p>
-              <strong>Assigned depths.</strong> 43% of the archive carries a depth that was never
-              measured — 33 km, 10 km, 35 km and 15 km are conventions used when depth could not be
-              resolved. They are marked with a dashed ring on the maps and counted separately above.
-            </p>
-            <p>
-              <strong>Storms are track proximity, not impact.</strong> A cyclone's damaging winds and
-              rain reach far beyond the positions its analysts recorded, so both columns undercount
-              exposure. Peak winds from different agencies sit on different averaging periods and do
-              not convert into one another.
-            </p>
-            <p>
-              <strong>An unmapped fault is not an absent one.</strong> Traces come from the GEM
-              compilation, which maps principal named faults at regional scale. The 2013 Bohol
-              earthquake came from a fault no map showed until afterwards.
-            </p>
-            @for (note of pair.left.notes; track note) {
-              <p class="c-disclosure__source">{{ pair.left.name }}: {{ note }}</p>
-            }
-            @for (note of pair.right.notes; track note) {
-              <p class="c-disclosure__source">{{ pair.right.name }}: {{ note }}</p>
-            }
-          </div>
-        }
-      </section>
-    }
-  } @else {
-    <!-- ══ TWO ERAS ═════════════════════════════════════════════════════ -->
-    @if (erasLoading()) {
-      <p class="compare__hint">Reading the archive…</p>
-    } @else if (completeness()) {
+    <!-- ══ TWO PLACES ══════════════════════════════════════════════════════ -->
+    @if (mode() === 'places') {
+      <!-- Identity before evidence: a reader has to know which two records they are reading before a
+           number means anything. The maps sit inside the cards for the same reason. -->
       <div class="subjects">
-        @for (side of ['left', 'right']; track side) {
-          <div class="subjects__column">
-            <span class="c-label">{{ side === 'left' ? 'First decade' : 'Second decade' }}</span>
-            <div class="compare__choices">
-              @for (decade of decades(); track decade) {
-                <button
-                  class="choice"
-                  type="button"
-                  [class.choice--active]="(side === 'left' ? leftDecade() : rightDecade()) === decade"
-                  [attr.aria-pressed]="(side === 'left' ? leftDecade() : rightDecade()) === decade"
-                  (click)="setDecade($any(side), decade)"
-                >
-                  {{ label(decade) }}
-                </button>
-              }
-            </div>
-          </div>
-        }
+        <cal-subject-picker
+          class="subjects__slot"
+          heading="First place"
+          fieldId="place-left"
+          [comparableMagnitude]="comparableMagnitude"
+          [term]="leftTerm()"
+          [matches]="leftMatches()"
+          [context]="leftPlace()"
+          [loading]="leftLoading()"
+          [events]="leftEvents()"
+          [faults]="faults()"
+          [tracks]="leftTracks()?.tracks ?? []"
+          [stormCount]="leftTracks()?.stormCount ?? 0"
+          (termChange)="search('left', $event)"
+          (chosen)="choose('left', $event)"
+        />
 
-        <button class="swap" type="button" (click)="swap()">
-          <cal-icon name="swap" [size]="16" label="Exchange the two decades" />
+        <cal-subject-picker
+          class="subjects__slot"
+          heading="Second place"
+          fieldId="place-right"
+          [comparableMagnitude]="comparableMagnitude"
+          [term]="rightTerm()"
+          [matches]="rightMatches()"
+          [context]="rightPlace()"
+          [loading]="rightLoading()"
+          [events]="rightEvents()"
+          [faults]="faults()"
+          [tracks]="rightTracks()?.tracks ?? []"
+          [stormCount]="rightTracks()?.stormCount ?? 0"
+          (termChange)="search('right', $event)"
+          (chosen)="choose('right', $event)"
+        />
+
+        <button
+          class="swap"
+          type="button"
+          [disabled]="bothPlaces() === null"
+          (click)="swap()"
+        >
+          <cal-icon name="swap" [size]="16" label="Exchange the two places" />
         </button>
       </div>
 
-      @if (bothEras(); as eras) {
-        <div class="era-cards">
-          @for (era of [eras.left, eras.right]; track era.decade) {
-            <article class="era-card">
-              <h2 class="era-card__name">{{ label(era.decade) }}</h2>
-              <p class="era-card__where">
-                {{ era.decade }}–{{ era.decade + 9 }} · dominant scale
-                {{ era.dominantScale ?? 'unstated' }}
-              </p>
-              <dl class="era-card__facts">
-                <div>
-                  <dt class="c-label">Strongest</dt>
-                  <dd>
-                    @if (era.strongestMagnitude !== null) {
-                      {{ era.strongestScale }} {{ era.strongestMagnitude }}
-                    } @else {
-                      —
-                    }
-                  </dd>
-                </div>
-                <div>
-                  <dt class="c-label">M{{ comparableMagnitude.toFixed(1) }}+</dt>
-                  <dd>{{ era.comparableCount | number }}</dd>
-                </div>
-                @if (decadeStorms(era); as storms) {
-                  <div>
-                    <dt class="c-label">Named here</dt>
-                    <dd>{{ storms.namedInPhilippinesCount | number }}</dd>
-                  </div>
-                }
-              </dl>
-            </article>
+      <div class="compare__radius">
+        <span class="c-label">Radius, both sides</span>
+        <div class="compare__choices">
+          @for (km of radii; track km) {
+            <button
+              class="choice"
+              type="button"
+              [class.choice--active]="radiusKm() === km"
+              [attr.aria-pressed]="radiusKm() === km"
+              (click)="setRadius(km)"
+            >
+              {{ km }} km
+            </button>
           }
         </div>
+      </div>
 
-        <section class="band" aria-labelledby="era-signals-title">
+      @if (bothPlaces(); as pair) {
+        <!-- ── WHAT CAN BE COMPARED ─────────────────────────────────────── -->
+        <!-- The headline band. Only figures that survive the caveats appear here; the rest are
+             demoted to the profiles below and labelled with why. -->
+        <section class="band" aria-labelledby="signals-title">
           <header class="band__head">
-            <h2 class="band__title" id="era-signals-title">What can be compared</h2>
+            <h2 class="band__title" id="signals-title">What can be compared</h2>
             <p class="band__sub">
-              The rate at and above the comparable floor, and the storm series that did not depend on
-              satellites.
+              Three figures, chosen because they are not artefacts of how the record was gathered.
             </p>
           </header>
 
           <div class="band__names">
-            <span>{{ label(eras.left.decade) }}</span>
-            <span>{{ label(eras.right.decade) }}</span>
+            <span>{{ pair.left.name }}</span>
+            <span>{{ pair.right.name }}</span>
           </div>
 
           @for (row of comparableSignals(); track row.label) {
@@ -524,6 +128,7 @@
                 }
               </span>
               <span class="metric__value metric__value--right">{{ row.right | number }}</span>
+
               <span class="metric__track">
                 <i class="metric__fill" [style.width.%]="share(row.left, row.right)"></i>
               </span>
@@ -534,11 +139,12 @@
           }
         </section>
 
-        <section class="panel" aria-labelledby="era-quake-title">
+        <!-- ── EARTHQUAKE PROFILE ───────────────────────────────────────── -->
+        <section class="panel" aria-labelledby="quake-title">
           <header class="panel__head">
             <cal-icon name="lens-seismic" [size]="16" />
-            <h2 class="panel__title" id="era-quake-title">Earthquake profile</h2>
-            <span class="panel__scope">national</span>
+            <h2 class="panel__title" id="quake-title">Earthquake profile</h2>
+            <span class="panel__scope">within {{ radiusKm() }} km</span>
           </header>
 
           @for (row of earthquakeRows(); track row.label) {
@@ -558,6 +164,7 @@
               <span class="metric__value metric__value--right">
                 {{ row.right | number }}<span class="metric__unit">{{ row.unit }}</span>
               </span>
+
               @if (row.plotted) {
                 <span class="metric__track">
                   <i class="metric__fill" [style.width.%]="share(row.left, row.right)"></i>
@@ -569,6 +176,8 @@
             </div>
           }
 
+          <!-- A segmented bar rather than a proportional one: this is a composition, not a quantity,
+               and the two segments have to add to the whole for the reader to see the split. -->
           @if (depthQuality(); as quality) {
             <div class="quality">
               <span class="c-label quality__label">Depth resolved against depth assigned</span>
@@ -588,68 +197,189 @@
               </div>
             </div>
           }
-        </section>
 
-        @if (eras.leftStorms !== null && eras.rightStorms !== null) {
-          <section class="panel" aria-labelledby="era-storm-title">
-            <header class="panel__head">
-              <cal-icon name="lens-cyclone" [size]="16" />
-              <h2 class="panel__title" id="era-storm-title">Tropical cyclone profile</h2>
-              <span class="panel__scope">western North Pacific</span>
-            </header>
+          <!-- ── Strongest per scale family ─────────────────────────────── -->
+          <h3 class="panel__sub">Strongest reading, per scale family</h3>
+          <p class="panel__aside">
+            Per family, never as one “largest earthquake nearby”: body-wave magnitude saturates near M6
+            and is not on the same scale as a moment magnitude.
+          </p>
 
+          @for (row of familyRows(); track row.family) {
             <div class="metric metric--plain">
               <span class="metric__value">
-                @if (eras.leftStorms.strongestKnots !== null) {
-                  <strong>{{ eras.leftStorms.strongestKnots }} kt</strong>
+                @if (row.left) {
+                  <strong>{{ row.left.event.magnitudeDisplay }}</strong>
+                  <span class="metric__meta">
+                    {{ row.left.event.occurredAt | slice: 0 : 4 }} ·
+                    {{ row.left.event.depthDisplay }} ·
+                    {{ row.left.event.distanceKm }} km ·
+                    {{ row.left.readingsInFamily }} readings
+                  </span>
                 } @else {
                   <span class="metric__absent">—</span>
                 }
               </span>
-              <span class="metric__mid">
-                <span class="metric__label">Strongest wind recorded in the decade</span>
-                <span class="standing standing--quality">Data quality</span>
-              </span>
+              <span class="metric__mid"><span class="metric__label">{{ familyLabels[row.family] ?? row.family }}</span></span>
               <span class="metric__value metric__value--right">
-                @if (eras.rightStorms.strongestKnots !== null) {
-                  <strong>{{ eras.rightStorms.strongestKnots }} kt</strong>
+                @if (row.right) {
+                  <strong>{{ row.right.event.magnitudeDisplay }}</strong>
+                  <span class="metric__meta">
+                    {{ row.right.event.occurredAt | slice: 0 : 4 }} ·
+                    {{ row.right.event.depthDisplay }} ·
+                    {{ row.right.event.distanceKm }} km ·
+                    {{ row.right.readingsInFamily }} readings
+                  </span>
                 } @else {
                   <span class="metric__absent">—</span>
                 }
               </span>
             </div>
+          }
 
-            <div class="metric metric--plain">
-              <span class="metric__value">{{ eras.leftStorms.namedInPhilippinesCount | number }}</span>
-              <span class="metric__mid">
-                <span class="metric__label">Carrying a Philippine name here</span>
-                <span class="standing standing--quality">Data quality</span>
-                <span class="metric__note">
-                  A property of this platform's transcribed crosswalk, not of the storms — weighted
-                  towards recent seasons
-                </span>
+          <!-- ── Most recent ────────────────────────────────────────────── -->
+          <h3 class="panel__sub">Most recent reading</h3>
+          <div class="metric metric--plain">
+            @for (context of [pair.left, pair.right]; track $index) {
+              <span class="metric__value" [class.metric__value--right]="$index === 1">
+                @if (context.mostRecentEvent; as recent) {
+                  <strong>{{ recent.magnitudeDisplay }}</strong>
+                  <span class="metric__meta">
+                    {{ recent.occurredAt | slice: 0 : 10 }} ·
+                    {{ recent.depthDisplay }} ·
+                    {{ recent.distanceKm }} km · {{ recent.agency }}
+                  </span>
+                } @else {
+                  <span class="metric__absent">No reading in range</span>
+                }
               </span>
-              <span class="metric__value metric__value--right">
-                {{ eras.rightStorms.namedInPhilippinesCount | number }}
-              </span>
-            </div>
-
-            @if (stormIntensityCaveat()) {
-              <p class="panel__caution">
-                <cal-icon name="caution" [size]="13" />
-                <span>
-                  One of these decades predates {{ stormDecades()?.reliableFromSeason }}, from which
-                  JTWC rates its own best-track record as high quality. Comparing peak winds across
-                  that boundary compares a measurement with an estimate — the highest wind in this
-                  whole archive comes from the least dependable era.
-                </span>
-              </p>
             }
-          </section>
-        }
+          </div>
 
-        <section class="stands" aria-labelledby="era-stands-title">
-          <h2 class="band__title" id="era-stands-title">What stands out</h2>
+          <!-- ── Nearest mapped faults ──────────────────────────────────── -->
+          <h3 class="panel__sub">Nearest mapped faults</h3>
+          <div class="faults">
+            @for (context of [pair.left, pair.right]; track $index) {
+              <ul class="faults__list" [class.faults__list--right]="$index === 1">
+                @for (fault of context.nearestFaults.slice(0, 4); track fault.name) {
+                  <li>
+                    <span class="faults__name">
+                      <cal-icon name="fault-trace" [size]="12" />
+                      {{ fault.name }}
+                      @if (fault.classification) {
+                        <em class="faults__kind">{{ fault.classification }}</em>
+                      }
+                    </span>
+                    <span class="faults__distance">
+                      {{ fault.distanceKm }} km
+                      @if (!fault.withinRadius) {
+                        <em>outside</em>
+                      }
+                    </span>
+                  </li>
+                } @empty {
+                  <li>No mapped trace within range</li>
+                }
+              </ul>
+            }
+          </div>
+        </section>
+
+        <!-- ── TROPICAL CYCLONE PROFILE ─────────────────────────────────── -->
+        <section class="panel" aria-labelledby="storm-title">
+          <header class="panel__head">
+            <cal-icon name="lens-cyclone" [size]="16" />
+            <h2 class="panel__title" id="storm-title">Tropical cyclone profile</h2>
+            <span class="panel__scope">tracks within {{ radiusKm() }} km</span>
+          </header>
+
+          <div class="metric">
+            <span class="metric__value">{{ pair.left.cyclones.stormCount | number }}</span>
+            <span class="metric__mid">
+              <span class="metric__label">Storms whose track came within range</span>
+              <span class="standing standing--comparable">Comparable</span>
+            </span>
+            <span class="metric__value metric__value--right">{{ pair.right.cyclones.stormCount | number }}</span>
+            <span class="metric__track">
+              <i class="metric__fill" [style.width.%]="share(pair.left.cyclones.stormCount, pair.right.cyclones.stormCount)"></i>
+            </span>
+            <span class="metric__track metric__track--right">
+              <i class="metric__fill" [style.width.%]="share(pair.right.cyclones.stormCount, pair.left.cyclones.stormCount)"></i>
+            </span>
+          </div>
+
+          <div class="metric">
+            <span class="metric__value">{{ pair.left.cyclones.landfallCount | number }}</span>
+            <span class="metric__mid">
+              <span class="metric__label">Of those, recorded crossing land nearby</span>
+              <span class="standing standing--comparable">Comparable</span>
+            </span>
+            <span class="metric__value metric__value--right">{{ pair.right.cyclones.landfallCount | number }}</span>
+            <span class="metric__track">
+              <i class="metric__fill" [style.width.%]="share(pair.left.cyclones.landfallCount, pair.right.cyclones.landfallCount)"></i>
+            </span>
+            <span class="metric__track metric__track--right">
+              <i class="metric__fill" [style.width.%]="share(pair.right.cyclones.landfallCount, pair.left.cyclones.landfallCount)"></i>
+            </span>
+          </div>
+
+          <!-- Wind carries no bar. Two agencies' peaks may sit on different averaging periods, and a
+               bar pair would assert one scale where there are two. -->
+          <div class="metric metric--plain">
+            <span class="metric__value">
+              @if (pair.left.cyclones.strongestKnots !== null) {
+                <strong>{{ pair.left.cyclones.strongestKnots }} kt</strong>
+                <span class="metric__meta">
+                  {{ pair.left.cyclones.strongestPeriod }} mean · {{ pair.left.cyclones.strongestAgency }}
+                </span>
+              } @else {
+                <span class="metric__absent">No wind reading</span>
+              }
+            </span>
+            <span class="metric__mid">
+              <span class="metric__label">Strongest wind recorded in range</span>
+              <span class="standing standing--quality">Data quality</span>
+              <span class="metric__note">
+                Stated with its averaging period, which does not convert into another agency's
+              </span>
+            </span>
+            <span class="metric__value metric__value--right">
+              @if (pair.right.cyclones.strongestKnots !== null) {
+                <strong>{{ pair.right.cyclones.strongestKnots }} kt</strong>
+                <span class="metric__meta">
+                  {{ pair.right.cyclones.strongestPeriod }} mean · {{ pair.right.cyclones.strongestAgency }}
+                </span>
+              } @else {
+                <span class="metric__absent">No wind reading</span>
+              }
+            </span>
+          </div>
+
+          <div class="metric metric--plain">
+            <span class="metric__value">
+              @if (pair.left.cyclones.firstSeason !== null) {
+                {{ pair.left.cyclones.firstSeason }}–{{ pair.left.cyclones.lastSeason }}
+              } @else {
+                —
+              }
+            </span>
+            <span class="metric__mid">
+              <span class="metric__label">Seasons represented</span>
+              <span class="standing standing--context">Catalogue context</span>
+            </span>
+            <span class="metric__value metric__value--right">
+              @if (pair.right.cyclones.firstSeason !== null) {
+                {{ pair.right.cyclones.firstSeason }}–{{ pair.right.cyclones.lastSeason }}
+              } @else {
+                —
+              }
+            </span>
+          </div>
+        </section>
+
+        <!-- ── WHAT STANDS OUT ──────────────────────────────────────────── -->
+        <section class="stands" aria-labelledby="stands-title">
+          <h2 class="band__title" id="stands-title">What stands out</h2>
           <ul class="stands__list">
             @for (observation of standsOut(); track observation; let last = $last) {
               <li [class.stands__limit]="last">
@@ -661,7 +391,291 @@
             }
           </ul>
         </section>
+
+        <!-- ── READING NOTES ────────────────────────────────────────────── -->
+        <!-- Collapsed, and one place rather than four amber paragraphs interleaved with the figures.
+             A caveat repeated beside every number is read as decoration. -->
+        <section class="c-disclosure">
+          <button
+            class="c-disclosure__toggle"
+            type="button"
+            [attr.aria-expanded]="notesOpen()"
+            (click)="notesOpen.set(!notesOpen())"
+          >
+            <cal-icon name="caution" [size]="13" />
+            <span>How these figures should be read</span>
+            <cal-icon [name]="notesOpen() ? 'chevron-up' : 'chevron-down'" [size]="14" />
+          </button>
+
+          @if (notesOpen()) {
+            <div class="c-disclosure__body">
+              <p>
+                <strong>Why {{ pair.left.eventsWithinRadius | number }} against
+                {{ pair.right.eventsWithinRadius | number }} is not a fair comparison.</strong>
+                The catalogue holds effectively nothing below M4.0 anywhere in the archipelago, and
+                detection improved 285-fold across the last century. Two places watched by different
+                numbers of instruments produce different totals from the same seismicity. Read the
+                M{{ comparableMagnitude.toFixed(1) }}+ row.
+              </p>
+              <p>
+                <strong>Assigned depths.</strong> 43% of the archive carries a depth that was never
+                measured — 33 km, 10 km, 35 km and 15 km are conventions used when depth could not be
+                resolved. They are marked with a dashed ring on the maps and counted separately above.
+              </p>
+              <p>
+                <strong>Storms are track proximity, not impact.</strong> A cyclone's damaging winds and
+                rain reach far beyond the positions its analysts recorded, so both columns undercount
+                exposure. Peak winds from different agencies sit on different averaging periods and do
+                not convert into one another.
+              </p>
+              <p>
+                <strong>An unmapped fault is not an absent one.</strong> Traces come from the GEM
+                compilation, which maps principal named faults at regional scale. The 2013 Bohol
+                earthquake came from a fault no map showed until afterwards.
+              </p>
+              @for (note of pair.left.notes; track note) {
+                <p class="c-disclosure__source">{{ pair.left.name }}: {{ note }}</p>
+              }
+              @for (note of pair.right.notes; track note) {
+                <p class="c-disclosure__source">{{ pair.right.name }}: {{ note }}</p>
+              }
+            </div>
+          }
+        </section>
+      }
+    } @else {
+      <!-- ══ TWO ERAS ═════════════════════════════════════════════════════ -->
+      @if (erasLoading()) {
+        <p class="compare__hint">Reading the archive…</p>
+      } @else if (completeness()) {
+        <div class="subjects">
+          @for (side of ['left', 'right']; track side) {
+            <div class="subjects__column">
+              <span class="c-label">{{ side === 'left' ? 'First decade' : 'Second decade' }}</span>
+              <div class="compare__choices">
+                @for (decade of decades(); track decade) {
+                  <button
+                    class="choice"
+                    type="button"
+                    [class.choice--active]="(side === 'left' ? leftDecade() : rightDecade()) === decade"
+                    [attr.aria-pressed]="(side === 'left' ? leftDecade() : rightDecade()) === decade"
+                    (click)="setDecade($any(side), decade)"
+                  >
+                    {{ label(decade) }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <button class="swap" type="button" (click)="swap()">
+            <cal-icon name="swap" [size]="16" label="Exchange the two decades" />
+          </button>
+        </div>
+
+        @if (bothEras(); as eras) {
+          <div class="era-cards">
+            @for (era of [eras.left, eras.right]; track era.decade) {
+              <article class="era-card">
+                <h2 class="era-card__name">{{ label(era.decade) }}</h2>
+                <p class="era-card__where">
+                  {{ era.decade }}–{{ era.decade + 9 }} · dominant scale
+                  {{ era.dominantScale ?? 'unstated' }}
+                </p>
+                <dl class="era-card__facts">
+                  <div>
+                    <dt class="c-label">Strongest</dt>
+                    <dd>
+                      @if (era.strongestMagnitude !== null) {
+                        {{ era.strongestScale }} {{ era.strongestMagnitude }}
+                      } @else {
+                        —
+                      }
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="c-label">M{{ comparableMagnitude.toFixed(1) }}+</dt>
+                    <dd>{{ era.comparableCount | number }}</dd>
+                  </div>
+                  @if (decadeStorms(era); as storms) {
+                    <div>
+                      <dt class="c-label">Named here</dt>
+                      <dd>{{ storms.namedInPhilippinesCount | number }}</dd>
+                    </div>
+                  }
+                </dl>
+              </article>
+            }
+          </div>
+
+          <section class="band" aria-labelledby="era-signals-title">
+            <header class="band__head">
+              <h2 class="band__title" id="era-signals-title">What can be compared</h2>
+              <p class="band__sub">
+                The rate at and above the comparable floor, and the storm series that did not depend on
+                satellites.
+              </p>
+            </header>
+
+            <div class="band__names">
+              <span>{{ label(eras.left.decade) }}</span>
+              <span>{{ label(eras.right.decade) }}</span>
+            </div>
+
+            @for (row of comparableSignals(); track row.label) {
+              <div class="metric metric--lead">
+                <span class="metric__value">{{ row.left | number }}</span>
+                <span class="metric__mid">
+                  <span class="metric__label">{{ row.label }}</span>
+                  <span class="standing standing--comparable">Comparable</span>
+                  @if (row.note) {
+                    <span class="metric__note">{{ row.note }}</span>
+                  }
+                </span>
+                <span class="metric__value metric__value--right">{{ row.right | number }}</span>
+                <span class="metric__track">
+                  <i class="metric__fill" [style.width.%]="share(row.left, row.right)"></i>
+                </span>
+                <span class="metric__track metric__track--right">
+                  <i class="metric__fill" [style.width.%]="share(row.right, row.left)"></i>
+                </span>
+              </div>
+            }
+          </section>
+
+          <section class="panel" aria-labelledby="era-quake-title">
+            <header class="panel__head">
+              <cal-icon name="lens-seismic" [size]="16" />
+              <h2 class="panel__title" id="era-quake-title">Earthquake profile</h2>
+              <span class="panel__scope">national</span>
+            </header>
+
+            @for (row of earthquakeRows(); track row.label) {
+              <div class="metric">
+                <span class="metric__value">
+                  {{ row.left | number }}<span class="metric__unit">{{ row.unit }}</span>
+                </span>
+                <span class="metric__mid">
+                  <span class="metric__label">{{ row.label }}</span>
+                  <span class="standing" [class]="'standing standing--' + row.standing">
+                    {{ row.standing === 'comparable' ? 'Comparable' : row.standing === 'context' ? 'Catalogue context' : 'Data quality' }}
+                  </span>
+                  @if (row.note) {
+                    <span class="metric__note">{{ row.note }}</span>
+                  }
+                </span>
+                <span class="metric__value metric__value--right">
+                  {{ row.right | number }}<span class="metric__unit">{{ row.unit }}</span>
+                </span>
+                @if (row.plotted) {
+                  <span class="metric__track">
+                    <i class="metric__fill" [style.width.%]="share(row.left, row.right)"></i>
+                  </span>
+                  <span class="metric__track metric__track--right">
+                    <i class="metric__fill" [style.width.%]="share(row.right, row.left)"></i>
+                  </span>
+                }
+              </div>
+            }
+
+            @if (depthQuality(); as quality) {
+              <div class="quality">
+                <span class="c-label quality__label">Depth resolved against depth assigned</span>
+                <div class="quality__pair">
+                  @for (share of [quality.left, quality.right]; track $index) {
+                    <div class="quality__side">
+                      @if (share !== null) {
+                        <div class="c-resolved-bar" role="img" [attr.aria-label]="'Measured depths: ' + (share * 100).toFixed(0) + ' per cent'">
+                          <i [style.width.%]="share * 100"></i>
+                        </div>
+                        <span class="quality__figure">{{ share | percent }} measured</span>
+                      } @else {
+                        <span class="quality__figure">No readings</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </section>
+
+          @if (eras.leftStorms !== null && eras.rightStorms !== null) {
+            <section class="panel" aria-labelledby="era-storm-title">
+              <header class="panel__head">
+                <cal-icon name="lens-cyclone" [size]="16" />
+                <h2 class="panel__title" id="era-storm-title">Tropical cyclone profile</h2>
+                <span class="panel__scope">western North Pacific</span>
+              </header>
+
+              <div class="metric metric--plain">
+                <span class="metric__value">
+                  @if (eras.leftStorms.strongestKnots !== null) {
+                    <strong>{{ eras.leftStorms.strongestKnots }} kt</strong>
+                  } @else {
+                    <span class="metric__absent">—</span>
+                  }
+                </span>
+                <span class="metric__mid">
+                  <span class="metric__label">Strongest wind recorded in the decade</span>
+                  <span class="standing standing--quality">Data quality</span>
+                </span>
+                <span class="metric__value metric__value--right">
+                  @if (eras.rightStorms.strongestKnots !== null) {
+                    <strong>{{ eras.rightStorms.strongestKnots }} kt</strong>
+                  } @else {
+                    <span class="metric__absent">—</span>
+                  }
+                </span>
+              </div>
+
+              <div class="metric metric--plain">
+                <span class="metric__value">{{ eras.leftStorms.namedInPhilippinesCount | number }}</span>
+                <span class="metric__mid">
+                  <span class="metric__label">Carrying a Philippine name here</span>
+                  <span class="standing standing--quality">Data quality</span>
+                  <span class="metric__note">
+                    A property of this platform's transcribed crosswalk, not of the storms — weighted
+                    towards recent seasons
+                  </span>
+                </span>
+                <span class="metric__value metric__value--right">
+                  {{ eras.rightStorms.namedInPhilippinesCount | number }}
+                </span>
+              </div>
+
+              @if (stormIntensityCaveat()) {
+                <p class="panel__caution">
+                  <cal-icon name="caution" [size]="13" />
+                  <span>
+                    One of these decades predates {{ stormDecades()?.reliableFromSeason }}, from which
+                    JTWC rates its own best-track record as high quality. Comparing peak winds across
+                    that boundary compares a measurement with an estimate — the highest wind in this
+                    whole archive comes from the least dependable era.
+                  </span>
+                </p>
+              }
+            </section>
+          }
+
+          <section class="stands" aria-labelledby="era-stands-title">
+            <h2 class="band__title" id="era-stands-title">What stands out</h2>
+            <ul class="stands__list">
+              @for (observation of standsOut(); track observation; let last = $last) {
+                <li [class.stands__limit]="last">
+                  @if (last) {
+                    <cal-icon name="caution" [size]="13" />
+                  }
+                  <span>{{ observation }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
       }
     }
-  }
-</section>
+
+    <!-- The tile services' own required credit, in the flow rather than as a control over the figure.
+         Covers both locator maps and the page backdrop: all three draw the same base layer. -->
+    <p class="c-basemap-credit">Basemap {{ basemapCredit() }}</p>
+  </section>
+</div>

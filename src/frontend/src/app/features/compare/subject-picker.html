@@ -38,6 +38,7 @@
       [radiusKm]="place.radiusKm"
       [events]="events()"
       [faults]="faults()"
+      [tracks]="tracks()"
     />
 
     <p class="legend">
@@ -46,7 +47,24 @@
       <span><i class="key key--event"></i>M{{ comparableMagnitude().toFixed(1) }}+, by depth</span>
       <span><i class="key key--assigned"></i>Depth assigned</span>
       <span><i class="key key--fault"></i>Mapped fault</span>
+      @if (tracks().length > 0) {
+        <span><i class="key key--track"></i>Storm track, by wind</span>
+        <span><i class="key key--landfall"></i>Landfall</span>
+      }
     </p>
+
+    <!-- Stated rather than implied: the figure draws one line per storm out to a wider radius than
+         the count uses, and where the API's limit bit it draws fewer lines than there are storms. -->
+    @if (tracks().length > 0) {
+      <p class="caption">
+        @if (stormCount() > tracks().length) {
+          {{ tracks().length }} of {{ stormCount() }} storm tracks, strongest first —
+        } @else {
+          {{ tracks().length }} storm tracks —
+        }
+        each cut to its passage near here, coloured by the strongest wind along that passage
+      </p>
+    }
 
     <dl class="facts">
       <div>

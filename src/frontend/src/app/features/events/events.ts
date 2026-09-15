@@ -5,7 +5,9 @@ import { firstValueFrom } from 'rxjs';
 import { CalametraApi } from '../../core/api/calametra-api';
 import { DecimalPipe } from '@angular/common';
 
+import { BasemapStore } from '../../core/basemap/basemap-store';
 import { Icon } from '../../shared/ui/icon/icon';
+import { PageBackdrop } from '../../shared/ui/page-backdrop/page-backdrop';
 import type {
   CycloneOrder,
   CycloneSummary,
@@ -55,7 +57,7 @@ const PAGE_SIZE = 100;
 @Component({
   selector: 'cal-events',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon, DecimalPipe],
+  imports: [Icon, PageBackdrop, DecimalPipe],
   // The reading-page backdrop, applied to the host so it spans the viewport rather than the centred
   // measure. Global rather than component-scoped because the record page uses the same wash.
   host: { class: 'c-page-wash' },
@@ -64,6 +66,15 @@ const PAGE_SIZE = 100;
 })
 export class Events {
   private readonly api = inject(CalametraApi);
+  private readonly basemaps = inject(BasemapStore);
+
+  /**
+   * The credit the active base layer requires, printed in the page's own flow.
+   *
+   * Read from the store rather than written here, so it changes with the reader's choice and cannot
+   * drift from the source actually being fetched.
+   */
+  protected readonly basemapCredit = computed(() => this.basemaps.selected().attribution);
   private readonly router = inject(Router);
 
   protected readonly sorts = SORTS;

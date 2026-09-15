@@ -5,11 +5,13 @@ import { of } from 'rxjs';
 import { CalametraApi } from '../../core/api/calametra-api';
 import { Compare } from './compare';
 import { LocatorMap } from './locator-map';
+import { PageBackdrop } from '../../shared/ui/page-backdrop/page-backdrop';
 import { SubjectPicker } from './subject-picker';
 import type {
   EarthquakeSummary,
   HazardFeatureCollection,
   HazardLayer,
+  NearbyCycloneTracks,
   PaginatedList,
   PlaceContext,
   PlaceMatch,
@@ -39,6 +41,17 @@ class LocatorMapStub {
   readonly radiusKm = input(0);
   readonly events = input<unknown>([]);
   readonly faults = input<unknown>(null);
+  readonly tracks = input<unknown>([]);
+}
+
+/** Stubbed for the same reason: it is a second MapLibre map, and it is a ground rather than a claim. */
+@Component({
+  selector: 'cal-page-backdrop',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: '',
+})
+class PageBackdropStub {
+  readonly zoomOffset = input(0);
 }
 
 function match(name: string, psgcCode: string): PlaceMatch {
@@ -135,6 +148,15 @@ const NO_FAULTS: HazardFeatureCollection = {
   termsUrl: null,
 };
 
+const NO_TRACKS: NearbyCycloneTracks = {
+  tracks: [],
+  stormCount: 0,
+  fixCount: 0,
+  radiusKm: 100,
+  drawnRadiusKm: 160,
+  reliableFromSeason: 1985,
+};
+
 /** Returns the second place on the second call, so the two sides differ. */
 function apiStub(): Partial<CalametraApi> {
   let contexts = 0;
@@ -163,6 +185,7 @@ function apiStub(): Partial<CalametraApi> {
             }),
       ),
     searchEarthquakes: () => of(EMPTY_PAGE),
+    getCycloneTracksNearby: () => of(NO_TRACKS),
     listHazardLayers: () => of([] as readonly HazardLayer[]),
     getHazardFeatures: () => of(NO_FAULTS),
   };
@@ -205,6 +228,11 @@ describe('Compare page', () => {
     TestBed.overrideComponent(SubjectPicker, {
       remove: { imports: [LocatorMap] },
       add: { imports: [LocatorMapStub] },
+    });
+
+    TestBed.overrideComponent(Compare, {
+      remove: { imports: [PageBackdrop] },
+      add: { imports: [PageBackdropStub] },
     });
 
     await TestBed.compileComponents();
@@ -323,5 +351,106 @@ describe('Compare page', () => {
 
     expect(after[0].textContent).toContain('Eastern Manila District');
     expect(after[1].textContent).toContain('Surigao City');
+  });
+});
+
+/**
+ * The storm-track figure.
+ *
+ * Its own suite because the stub has to return tracks, and what is being checked is the caption: the
+ * figure draws one line per storm out to a wider radius than the count uses, and where the API's limit
+ * bit it draws fewer lines than there are storms. Both are stated rather than left to be inferred from
+ * a picture.
+ */
+describe('Compare storm tracks', () => {
+  function withTracks(tracks: NearbyCycloneTracks): Partial<CalametraApi> {
+    return { ...apiStub(), getCycloneTracksNearby: () => of(tracks) };
+  }
+
+  async function render(tracks: NearbyCycloneTracks): Promise<HTMLElement> {
+    TestBed.configureTestingModule({
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: CalametraApi, useValue: withTracks(tracks) },
+      ],
+    });
+
+    TestBed.overrideComponent(SubjectPicker, {
+      remove: { imports: [LocatorMap] },
+      add: { imports: [LocatorMapStub] },
+    });
+
+    TestBed.overrideComponent(Compare, {
+      remove: { imports: [PageBackdrop] },
+      add: { imports: [PageBackdropStub] },
+    });
+
+    await TestBed.compileComponents();
+
+    const { host } = await renderWithBothPlaces();
+
+    return host;
+  }
+
+  const track = {
+    eventId: '0198f2c2-0000-7000-8000-000000000001',
+    name: 'RAI',
+    localName: 'ODETTE',
+    season: 2021,
+    agency: 'Japan Meteorological Agency',
+    averagingPeriod: '10-min',
+    peakKnotsNearby: 120,
+    closestApproachKm: 60.9,
+    landfallNearby: true,
+    fixes: [
+      { capturedAt: '2021-12-16T06:00:00Z', latitude: 9.4, longitude: 126.4, windKnots: 105, isLandfall: false },
+      { capturedAt: '2021-12-16T12:00:00Z', latitude: 9.6, longitude: 125.6, windKnots: 120, isLandfall: true },
+    ],
+  };
+
+  it('states how many tracks are drawn and what they are cut to', async () => {
+    const host = await render({
+      tracks: [track],
+      stormCount: 1,
+      fixCount: 2,
+      radiusKm: 100,
+      drawnRadiusKm: 160,
+      reliableFromSeason: 1985,
+    });
+
+    const caption = host.querySelector('cal-subject-picker .caption');
+
+    expect(caption?.textContent).toContain('1 storm tracks');
+    expect(caption?.textContent).toContain('cut to its passage near here');
+    expect(caption?.textContent).toContain('strongest wind along that passage');
+  });
+
+  it('discloses the truncation when fewer tracks are drawn than there are storms', async () => {
+    const host = await render({
+      tracks: [track],
+      stormCount: 131,
+      fixCount: 2,
+      radiusKm: 100,
+      drawnRadiusKm: 160,
+      reliableFromSeason: 1985,
+    });
+
+    expect(host.querySelector('cal-subject-picker .caption')?.textContent).toContain(
+      '1 of 131 storm tracks, strongest first',
+    );
+  });
+
+  it('keys the track and landfall marks only when tracks are drawn', async () => {
+    const withNone = await render({
+      tracks: [],
+      stormCount: 0,
+      fixCount: 0,
+      radiusKm: 100,
+      drawnRadiusKm: 160,
+      reliableFromSeason: 1985,
+    });
+
+    expect(withNone.querySelector('.key--track')).toBeNull();
+    expect(withNone.querySelector('cal-subject-picker .caption')).toBeNull();
   });
 });

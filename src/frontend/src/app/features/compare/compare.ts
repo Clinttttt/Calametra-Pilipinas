@@ -3,7 +3,9 @@ import { DecimalPipe, PercentPipe, SlicePipe } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 
 import { CalametraApi } from '../../core/api/calametra-api';
+import { BasemapStore } from '../../core/basemap/basemap-store';
 import { Icon } from '../../shared/ui/icon/icon';
+import { PageBackdrop } from '../../shared/ui/page-backdrop/page-backdrop';
 import { SubjectPicker } from './subject-picker';
 import {
   barShare,
@@ -18,6 +20,7 @@ import type {
   CycloneDecades,
   DecadeSummary,
   HazardFeatureCollection,
+  NearbyCycloneTracks,
   PlaceContext,
   PlaceMatch,
   PlaceStrongestReading,
@@ -108,17 +111,27 @@ const FAMILY_LABELS: Readonly<Record<string, string>> = {
 @Component({
   selector: 'cal-compare',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon, SubjectPicker, DecimalPipe, PercentPipe, SlicePipe],
+  imports: [Icon, PageBackdrop, SubjectPicker, DecimalPipe, PercentPipe, SlicePipe],
   host: { class: 'c-page-wash' },
   templateUrl: './compare.html',
   styleUrl: './compare.scss',
 })
 export class Compare {
   private readonly api = inject(CalametraApi);
+  private readonly basemaps = inject(BasemapStore);
 
   protected readonly radii = RADII;
   protected readonly comparableMagnitude = COMPARABLE_MAGNITUDE;
   protected readonly familyLabels = FAMILY_LABELS;
+
+  /**
+   * The credit the active base layer requires, for the page's own flow.
+   *
+   * Read from the store rather than written here, so it changes with the reader's choice and cannot
+   * drift from the source actually being fetched — Esri imagery and OpenFreeMap tiles carry different
+   * obligations and both are on offer.
+   */
+  protected readonly basemapCredit = computed(() => this.basemaps.selected().attribution);
 
   protected readonly mode = signal<'places' | 'eras'>('places');
   protected readonly radiusKm = signal<number>(100);
@@ -140,6 +153,10 @@ export class Compare {
   /** The M6.0+ events plotted on each locator map — the same series the headline count reports. */
   protected readonly leftEvents = signal<readonly LocatorEvent[]>([]);
   protected readonly rightEvents = signal<readonly LocatorEvent[]>([]);
+
+  /** Storm track segments near each place, clipped by the API to the passage near the point. */
+  protected readonly leftTracks = signal<NearbyCycloneTracks | null>(null);
+  protected readonly rightTracks = signal<NearbyCycloneTracks | null>(null);
 
   /** GEM traces, fetched once and handed to both maps. */
   protected readonly faults = signal<HazardFeatureCollection | null>(null);
@@ -498,6 +515,7 @@ export class Compare {
     const [leftPlace, rightPlace] = [this.leftPlace(), this.rightPlace()];
     const [leftTerm, rightTerm] = [this.leftTerm(), this.rightTerm()];
     const [leftEvents, rightEvents] = [this.leftEvents(), this.rightEvents()];
+    const [leftTracks, rightTracks] = [this.leftTracks(), this.rightTracks()];
 
     this.leftPlace.set(rightPlace);
     this.rightPlace.set(leftPlace);
@@ -505,6 +523,8 @@ export class Compare {
     this.rightTerm.set(leftTerm);
     this.leftEvents.set(rightEvents);
     this.rightEvents.set(leftEvents);
+    this.leftTracks.set(rightTracks);
+    this.rightTracks.set(leftTracks);
 
     if (this.mode() === 'eras') {
       const [left, right] = [this.leftDecade(), this.rightDecade()];
@@ -556,6 +576,7 @@ export class Compare {
     const loading = side === 'left' ? this.leftLoading : this.rightLoading;
     const context = side === 'left' ? this.leftPlace : this.rightPlace;
     const events = side === 'left' ? this.leftEvents : this.rightEvents;
+    const tracks = side === 'left' ? this.leftTracks : this.rightTracks;
 
     loading.set(true);
 
@@ -563,7 +584,18 @@ export class Compare {
       const read = await firstValueFrom(this.api.getPlaceContext(psgcCode, km));
 
       context.set(read);
-      events.set(await this.readComparableEvents(read));
+
+      // Both figures for this side at once. Sequential would show the earthquakes, then the storms a
+      // second later, which reads as the map correcting itself.
+      const [nearbyEvents, nearbyTracks] = await Promise.all([
+        this.readComparableEvents(read),
+        firstValueFrom(
+          this.api.getCycloneTracksNearby(read.latitude, read.longitude, read.radiusKm),
+        ),
+      ]);
+
+      events.set(nearbyEvents);
+      tracks.set(nearbyTracks);
     } finally {
       loading.set(false);
     }
