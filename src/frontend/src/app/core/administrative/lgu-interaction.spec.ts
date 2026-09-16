@@ -231,6 +231,25 @@ describe('Explore municipality interaction', () => {
     expect(map.getLayer('calametra-lgu-hit')).toBeDefined();
   });
 
+  it('has a selection to show regardless of hazard or place-panel state', () => {
+    // The panel was first nested inside the earthquake-and-place-explorer gate, so selecting a
+    // municipality drew the outline and showed nothing: the answer existed and had nowhere to appear.
+    //
+    // A municipality is a fact about the land, true whichever hazard is on screen, so the only condition
+    // the panel may depend on is whether something is selected.
+    const store = new LguSelectionStore();
+
+    expect(store.hasSelection()).toBe(false);
+
+    store.select({ psgc: '1660200000', name: 'Cantilan', kind: 'Municipality', areaSquareKm: 203.6 });
+
+    expect(store.hasSelection()).toBe(true);
+
+    store.clear();
+
+    expect(store.hasSelection()).toBe(false);
+  });
+
   it('shows a pointer cursor only while a municipality is under the pointer', () => {
     const map = fakeMap();
     const store = new LguSelectionStore();

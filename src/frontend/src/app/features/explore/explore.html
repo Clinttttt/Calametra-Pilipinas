@@ -219,15 +219,21 @@
     </div>
   }
 
+  <!-- The selected administrative unit, on its own condition.
+       Not gated on the hazard or on the place explorer: a municipality is a fact about the land, true
+       whichever hazard is on screen and whether or not the reader has the place panel open. It was
+       nested inside those gates at first, which meant selecting a municipality drew the outline and
+       showed nothing — the answer existed and had nowhere to appear. -->
+  @if (lguSelection.hasSelection()) {
+    <div class="explore__side-panel">
+      <cal-lgu-panel />
+    </div>
+  }
+
   <!-- Place explorer. Gated on the hazard as well as on its own state: it counts earthquakes and
        names fault traces, so it must not be renderable over a storm map by any route. -->
   @if (earthquakesActive() && placesOpen()) {
     <div class="explore__side-panel">
-      <!-- The selected administrative unit. Above the place panel because a click on the land is the
-           more recent gesture, and beside it rather than replacing it because they answer different
-           questions: containment here, proximity there. -->
-      <cal-lgu-panel />
-
       <cal-place-panel
         (placeSelected)="locatePlace($event)"
         (eventSelected)="locatePlaceEvent($event)"
