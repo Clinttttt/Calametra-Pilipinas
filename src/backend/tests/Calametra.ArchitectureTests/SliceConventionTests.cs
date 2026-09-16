@@ -19,7 +19,15 @@ public sealed class SliceConventionTests
         var endpoints = EndpointNames();
 
         var missingEndpoints = useCases.Except(endpoints, StringComparer.Ordinal).ToArray();
-        var orphanedEndpoints = endpoints.Except(useCases, StringComparer.Ordinal).ToArray();
+
+        // Orphans are compared against EVERY use case, not just the HTTP-facing ones.
+        //
+        // The operator-invoked namespace is exempt from *needing* an endpoint, because those slices are
+        // driven from the ingestion host and have no authentication story. It is not exempt from being
+        // allowed one: the boundary tile and coverage slices live there and are now served publicly, which
+        // is exactly what the read boundary was built for. An endpoint naming a real use case is wired, not
+        // orphaned — an orphan is an endpoint whose use case does not exist at all.
+        var orphanedEndpoints = endpoints.Except(AllUseCaseNames(), StringComparer.Ordinal).ToArray();
 
         missingEndpoints.ShouldBeEmpty(
             "these use cases have no endpoint, so nothing can reach them: "
@@ -129,8 +137,21 @@ public sealed class SliceConventionTests
     /// </remarks>
     private const string OperatorInvokedNamespace = "Calametra.Application.Features.Administrative";
 
-    private static HashSet<string> HttpUseCaseNames() =>
+    /// <summary>
+    /// Every use case in the application, whichever host drives it.
+    /// </summary>
+    /// <remarks>
+    /// Used only to decide whether an endpoint is an orphan. Whether a slice <em>needs</em> an endpoint is a
+    /// different question, and the answer to it is what the namespace exemptions encode.
+    /// </remarks>
+    private static HashSet<string> AllUseCaseNames() =>
         Assemblies.Application
+            .GetTypes()
+            .Where(HasRequestType)
+            .Select(type => type.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+    private static HashSet<string> HttpUseCaseNames() =>        Assemblies.Application
             .GetTypes()
             .Where(HasRequestType)
             .Where(type => type.Namespace is null

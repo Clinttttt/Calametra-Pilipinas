@@ -1,8 +1,10 @@
 using Calametra.Application.Abstractions.Data;
 using Calametra.Application.Abstractions.Sources;
+using Calametra.Application.Abstractions.Tiles;
 using Calametra.Infrastructure.Persistence;
 using Calametra.Infrastructure.Sources.ArcGis;
 using Calametra.Infrastructure.Sources.CodAb;
+using Calametra.Infrastructure.Tiles;
 using Calametra.Infrastructure.Sources.Gem;
 using Calametra.Infrastructure.Sources.GeoNames;
 using Calametra.Infrastructure.Sources.Ibtracs;
@@ -261,6 +263,7 @@ public static class DependencyInjection
         services.AddScoped<CodAbBoundaryReader>();
         services.AddScoped<IBoundaryCatalogueSource, CodAbCatalogueSource>();
         services.AddScoped<ICanonicalBoundarySource, CodAbBoundarySource>();
+        services.AddScoped<ILguBoundaryTileReader, LguBoundaryTileReader>();
         // The adapter retries once per chunk itself, with a twenty-second pause. That is deliberate rather
         // than delegated to a resilience handler: it retries at the granularity of a chunk, so a refusal
         // costs one box rather than restarting a national fetch, and it stays inside the two-slot limit

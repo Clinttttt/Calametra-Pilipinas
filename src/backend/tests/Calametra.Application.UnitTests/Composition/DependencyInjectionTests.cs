@@ -56,6 +56,7 @@ public sealed class DependencyInjectionTests
         services.AddScoped(_ => Substitute.For<ILguBoundarySource>());
         services.AddScoped(_ => Substitute.For<IBoundaryCatalogueSource>());
         services.AddScoped(_ => Substitute.For<ICanonicalBoundarySource>());
+        services.AddScoped(_ => Substitute.For<Abstractions.Tiles.ILguBoundaryTileReader>());
         services.AddScoped(_ => Substitute.For<IEarthquakeCatalogSource>());
         services.AddScoped(_ => Substitute.For<IActiveFaultSource>());
         services.AddScoped(_ => Substitute.For<IHazardMapService>());
@@ -206,6 +207,11 @@ public sealed class DependencyInjectionTests
             typeof(Domain.Abstractions.Result)
         },
 
+        {
+            typeof(Features.Administrative.GetLguBoundaryTile.Query),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.GetLguBoundaryTile.LguBoundaryTile>)
+        },
         {
             typeof(Features.Administrative.ConfirmLguSourceNameOverride.Command),
             typeof(Domain.Abstractions.Result)

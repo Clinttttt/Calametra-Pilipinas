@@ -1,6 +1,7 @@
 using Calametra.Api.Endpoints.Cyclones;
 using Calametra.Api.Endpoints.Earthquakes;
 using Calametra.Api.Endpoints.HazardLayers;
+using Calametra.Api.Endpoints.Administrative;
 using Calametra.Api.Endpoints.Places;
 using Calametra.Api.Endpoints.Sources;
 using Calametra.Api.Extensions;
@@ -54,6 +55,7 @@ app.MapCyclones();
 app.MapHazardLayers();
 app.MapPlaces();
 app.MapDataSources();
+app.MapLguBoundaries();
 
 await app.RunAsync();
 
