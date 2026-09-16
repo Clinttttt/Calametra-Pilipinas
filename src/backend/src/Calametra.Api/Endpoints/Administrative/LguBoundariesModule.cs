@@ -1,6 +1,7 @@
 using Calametra.Api.Extensions;
 using Calametra.Application.Abstractions.Messaging;
 using Calametra.Application.Features.Administrative;
+using Calametra.Application.Features.Earthquakes;
 
 namespace Calametra.Api.Endpoints.Administrative;
 
@@ -109,6 +110,41 @@ internal static class GetLguBoundaryCoverageEndpoint
 }
 
 /// <summary>
+/// GET /api/lgu-boundaries/{canonicalPsgcCode}/earthquakes â€” distinct earthquake epicentres covered by
+/// one current COD-AB land outline.
+/// </summary>
+internal static class GetEarthquakeContainmentEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/{canonicalPsgcCode}/earthquakes", async (
+                string canonicalPsgcCode,
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await dispatcher.Send(
+                    new GetEarthquakeContainment.Query(canonicalPsgcCode),
+                    cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("GetEarthquakeContainment")
+            .WithSummary("Earthquakes contained by one municipality or city land outline")
+            .WithDescription(
+                "Counts distinct real-world earthquake events whose canonical epicentres are covered by "
+                + "the selected current COD-AB land polygon. Uses geography ST_Intersects, whose point-in-"
+                + "polygon semantics include an epicentre exactly on the boundary. The count is not over "
+                + "agency observation rows: one event "
+                + "reported by both PHIVOLCS and USGS remains one event.\n\n"
+                + "This is land containment, not proximity or maritime jurisdiction. Offshore earthquakes "
+                + "are outside the answer and remain available through the existing radius tools. The "
+                + "response includes land area and the dated boundary edition so the count cannot be read "
+                + "without its spatial denominator and provenance.")
+            .Produces<object>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+}
+
+/// <summary>
 /// Routes for the administrative boundary delivery path.
 /// </summary>
 internal static class LguBoundariesModule
@@ -122,5 +158,6 @@ internal static class LguBoundariesModule
 
         GetLguBoundaryCoverageEndpoint.Map(group);
         GetLguBoundaryTileEndpoint.Map(group);
+        GetEarthquakeContainmentEndpoint.Map(group);
     }
 }

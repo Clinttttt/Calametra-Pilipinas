@@ -154,7 +154,7 @@ public sealed class LguBoundaryTileTests(PostgisApiFixture fixture)
     private async Task ArrangeAsync() =>
         await fixture.WithContextAsync(async context =>
         {
-            if (await context.Lgus.AnyAsync())
+            if (await context.Lgus.AnyAsync(lgu => lgu.CanonicalPsgcCode == "0102801000"))
             {
                 return;
             }

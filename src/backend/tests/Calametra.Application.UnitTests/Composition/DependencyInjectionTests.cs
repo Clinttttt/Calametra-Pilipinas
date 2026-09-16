@@ -263,6 +263,10 @@ public sealed class DependencyInjectionTests
             typeof(Domain.Abstractions.Result<GetEarthquakeActivity.ActivityResponse>)
         },
         {
+            typeof(GetEarthquakeContainment.Query),
+            typeof(Domain.Abstractions.Result<GetEarthquakeContainment.Response>)
+        },
+        {
             typeof(GetCatalogueCompleteness.Query),
             typeof(Domain.Abstractions.Result<GetCatalogueCompleteness.CompletenessResponse>)
         },

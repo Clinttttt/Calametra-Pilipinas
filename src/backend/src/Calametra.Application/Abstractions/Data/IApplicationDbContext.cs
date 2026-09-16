@@ -54,6 +54,12 @@ public interface IApplicationDbContext
     /// <summary>Register editions loaded, so a figure can state which one it was reconciled to.</summary>
     DbSet<PsgcRegisterEdition> PsgcRegisterEditions { get; }
 
+    /// <summary>Versioned administrative geometry available to spatial analytics.</summary>
+    DbSet<LguBoundary> LguBoundaries { get; }
+
+    /// <summary>Dated acquisitions behind administrative geometry.</summary>
+    DbSet<LguBoundaryExtract> LguBoundaryExtracts { get; }
+
     /// <summary>
     /// Reviewed code pairings only.
     /// </summary>
