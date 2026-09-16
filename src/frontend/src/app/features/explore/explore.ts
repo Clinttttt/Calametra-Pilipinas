@@ -31,6 +31,7 @@ import {
 } from '../../core/administrative/lgu-palette';
 import { LguSelectionStore } from '../../core/administrative/lgu-selection-store';
 import { LguPanel } from './panels/lgu-panel';
+import { panelSideFor } from '../../core/administrative/panel-side';
 import {
   LGU_BAND_LOCAL,
   LGU_BAND_REGIONAL,
@@ -375,6 +376,16 @@ export class Explore {
    * was aiming at.
    */
   private readonly interactiveVectorLayerIds = new Set<string>();
+
+  /**
+   * Where across the map the reader last selected a unit, 0 at the left edge and 1 at the right.
+   *
+   * Kept so the panel can take the far side and avoid covering the outline it describes.
+   */
+  private readonly lguClickX = signal<number | null>(null);
+
+  /** Which side the administrative panel occupies. */
+  protected readonly lguPanelSide = computed(() => panelSideFor(this.lguClickX()));
 
   /**
    * The map's current zoom, tracked so the layers panel can say why a ticked layer is not drawing.
@@ -2355,6 +2366,8 @@ export class Explore {
       // Nothing here touches PlaceStore, moves the camera, or fetches place context. ADR-005 D1 keeps
       // containment and proximity apart, and this is the one place where collapsing them would be
       // easiest and least visible.
+      this.lguClickX.set(event.point.x / Math.max(1, map.getCanvas().clientWidth));
+
       this.lguSelection.select({
         psgc: properties['psgc'],
         name: typeof properties['name'] === 'string' ? properties['name'] : properties['psgc'],

@@ -1,6 +1,8 @@
 import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
+import { Icon } from '../../../shared/ui/icon/icon';
+import { type IconName } from '../../../shared/ui/icon/icon-paths';
 import { LguSelectionStore } from '../../../core/administrative/lgu-selection-store';
 
 /**
@@ -14,89 +16,28 @@ import { LguSelectionStore } from '../../../core/administrative/lgu-selection-st
  * The area is shown because ADR-005 D1 requires any figure derived from a boundary to state the unit's
  * area beside it. Philippine LGUs differ in area by more than two orders of magnitude, so a count inside a
  * boundary encodes land area as much as anything else, and the area is what lets a reader see that.
+ *
+ * It carries its own surface, as `place-panel` does. The first version relied on variables that do not
+ * exist in this project's token set, so `color-mix` resolved to nothing and the panel rendered as text
+ * floating on the satellite imagery — legible in a screenshot and not on a coastline.
  */
 @Component({
   selector: 'cal-lgu-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe],
-  template: `
-    @if (store.selected(); as lgu) {
-      <aside class="lgu-panel" aria-label="Selected administrative unit">
-        <header class="lgu-panel__header">
-          <span class="c-label">Administrative unit</span>
-          <button class="c-icon-button" type="button" (click)="store.clear()" aria-label="Clear">
-            ×
-          </button>
-        </header>
-
-        <p class="lgu-panel__name">{{ lgu.name }}</p>
-
-        <dl class="lgu-panel__facts">
-          <dt>Kind</dt>
-          <dd>{{ lgu.kind }}</dd>
-          <dt>PSGC</dt>
-          <dd>{{ lgu.psgc }}</dd>
-          <dt>Land area</dt>
-          <dd>{{ lgu.areaSquareKm | number: '1.0-1' }} km²</dd>
-        </dl>
-
-        <p class="lgu-panel__note">
-          Land outline only — not municipal waters. This names the unit, and is not a radius: distances
-          and event counts elsewhere are measured from a representative point, which is a different
-          question.
-        </p>
-      </aside>
-    }
-  `,
-  styles: `
-    .lgu-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      padding: 0.75rem;
-      background: color-mix(in srgb, var(--c-surface) 92%, transparent);
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius-sm, 4px);
-      max-width: 20rem;
-    }
-
-    .lgu-panel__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .lgu-panel__name {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .lgu-panel__facts {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 0.15rem 0.75rem;
-      margin: 0;
-      font-size: 0.8125rem;
-    }
-
-    .lgu-panel__facts dt {
-      color: var(--c-text-muted);
-    }
-
-    .lgu-panel__facts dd {
-      margin: 0;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .lgu-panel__note {
-      margin: 0;
-      font-size: 0.75rem;
-      line-height: 1.4;
-      color: var(--c-text-muted);
-    }
-  `,
+  imports: [DecimalPipe, Icon],
+  templateUrl: './lgu-panel.html',
+  styleUrl: './lgu-panel.scss',
 })
 export class LguPanel {
   protected readonly store = inject(LguSelectionStore);
+
+  /**
+   * Icon per administrative level.
+   *
+   * A city and a municipality are different legal creatures — city status is conferred by law and read
+   * from the register rather than inferred — so they are not given the same glyph.
+   */
+  protected icon(kind: string): IconName {
+    return kind === 'City' ? 'lens-exposure' : 'locate';
+  }
 }

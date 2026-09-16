@@ -1,4 +1,4 @@
-﻿/* Explore. Every overlay is positioned against the map, which is never cropped. */
+/* Explore. Every overlay is positioned against the map, which is never cropped. */
 
 .explore {
   position: absolute;
@@ -344,6 +344,16 @@
   z-index: var(--z-panel);
   display: flex;
   animation: panel-in var(--motion-quick) var(--ease-out);
+}
+
+/* Flipped to the left when the reader clicked the right half of the map.
+   A panel anchored permanently to the right puts the answer on top of the thing it answers about
+   whenever the subject is on that side, and a municipality outline can fill most of the viewport. The
+   side is chosen once per selection rather than tracked continuously: a panel that relocates while it is
+   being read is worse than one that is occasionally further from its subject than it needed to be. */
+.explore__side-panel--left {
+  right: auto;
+  left: calc(var(--space-3) + 3.5rem);
 }
 
 /* The storm list sits on the left, opposite the rail. Cyclone work is a browse-then-inspect task

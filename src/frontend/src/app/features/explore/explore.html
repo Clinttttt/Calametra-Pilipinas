@@ -225,7 +225,10 @@
        nested inside those gates at first, which meant selecting a municipality drew the outline and
        showed nothing — the answer existed and had nowhere to appear. -->
   @if (lguSelection.hasSelection()) {
-    <div class="explore__side-panel">
+    <div
+      class="explore__side-panel"
+      [class.explore__side-panel--left]="lguPanelSide() === 'left'"
+    >
       <cal-lgu-panel />
     </div>
   }

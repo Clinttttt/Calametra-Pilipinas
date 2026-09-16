@@ -1,0 +1,107 @@
+/* A panel in its own right, so it carries its own surface -- the same reasoning as `place-panel`.
+   The first version reached for token names this project does not define, so `color-mix` resolved to
+   nothing and the panel rendered as bare text on satellite imagery. */
+.lgu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 19rem;
+  padding: var(--space-3);
+  background-color: var(--surface-glass);
+
+  /* Blur rather than opacity alone. Over imagery a translucent panel picks up whatever is beneath it,
+     and a coastline crossing the text is the one thing that makes a figure unreadable. */
+  backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+}
+
+.lgu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.lgu__identity {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  color: var(--text-secondary);
+}
+
+.lgu__naming {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.lgu__name {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
+
+  /* The register's names run long -- "Datu Blah T. Sinsuat", "Shariff Saydona Mustapha" -- and are
+     wrapped rather than truncated, because a clipped LGU name is exactly the sort of thing a reader
+     would mistake for a different unit. */
+  overflow-wrap: anywhere;
+}
+
+.lgu__kind {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Rows rather than a two-column grid: the labels differ in length and a grid left the values ragged,
+   which reads as misalignment rather than as a table. */
+.lgu__facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.lgu__fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.lgu__fact dt {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.lgu__fact dd {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+
+  /* Tabular so a column of areas can be compared down the page rather than read one at a time. */
+  font-variant-numeric: tabular-nums;
+}
+
+.lgu__code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.02em;
+}
+
+.lgu__note {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.lgu__note-lead {
+  color: var(--text-secondary);
+}

@@ -1,0 +1,51 @@
+@if (store.selected(); as lgu) {
+  <aside class="lgu" aria-label="Selected administrative unit">
+    <header class="lgu__header">
+      <span class="c-label">Administrative unit</span>
+
+      <button class="c-icon-button" type="button" (click)="store.clear()">
+        <cal-icon name="close" [size]="14" label="Clear the selected unit" />
+      </button>
+    </header>
+
+    <div class="lgu__identity">
+      <cal-icon [name]="icon(lgu.kind)" [size]="16" />
+
+      <div class="lgu__naming">
+        <h2 class="lgu__name">{{ lgu.name }}</h2>
+        <p class="lgu__kind">{{ lgu.kind }}</p>
+      </div>
+    </div>
+
+    <!-- Code and area, not a list of facts for its own sake. The code is what anything durable is keyed
+         to, and ADR-005 D1 requires the area beside any figure derived from a boundary: Philippine LGUs
+         differ in area by more than two orders of magnitude, so a count inside one encodes land area
+         unless the area is visible. -->
+    <dl class="lgu__facts">
+      <div class="lgu__fact">
+        <dt>Canonical PSGC</dt>
+        <dd class="lgu__code">{{ lgu.psgc }}</dd>
+      </div>
+
+      <div class="lgu__fact">
+        <dt>Land area</dt>
+        <dd>{{ lgu.areaSquareKm | number: '1.0-1' }} km²</dd>
+      </div>
+    </dl>
+
+    <!-- Two misreadings this panel exists to prevent, and both are easy to make: that the outline is the
+         municipality's maritime jurisdiction, and that selecting it is the same gesture as opening a
+         radius. -->
+    <p class="lgu__note">
+      <span class="lgu__note-lead">Land outline only.</span>
+      Not municipal waters — cities and municipalities administer waters to 15&nbsp;km offshore, and that
+      extent is not stored here.
+    </p>
+
+    <p class="lgu__note">
+      <span class="lgu__note-lead">This names a unit.</span>
+      It is not a radius. Distances and event counts elsewhere are measured from a representative point,
+      which answers a different question.
+    </p>
+  </aside>
+}
