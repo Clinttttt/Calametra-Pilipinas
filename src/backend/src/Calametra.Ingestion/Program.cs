@@ -116,6 +116,22 @@ var isBoundaryImport = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:ImportBoundaries"],
     out var boundaryFlag) && boundaryFlag;
 
+var isCorrespondenceProposal = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ProposeCorrespondences"],
+    out var corrFlag) && corrFlag;
+
+var isCorrespondenceClass = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ConfirmCorrespondenceClass"],
+    out var corrClassFlag) && corrClassFlag;
+
+var isManualCorrespondence = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ConfirmManualCorrespondences"],
+    out var manualCorrFlag) && manualCorrFlag;
+
+var isCanonicalImport = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ImportCanonicalBoundaries"],
+    out var canonFlag) && canonFlag;
+
 var isBoundarySurvey = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:BoundarySurvey"],
     out var surveyFlag) && surveyFlag;
@@ -138,7 +154,11 @@ var isOneShot = isBackfill
     || isLinkRejection
     || isBoundaryImport
     || isBoundaryCoverage
-    || isBoundarySurvey;
+    || isBoundarySurvey
+    || isCorrespondenceProposal
+    || isCorrespondenceClass
+    || isManualCorrespondence
+    || isCanonicalImport;
 
 if (!isOneShot)
 {
@@ -170,7 +190,11 @@ await using (var scope = host.Services.CreateAsyncScope())
         && !isLinkRejection
         && !isBoundaryImport
         && !isBoundaryCoverage
-        && !isBoundarySurvey;
+        && !isBoundarySurvey
+        && !isCorrespondenceProposal
+        && !isCorrespondenceClass
+        && !isManualCorrespondence
+        && !isCanonicalImport;
 
     if (needsFaultGeometry)
     {
@@ -530,6 +554,131 @@ if (isLinkRejection)
     }
 
     Console.WriteLine($"Pairing {linkId} rejected by {reviewedBy}.");
+
+    return 0;
+}
+
+// ── ADR-005 D4: EDITION CORRESPONDENCE ─────────────────────────────────────
+//
+// Identity before geometry, as at every step of ADR-005. These three modes propose, then confirm what the
+// register itself evidences, then decide the remainder by hand — the same shape as the code crosswalk,
+// because it is the same kind of claim.
+if (isCorrespondenceProposal)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new ProposeLguEditionCorrespondences.Command());
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine($"Correspondence proposal failed: {result.Error!.Code} — {result.Error.Description}");
+
+        return 1;
+    }
+
+    LguCorrespondencePrinter.WriteProposal(result.Value);
+
+    return 0;
+}
+
+if (isCorrespondenceClass)
+{
+    var reviewedBy = builder.Configuration["Ingestion:Lgu:ReviewedBy"];
+    var sources = builder.Configuration["Ingestion:Lgu:SourcesConsulted"];
+    var expected = builder.Configuration["Ingestion:Lgu:ExpectedCount"];
+
+    if (string.IsNullOrWhiteSpace(reviewedBy) || string.IsNullOrWhiteSpace(sources))
+    {
+        Console.WriteLine(
+            "Ingestion:Lgu:ReviewedBy and Ingestion:Lgu:SourcesConsulted are both required. ADR-005 D4 "
+            + "permits a batch only when it records who decided and which sources were consulted.");
+
+        return 1;
+    }
+
+    if (!int.TryParse(expected, CultureInfo.InvariantCulture, out var expectedCount))
+    {
+        Console.WriteLine("Ingestion:Lgu:ExpectedCount is required and must be a number.");
+
+        return 1;
+    }
+
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new ConfirmLguEditionCorrespondenceClass.Command(reviewedBy, sources, expectedCount));
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine($"Class confirmation refused: {result.Error!.Code} — {result.Error.Description}");
+
+        return 1;
+    }
+
+    LguCorrespondencePrinter.WriteClassConfirmation(result.Value);
+
+    return 0;
+}
+
+if (isManualCorrespondence)
+{
+    var reviewedBy = builder.Configuration["Ingestion:Lgu:ReviewedBy"];
+
+    if (string.IsNullOrWhiteSpace(reviewedBy))
+    {
+        Console.WriteLine("Ingestion:Lgu:ReviewedBy is required. A manual review carries a person's name.");
+
+        return 1;
+    }
+
+    await using var scope = host.Services.CreateAsyncScope();
+
+    return await LguManualCorrespondenceRunner.ConfirmAsync(
+        scope.ServiceProvider.GetRequiredService<IDispatcher>(),
+        reviewedBy);
+}
+
+// ── ADR-005 D2: ACQUIRE THE CANONICAL ON-LAND GEOMETRY ─────────────────────
+//
+// Behind the gate, and behind reviewed identity: an outline attaches only where the active register uses the
+// same code or a confirmed edition correspondence says what that code means.
+if (isCanonicalImport)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var dispatcher = scope.ServiceProvider.GetRequiredService<IDispatcher>();
+
+    var gate = await dispatcher.Send(new GetLguCrosswalkReadiness.Query());
+
+    if (gate.IsFailure)
+    {
+        Console.WriteLine($"Readiness could not be established: {gate.Error!.Code}");
+
+        return 1;
+    }
+
+    if (!gate.Value.MayBeginGeometryIngestion)
+    {
+        Console.WriteLine(
+            "The ADR-005 gate is SHUT, so no geometry may be stored. Run "
+            + "--Ingestion:Lgu:Readiness=true to see which condition is unmet.");
+
+        return 2;
+    }
+
+    var imported = await dispatcher.Send(new ImportCodAbBoundaries.Command());
+
+    if (imported.IsFailure)
+    {
+        Console.WriteLine($"COD-AB import failed: {imported.Error!.Code} — {imported.Error.Description}");
+
+        return 1;
+    }
+
+    LguBoundaryPrinter.WriteCanonicalImport(imported.Value);
 
     return 0;
 }

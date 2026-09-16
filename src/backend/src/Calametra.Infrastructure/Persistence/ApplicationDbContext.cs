@@ -54,6 +54,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<LguBoundaryExtract> LguBoundaryExtracts => Set<LguBoundaryExtract>();
 
+    public DbSet<LguEditionCorrespondence> LguEditionCorrespondences =>
+        Set<LguEditionCorrespondence>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

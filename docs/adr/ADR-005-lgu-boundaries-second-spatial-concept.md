@@ -53,30 +53,59 @@ radius, and boundary containment arrives as **its own query with its own caveats
 derived from a boundary must state the unit's area beside it, for the same reason every magnitude
 states its scale.
 
-### D2 — Geometry comes from OpenStreetMap administrative relations, under ODbL 1.0
+### D2 — On-land administrative geometry comes from the OCHA COD-AB register, under CC BY 3.0 IGO
 
-The PSA publishes the PSGC register but not open geometry. The practical open source is OSM, which
-this platform already reads for town centres, so the licence position is one we have already taken
-rather than a new one.
+The canonical geometry for administrative **display, hover, selection and containment** is the Philippines
+COD-AB ADM3 boundary set published on HDX by OCHA from **NAMRIA and PSA** sources. It is **land-only**, and
+that is precisely why it is chosen: attribution asks which municipality a point on land belongs to, and a
+land outline is the shape that answers that question.
 
-**Verified against the OSM Philippines mapping conventions, 2026-09-15** — and the levels are not
-the ones a general-purpose guide would guess:
+**Measured 2026-09-16, against the active PSA 2Q 2026 register:**
 
-| Our `kind` | OSM `admin_level` |
+| | |
 |---|---|
-| Region | **3** |
-| Province | **4** |
-| City / Municipality | **6** |
-| *(not held)* Barangay | 10 |
+| ADM3 units published | 1,642 |
+| Identity | `adm3_pcode` carries the PSGC — matched by code, never by name |
+| Direct canonical match | 1,500 |
+| Via reviewed edition correspondence | +115 mechanical, +12 manual |
+| Licence | CC BY 3.0 IGO — attribution, **not** share-alike |
+| Total area | 293,507 km², against roughly 300,000 km² of Philippine land |
 
-Cities and municipalities are level **6** in the Philippines, not 8; level 8 is "other
-administrative districts". An import written against the common assumption would silently fetch the
-wrong tier.
+**OpenStreetMap `admin_level` 6 is retained as a registered source but is no longer the canonical
+municipality geometry.** Measured the same day: OSM holds boundary relations for 892 of 1,642 units, only
+561 carry a PSGC code, and its outlines extend to municipal waters. Its levels remain as documented —
+region 3, province 4, city and municipality **6**, barangay 10 — and level 6 is still not 8.
 
-**ODbL is share-alike, and that has to be stated where it applies.** The town-centre coordinates
-already put the place directory under ODbL; adding boundaries deepens that rather than changing it.
-Any derived place database we publish inherits the obligation, and the Sources page must carry it as
-a stored source with its own row, not as a footnote.
+**geoBoundaries gbOpen ADM3 was evaluated and rejected.** It republishes the same OCHA/NAMRIA/PSA lineage
+with good coverage — 1,647 units — but **strips the PCODEs**, carrying only `shapeName`, `shapeID`,
+`shapeGroup` and `shapeType`. Its 1,647 units share just 1,424 distinct names, so 223 of them cannot be
+told apart by the only key it offers. A dataset that can only be joined by name cannot establish identity
+here, whatever its geometry is worth.
+
+**ODbL still applies to the town centres.** Those coordinates remain OSM-derived and share-alike; that
+obligation is unchanged and independent. What changes is that the *boundary* set no longer adds one.
+
+### D2a — Maritime jurisdiction is a separate concept, modelled explicitly or not at all
+
+Philippine cities and municipalities administer waters to 15 km from their coastline under RA 8550, and OSM
+maps that extent. It is a real boundary and it is **not** an administrative land outline.
+
+The difference is not a rounding error. Measured across 478 units held from both sources, OSM areas are a
+median **1.66×** the COD-AB figure; 208 of the 478 exceed twice. Kalayaan is 0.4 km² of land against
+4,278 km² of claimed jurisdiction — a factor of ten thousand.
+
+Therefore:
+
+1. **The two sets are never combined into one spatial concept.** A geometry column holding land outlines for
+   some rows and maritime jurisdiction for others would make every area and every containment count mean
+   two different things depending on the row, with nothing to say which.
+2. **Land geometry answers containment for points on land.** Hover, click, selection and "which municipality
+   is this in" all read the COD-AB outline.
+3. **Offshore and proximity questions stay with the radius,** which D1 already establishes as the comparison
+   mechanism. Most Philippine earthquakes are offshore; under land-only polygons they are in no municipality,
+   and that is the honest answer rather than a defect to paper over.
+4. Should jurisdictional waters be wanted, they are introduced as **their own concept** with their own
+   source, column, and caveat — never by loosening what the land geometry means.
 
 ### D3 — Canonical identity is the current PSA ten-digit PSGC. The nine-digit code becomes an alias.
 
@@ -135,6 +164,18 @@ actually checked:
 | `RegisterMatch` | The cited PSA publication states both codes for the same unit |
 | `DigitReslice` | The nine-digit form is a documented re-slicing of the ten **and** the register's name agrees |
 | `ManualReview` | A person decided from named sources, recorded in `Reason` |
+| `EditionCorrespondence` | Two editions of the **ten-digit** register state the same nine-digit code for a unit, and a confirmed pairing resolves it to a current unit |
+
+**`EditionCorrespondence` exists because external datasets are keyed to whichever edition they were built
+from.** The PSA recodes units when the map of regions changes, and between the COD-AB edition and PSA 2Q 2026
+142 codes changed while the places did not: the Negros Island Region was created, Sulu moved to Region IX,
+the highly urbanised cities were recoded out of their provinces, and Maguindanao's halves were renumbered.
+
+It is confirmable only where the register published the link and the two editions **agree on the name**. The
+recodings look regular enough to invite a prefix rule, and a prefix rule would have been wrong about the
+capital: COD-AB codes the City of Manila `1303901000`, whose re-slice is `133901000` — Tondo, one district of
+it, and an accepted sub-city exception in this platform. Arithmetic finds the candidate; a reviewed pairing is
+what makes it true.
 
 `DigitReslice` is the one that needs guarding, because it is the rule a matcher can apply and it is
 the rule that fails in the capital. It may only be confirmed where the register's own name agrees;
@@ -245,8 +286,12 @@ identity wrong is a defect that spreads into every figure derived from it.
    figure in this document would be wrong within a quarter and would go on being checked against.
 3. **The unmatched set is enumerated and accepted** — not zero, accepted. A known unmatched count is
    a fact about Philippine administrative history; a zero achieved by name-matching is a fiction.
-4. **The OSM extract is licence-checked and dated**, and registered as a `DataSource` row before any
-   geometry is stored, as GEM and the town centres were.
+4. **The geometry source is licence-checked and dated**, and registered as a `DataSource` row before any
+   geometry is stored, as GEM and the town centres were. The acquisition is recorded as its own row —
+   original filename, SHA-256 of the bytes as published, vintage, and the operator's acquisition note — so a
+   containment figure can name the boundary edition behind it. **The source's geometry semantics are stated
+   with it:** COD-AB is land-only, and a set that includes maritime jurisdiction may not be stored in the
+   same concept (D2a).
 
 Only then: schema, import, containment query, then the interaction.
 

@@ -249,6 +249,8 @@ internal sealed class LguBoundaryConfiguration : IEntityTypeConfiguration<LguBou
 
         builder.Property(boundary => boundary.CanonicalPsgcCode).HasMaxLength(10).IsRequired();
         builder.Property(boundary => boundary.OsmRefTag).HasMaxLength(20);
+        builder.Property(boundary => boundary.SourceFeatureCode).HasMaxLength(20);
+        builder.HasIndex(boundary => boundary.SourceFeatureCode);
         builder.Property(boundary => boundary.OsmName).HasMaxLength(200);
         builder.Property(boundary => boundary.ExtractVersion).HasMaxLength(60);
         builder.Property(boundary => boundary.RepairNote).HasMaxLength(500);
@@ -347,6 +349,84 @@ internal sealed class LguBoundaryExtractConfiguration : IEntityTypeConfiguration
                 "ck_lgu_boundary_extracts_file_details_are_paired",
                 "(original_file_name IS NULL AND file_sha256 IS NULL) "
                 + "OR (original_file_name IS NOT NULL AND file_sha256 IS NOT NULL)");
+        });
+    }
+}
+
+/// <summary>
+/// Reviewed correspondences between two editions of the ten-digit register.
+/// </summary>
+internal sealed class LguEditionCorrespondenceConfiguration
+    : IEntityTypeConfiguration<LguEditionCorrespondence>
+{
+    public void Configure(EntityTypeBuilder<LguEditionCorrespondence> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("lgu_edition_correspondences");
+
+        builder.HasKey(item => item.Id);
+
+        builder.Property(item => item.LegacyCanonicalPsgcCode).HasMaxLength(10).IsFixedLength().IsRequired();
+        builder.Property(item => item.CurrentCanonicalPsgcCode).HasMaxLength(10).IsFixedLength().IsRequired();
+        builder.Property(item => item.LegacyName).HasMaxLength(200);
+        builder.Property(item => item.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(item => item.Evidence).HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(item => item.ProposalBasis).HasMaxLength(600).IsRequired();
+        builder.Property(item => item.ProposedBy).HasMaxLength(200).IsRequired();
+        builder.Property(item => item.ReviewedBy).HasMaxLength(200);
+        builder.Property(item => item.Reason).HasMaxLength(2000);
+
+        builder.HasIndex(item => item.Status);
+        builder.HasIndex(item => item.CurrentLguId);
+        builder.HasIndex(item => item.ProposedAgainstEditionId);
+
+        // At most one LIVE correspondence per legacy code. Two would mean one legacy code meaning two
+        // current units, and geometry keyed to it could attach to either.
+        builder.HasIndex(item => item.LegacyCanonicalPsgcCode)
+            .IsUnique()
+            .HasFilter("status <> 'Superseded'")
+            .HasDatabaseName("ux_lgu_edition_correspondences_live_per_legacy_code");
+
+        // At most one CONFIRMED correspondence pointing at a given current unit. Two legacy codes resolving
+        // to one unit would let two different outlines claim it, which is the ambiguity the review exists to
+        // surface rather than absorb.
+        builder.HasIndex(item => item.CurrentLguId)
+            .IsUnique()
+            .HasFilter("status = 'Confirmed'")
+            .HasDatabaseName("ux_lgu_edition_correspondences_confirmed_per_unit");
+
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_lgu_edition_correspondences_codes_are_ten_digits",
+                "legacy_canonical_psgc_code ~ '^[0-9]{10}$' "
+                + "AND current_canonical_psgc_code ~ '^[0-9]{10}$'");
+
+            table.HasCheckConstraint(
+                "ck_lgu_edition_correspondences_codes_differ",
+                "legacy_canonical_psgc_code <> current_canonical_psgc_code");
+
+            // A confirmed row must carry the evidence that makes it reviewable, and the two permitted kinds
+            // have different requirements: edition correspondence requires the names to agree, manual review
+            // requires a written reason. Enforced here as well as in the domain, because the constraint is
+            // what holds if a future write path bypasses the entity.
+            table.HasCheckConstraint(
+                "ck_lgu_edition_correspondences_confirmed_is_complete",
+                """
+                status <> 'Confirmed' OR (
+                    reviewed_by IS NOT NULL
+                    AND reviewed_at IS NOT NULL
+                    AND confirmed_against_edition_id IS NOT NULL
+                    AND evidence IN ('EditionCorrespondence', 'ManualReview')
+                    AND (evidence <> 'ManualReview' OR char_length(btrim(reason)) >= 20)
+                    AND (evidence <> 'EditionCorrespondence' OR names_agree)
+                )
+                """);
+
+            table.HasCheckConstraint(
+                "ck_lgu_edition_correspondences_rejected_has_reason",
+                "status <> 'Rejected' OR (reviewed_by IS NOT NULL AND reason IS NOT NULL)");
         });
     }
 }

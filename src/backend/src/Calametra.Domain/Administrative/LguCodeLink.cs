@@ -52,6 +52,18 @@ public enum LguLinkEvidence
     RegisterMatch = 1,
     DigitReslice = 2,
     ManualReview = 3,
+
+    /// <summary>
+    /// Two editions of the ten-digit register state the same nine-digit code for one unit, and a confirmed
+    /// pairing resolves that code to a current unit.
+    /// </summary>
+    /// <remarks>
+    /// Applies to <see cref="LguEditionCorrespondence"/> rather than to a code pairing. It exists because
+    /// the PSA recodes units when the map of regions changes — the Negros Island Region, Sulu's transfer,
+    /// the highly urbanised cities — so an external dataset keyed to an earlier ten-digit edition needs a
+    /// reviewed route to the current one. The nine-digit code both editions publish is that route.
+    /// </remarks>
+    EditionCorrespondence = 4,
 }
 
 public static class LguCodeLinkErrors

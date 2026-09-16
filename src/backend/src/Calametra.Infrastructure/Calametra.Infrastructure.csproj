@@ -20,6 +20,7 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="ClosedXML" />
     <PackageReference Include="OsmSharp" />
+    <PackageReference Include="NetTopologySuite.IO.ShapeFile" />
   </ItemGroup>
 
 </Project>

@@ -342,6 +342,7 @@ public static class ImportLguBoundaries
                     source_.Id,
                     extract.Id,
                     feature.OsmRelationId,
+                    sourceFeatureCode: null,
                     feature.RefTag,
                     feature.Name,
                     feature.AdminLevel,

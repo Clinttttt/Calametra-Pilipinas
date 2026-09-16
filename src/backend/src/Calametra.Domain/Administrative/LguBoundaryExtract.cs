@@ -22,6 +22,16 @@ public enum BoundaryProvenance
 
     /// <summary>A local file the operator did not declare as a named upstream extract.</summary>
     LocalFile = 3,
+
+    /// <summary>
+    /// The OCHA Common Operational Dataset for administrative boundaries, from NAMRIA and PSA sources.
+    /// </summary>
+    /// <remarks>
+    /// Named separately from a generic file because the licence and the geometry semantics travel with the
+    /// provenance: CC BY 3.0 IGO rather than ODbL, and land outlines rather than municipal-water
+    /// jurisdiction. ADR-005 D2a turns on that second distinction.
+    /// </remarks>
+    OchaCodAb = 4,
 }
 
 public static class LguBoundaryExtractErrors

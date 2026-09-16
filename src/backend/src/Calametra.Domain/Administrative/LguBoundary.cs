@@ -88,7 +88,8 @@ public sealed class LguBoundary : AuditableEntity
         string canonicalPsgcCode,
         Guid sourceId,
         Guid extractId,
-        long osmRelationId,
+        long? osmRelationId,
+        string? sourceFeatureCode,
         string? osmRefTag,
         string? osmName,
         int osmAdminLevel,
@@ -106,6 +107,7 @@ public sealed class LguBoundary : AuditableEntity
         SourceId = sourceId;
         ExtractId = extractId;
         OsmRelationId = osmRelationId;
+        SourceFeatureCode = sourceFeatureCode;
         OsmRefTag = osmRefTag;
         OsmName = osmName;
         OsmAdminLevel = osmAdminLevel;
@@ -139,7 +141,14 @@ public sealed class LguBoundary : AuditableEntity
     public Guid ExtractId { get; private set; }
 
     /// <summary>The OSM relation this outline was assembled from.</summary>
-    public long OsmRelationId { get; private set; }
+    public long? OsmRelationId { get; private set; }
+
+    /// <summary>The publisher's own key for the feature, where it is not an OSM relation.</summary>
+    /// <remarks>
+    /// For COD-AB this is the PSGC pcode the set carries. Held because a boundary has to be traceable to
+    /// the row it came from in the file it came from, and only OSM identifies features by relation id.
+    /// </remarks>
+    public string? SourceFeatureCode { get; private set; }
 
     /// <summary>
     /// The relation's <c>ref</c> tag exactly as observed, whatever edition of the code it held.
@@ -204,7 +213,8 @@ public sealed class LguBoundary : AuditableEntity
         string canonicalPsgcCode,
         Guid sourceId,
         Guid extractId,
-        long osmRelationId,
+        long? osmRelationId,
+        string? sourceFeatureCode,
         string? osmRefTag,
         string? osmName,
         int osmAdminLevel,
@@ -263,6 +273,7 @@ public sealed class LguBoundary : AuditableEntity
             sourceId,
             extractId,
             osmRelationId,
+            string.IsNullOrWhiteSpace(sourceFeatureCode) ? null : sourceFeatureCode.Trim(),
             string.IsNullOrWhiteSpace(osmRefTag) ? null : osmRefTag.Trim(),
             string.IsNullOrWhiteSpace(osmName) ? null : osmName.Trim(),
             osmAdminLevel,

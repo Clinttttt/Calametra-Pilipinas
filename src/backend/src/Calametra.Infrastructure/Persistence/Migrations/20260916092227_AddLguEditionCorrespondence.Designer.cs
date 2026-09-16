@@ -3,6 +3,7 @@ using System;
 using Calametra.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Calametra.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916092227_AddLguEditionCorrespondence")]
+    partial class AddLguEditionCorrespondence
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -206,7 +209,7 @@ namespace Calametra.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("osm_ref_tag");
 
-                    b.Property<long?>("OsmRelationId")
+                    b.Property<long>("OsmRelationId")
                         .HasColumnType("bigint")
                         .HasColumnName("osm_relation_id");
 
@@ -214,11 +217,6 @@ namespace Calametra.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("repair_note");
-
-                    b.Property<string>("SourceFeatureCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("source_feature_code");
 
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid")
@@ -262,9 +260,6 @@ namespace Calametra.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OsmRelationId")
                         .HasDatabaseName("ix_lgu_boundaries_osm_relation_id");
-
-                    b.HasIndex("SourceFeatureCode")
-                        .HasDatabaseName("ix_lgu_boundaries_source_feature_code");
 
                     b.ToTable("lgu_boundaries", null, t =>
                         {

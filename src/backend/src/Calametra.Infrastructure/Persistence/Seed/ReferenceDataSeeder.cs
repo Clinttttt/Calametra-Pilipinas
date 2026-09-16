@@ -1,5 +1,6 @@
 using Calametra.Domain.Hazards;
 using Calametra.Domain.Sources;
+using Calametra.Infrastructure.Sources.CodAb;
 using Calametra.Infrastructure.Sources.Gem;
 using Calametra.Infrastructure.Sources.GeoNames;
 using Calametra.Infrastructure.Sources.Psgc;
@@ -50,6 +51,7 @@ public sealed class ReferenceDataSeeder(
         await EnsurePsgcRegisterAsync(now, cancellationToken);
         await EnsureOpenStreetMapAsync(now, cancellationToken);
         await EnsureOpenStreetMapBoundariesAsync(now, cancellationToken);
+        await EnsureCodAbBoundariesAsync(now, cancellationToken);
         await EnsurePagasaNamesAsync(now, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
@@ -809,6 +811,82 @@ public sealed class ReferenceDataSeeder(
                     + "Caraga would make this platform most confident exactly where a national service "
                     + "should not be.")
             // Share-alike, and stored rather than proxied: these polygons are held in this database.
+            .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: false);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(created);
+        }
+
+        return created;
+    }
+
+    /// <summary>
+    /// OCHA COD-AB — the canonical on-land administrative geometry, per ADR-005 D2.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Land outlines, from the national mapping authority through OCHA.</b> This is the set that answers
+    /// which municipality a point on land belongs to, and it carries the PSGC in <c>adm3_pcode</c>, so no
+    /// boundary is ever matched to a unit by name.
+    /// </para>
+    /// <para>
+    /// <b>CC BY 3.0 IGO is attribution, not share-alike</b>, which is a materially different position from
+    /// the town centres: those remain ODbL and keep their obligation, but the boundary set adds none. The
+    /// distinction belongs on the Sources page rather than in a footnote, because it changes what may be
+    /// published downstream.
+    /// </para>
+    /// <para>
+    /// Separate from the OSM boundary row and never mixed with it. ADR-005 D2a: OSM outlines extend to
+    /// municipal waters and these do not, so they are different quantities and one column may not hold both.
+    /// </para>
+    /// </remarks>
+    private async Task<DataSource> EnsureCodAbBoundariesAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources
+            .FirstOrDefaultAsync(source => source.Slug == CodAbOptions.Slug, cancellationToken);
+
+        var created = existing ?? DataSource.Create(
+                CodAbOptions.Slug,
+                agency: "UN OCHA, from NAMRIA and the Philippine Statistics Authority",
+                datasetName:
+                    "Philippines subnational administrative boundaries, COD-AB ADM3 (cities and "
+                    + "municipalities)",
+                SourceAccessKind.BulkFile,
+                attribution:
+                    "Administrative boundaries from the OCHA Common Operational Dataset for the "
+                    + "Philippines, sourced from NAMRIA and the Philippine Statistics Authority, available "
+                    + "under CC BY 3.0 IGO.",
+                now)
+            .Value;
+
+        created
+            .WithLinks(
+                sourceUrl: "https://data.humdata.org/dataset/cod-ab-phl",
+                termsUrl: "https://creativecommons.org/licenses/by/3.0/igo/")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "City and municipality outlines for the whole country, attached to the PSA ten-digit "
+                    + "register by the PSGC code the set carries. 1,642 ADM3 units were published against "
+                    + "1,642 in the active register when this was measured; 1,500 matched the current code "
+                    + "directly and the remainder through reviewed edition correspondence, because the PSA "
+                    + "recodes units whenever the map of regions changes.\n\n"
+                    + "These are LAND outlines. They are not municipal-water jurisdiction, and this platform "
+                    + "does not store the two as one concept. Philippine cities and municipalities do "
+                    + "administer waters to 15 km from their coastline under RA 8550, and the "
+                    + "OpenStreetMap boundary relations map that extent — a median 1.66 times these areas, "
+                    + "and ten thousand times for Kalayaan, which is 0.4 km2 of land. Mixing them would make "
+                    + "every area and every containment count mean two different things depending on the "
+                    + "row.\n\n"
+                    + "So containment answers where a point on land is. Offshore and proximity questions stay "
+                    + "with the radius, which is the mechanism this platform already uses for comparison. "
+                    + "Most Philippine earthquakes are offshore and are therefore in no municipality, which "
+                    + "is the honest answer rather than a gap to fill.\n\n"
+                    + "Barangay boundaries are out of scope, as they are for every geometry source here.")
+            // Storable, and attribution-only: unlike ODbL this imposes no share-alike on a derived database.
             .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: false);
 
         if (existing is null)

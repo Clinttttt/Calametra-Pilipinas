@@ -54,6 +54,8 @@ public sealed class DependencyInjectionTests
         services.AddScoped(_ => Substitute.For<ILguCrosswalkReviewContext>());
         services.AddScoped(_ => Substitute.For<IPsgcRegisterSource>());
         services.AddScoped(_ => Substitute.For<ILguBoundarySource>());
+        services.AddScoped(_ => Substitute.For<IBoundaryCatalogueSource>());
+        services.AddScoped(_ => Substitute.For<ICanonicalBoundarySource>());
         services.AddScoped(_ => Substitute.For<IEarthquakeCatalogSource>());
         services.AddScoped(_ => Substitute.For<IActiveFaultSource>());
         services.AddScoped(_ => Substitute.For<IHazardMapService>());
@@ -186,6 +188,28 @@ public sealed class DependencyInjectionTests
         {
             typeof(Features.Administrative.AcceptLguCrosswalkException.Command),
             typeof(Domain.Abstractions.Result)
+        },
+
+        // Edition correspondence: reviewed identity between two editions of the ten-digit register.
+        {
+            typeof(Features.Administrative.ProposeLguEditionCorrespondences.Command),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.ProposeLguEditionCorrespondences.CorrespondenceProposalSummary>)
+        },
+        {
+            typeof(Features.Administrative.ConfirmLguEditionCorrespondenceClass.Command),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.ConfirmLguEditionCorrespondenceClass.CorrespondenceConfirmationSummary>)
+        },
+        {
+            typeof(Features.Administrative.ConfirmLguEditionCorrespondence.Command),
+            typeof(Domain.Abstractions.Result)
+        },
+
+        {
+            typeof(Features.Administrative.ImportCodAbBoundaries.Command),
+            typeof(Domain.Abstractions.Result<
+                Features.Administrative.ImportCodAbBoundaries.CodAbImportSummary>)
         },
 
         // Geometry. ADR-005 D2 and D7: acquiring outlines and judging whether there are enough of them are

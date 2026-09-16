@@ -60,6 +60,17 @@
       MIT licensed. Pinned exactly, as everything here is.
     -->
     <PackageVersion Include="OsmSharp" Version="6.2.0" />
+
+    <!--
+      NetTopologySuite.IO.ShapeFile reads the OCHA COD-AB boundary set.
+
+      HDX publishes it as an ESRI shapefile and a GeoJSON of comparable size; the shapefile is read because
+      its .dbf gives the attribute table without parsing a gigabyte of coordinates to find the PSGC codes,
+      which is what the correspondence review needs before any geometry is imported at all.
+
+      BSD-3-Clause, from the same project as the NetTopologySuite already in use here. Pinned exactly.
+    -->
+    <PackageVersion Include="NetTopologySuite.IO.ShapeFile" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">

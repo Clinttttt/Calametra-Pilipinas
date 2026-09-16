@@ -72,5 +72,14 @@ public interface ILguCrosswalkReviewContext
     /// </remarks>
     DbSet<LguBoundaryExtract> LguBoundaryExtracts { get; }
 
+    /// <summary>
+    /// Reviewed correspondences from an earlier register edition's ten-digit codes to current units.
+    /// </summary>
+    /// <remarks>
+    /// On the review surface because a correspondence is reviewed identity, and because an unconfirmed one
+    /// must be unreachable from anything that attaches geometry.
+    /// </remarks>
+    DbSet<LguEditionCorrespondence> LguEditionCorrespondences { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

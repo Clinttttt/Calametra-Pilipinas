@@ -47,6 +47,41 @@ internal static class LguBoundaryPrinter
         WriteList("CHUNKS NEVER FETCHED", summary.FailedChunks, 20);
     }
 
+    public static void WriteCanonicalImport(ImportCodAbBoundaries.CodAbImportSummary summary)
+    {
+        ArgumentNullException.ThrowIfNull(summary);
+
+        var culture = CultureInfo.InvariantCulture;
+
+        Console.WriteLine();
+        Console.WriteLine("ADR-005 D2 — CANONICAL ON-LAND GEOMETRY IMPORT");
+        Console.WriteLine("==============================================");
+        Console.WriteLine();
+        Console.WriteLine($"  Source             {summary.SourceSlug}");
+        Console.WriteLine($"  Extract            {summary.ExtractLabel}");
+        Console.WriteLine($"  File               {summary.OriginalFileName}");
+        Console.WriteLine($"  SHA-256            {summary.FileSha256}");
+        Console.WriteLine($"  Vintage            {summary.Vintage?.ToString("yyyy-MM-dd", culture) ?? "not stated"}");
+        Console.WriteLine();
+        Console.WriteLine(string.Create(culture, $"  Features read      {summary.FeaturesRead}"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Matched            {summary.MatchedOnCanonicalCode} on the current canonical code, {summary.MatchedOnCorrespondence} through confirmed edition correspondence"));
+        Console.WriteLine();
+        Console.WriteLine(string.Create(culture, $"  Stored             {summary.Stored}"));
+        Console.WriteLine(string.Create(culture, $"  Unchanged          {summary.Unchanged}"));
+        Console.WriteLine(string.Create(
+            culture,
+            $"  Superseded         {summary.Superseded} previous outline(s) retired and retained"));
+        Console.WriteLine(string.Create(culture, $"  Repaired           {summary.Repaired}"));
+        Console.WriteLine();
+
+        WriteList("UNMATCHED FEATURES (never name-matched)", summary.UnmatchedFeatures, 20);
+        WriteList("AMBIGUOUS UNITS (nothing stored)", summary.AmbiguousUnits, 20);
+        WriteList("REJECTED BY THE READER", summary.RejectedByReader, 12);
+        WriteList("REFUSED BY THE DOMAIN", summary.RejectedByDomain, 12);
+    }
+
     public static void WriteCoverage(GetLguBoundaryCoverage.BoundaryCoverageReport report)
     {
         ArgumentNullException.ThrowIfNull(report);
