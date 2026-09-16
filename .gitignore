@@ -102,3 +102,6 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+
+# Source-evaluation spike downloads: large, immutable, and reproducible from their pinned URLs.
+.spike/
