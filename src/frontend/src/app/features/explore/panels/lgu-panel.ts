@@ -1,6 +1,9 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 
+import { CalametraApi } from '../../../core/api/calametra-api';
+import { type LguEarthquakeContainment, type ProblemDetails } from '../../../core/api/contracts';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { type IconName } from '../../../shared/ui/icon/icon-paths';
 import { LguSelectionStore } from '../../../core/administrative/lgu-selection-store';
@@ -30,6 +33,35 @@ import { LguSelectionStore } from '../../../core/administrative/lgu-selection-st
 })
 export class LguPanel {
   protected readonly store = inject(LguSelectionStore);
+  private readonly api = inject(CalametraApi);
+
+  /** Local, hazard-specific request state. It never reads or mutates the place/radius store. */
+  protected readonly earthquakeContainment = signal<EarthquakeContainmentState>({ status: 'idle' });
+
+  constructor() {
+    effect((onCleanup) => {
+      const selected = this.store.selected();
+
+      if (selected === null) {
+        this.earthquakeContainment.set({ status: 'idle' });
+        return;
+      }
+
+      this.earthquakeContainment.set({ status: 'loading' });
+
+      const subscription = this.api.getLguEarthquakeContainment(selected.psgc).subscribe({
+        next: (summary) => this.earthquakeContainment.set({ status: 'ready', summary }),
+        error: (error: unknown) =>
+          this.earthquakeContainment.set({
+            status: isBoundaryUnavailable(error) ? 'unavailable' : 'failed',
+          }),
+      });
+
+      // Selection can change while a request is in flight. Cancelling prevents the previous LGU's count
+      // from replacing the current one when responses arrive out of order.
+      onCleanup(() => subscription.unsubscribe());
+    });
+  }
 
   /**
    * Icon per administrative level.
@@ -40,4 +72,19 @@ export class LguPanel {
   protected icon(kind: string): IconName {
     return kind === 'City' ? 'lens-exposure' : 'locate';
   }
+}
+
+type EarthquakeContainmentState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'loading' }
+  | { readonly status: 'ready'; readonly summary: LguEarthquakeContainment }
+  | { readonly status: 'unavailable' }
+  | { readonly status: 'failed' };
+
+function isBoundaryUnavailable(error: unknown): boolean {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 404) {
+    return false;
+  }
+
+  return (error.error as ProblemDetails | null)?.code === 'lgu_boundary.not_available';
 }

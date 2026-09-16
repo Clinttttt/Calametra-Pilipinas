@@ -20,6 +20,7 @@ import {
   type HazardFeatureCollection,
   type HazardLayer,
   type MapDataResponse,
+  type LguEarthquakeContainment,
   type NearbyCycloneTracks,
   type PaginatedList,
   type PlaceContext,
@@ -284,9 +285,20 @@ export class CalametraApi {
    * directory being re-imported — the same rule as {@link getEarthquakeByAgencyId}.
    */
   getPlaceContext(psgcCode: string, radiusKm: number): Observable<PlaceContext> {
-    return this.http.get<PlaceContext>(
-      `/api/places/${encodeURIComponent(psgcCode)}/context`,
-      { params: toHttpParams({ radiusKm }) },
+    return this.http.get<PlaceContext>(`/api/places/${encodeURIComponent(psgcCode)}/context`, {
+      params: toHttpParams({ radiusKm }),
+    });
+  }
+
+  /**
+   * Counts distinct canonical earthquake epicentres within/on one current COD-AB land boundary.
+   *
+   * This is containment rather than place-radius proximity. Callers consume the returned count
+   * semantics and must not depend on which PostGIS predicate currently implements them.
+   */
+  getLguEarthquakeContainment(canonicalPsgcCode: string): Observable<LguEarthquakeContainment> {
+    return this.http.get<LguEarthquakeContainment>(
+      `/api/lgu-boundaries/${encodeURIComponent(canonicalPsgcCode)}/earthquakes`,
     );
   }
 

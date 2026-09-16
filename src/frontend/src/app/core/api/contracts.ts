@@ -802,6 +802,35 @@ export interface PlaceContext {
   readonly notes: readonly string[];
 }
 
+/** The dated COD-AB boundary edition used for an LGU containment result. */
+export interface LguBoundaryEdition {
+  readonly label: string;
+  readonly vintage: string | null;
+  readonly attribution: string;
+}
+
+/**
+ * Earthquakes whose canonical epicentres fall within/on one current LGU land boundary.
+ *
+ * This is deliberately hazard-specific. It is neither the place-radius answer nor a generic hazard
+ * total, and `earthquakeCount` counts canonical events rather than per-agency observation rows.
+ */
+export interface LguEarthquakeContainment {
+  readonly canonicalPsgcCode: string;
+  readonly name: string;
+  readonly level: string;
+  readonly landAreaSquareKm: number;
+  readonly earthquakeCount: number;
+
+  /**
+   * Diagnostic implementation metadata. Callers must not branch on its literal value; the durable
+   * contract is `countSemantics`, including exact-boundary epicentres.
+   */
+  readonly spatialPredicate: string;
+  readonly countSemantics: string;
+  readonly boundary: LguBoundaryEdition;
+}
+
 /**
  * One upstream dataset, as the platform records it.
  *

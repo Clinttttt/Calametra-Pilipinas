@@ -33,19 +33,62 @@
       </div>
     </dl>
 
+    <section class="lgu__hazard" aria-labelledby="lgu-earthquakes-heading" aria-live="polite">
+      <h3 id="lgu-earthquakes-heading" class="lgu__hazard-heading">Earthquakes</h3>
+
+      @switch (earthquakeContainment().status) {
+        @case ('loading') {
+          <p class="lgu__hazard-state">Counting distinct earthquake epicentres&hellip;</p>
+        }
+
+        @case ('ready') {
+          @if (earthquakeContainment(); as state) {
+            @if (state.status === 'ready') {
+              <p class="lgu__hazard-count">{{ state.summary.earthquakeCount | number }}</p>
+              <p class="lgu__hazard-label">
+                Distinct earthquake epicentres within/on the current land boundary
+              </p>
+
+              @if (state.summary.earthquakeCount === 0) {
+                <p class="lgu__hazard-state">
+                  No earthquake epicentres in the catalogue meet this containment definition.
+                </p>
+              }
+
+              <p class="lgu__hazard-semantics">{{ state.summary.countSemantics }}</p>
+              <p class="lgu__hazard-source">Boundary: {{ state.summary.boundary.label }}</p>
+            }
+          }
+        }
+
+        @case ('unavailable') {
+          <p class="lgu__hazard-state lgu__hazard-state--caution">
+            Boundary unavailable. This known LGU has no current COD-AB land boundary, so containment
+            cannot be calculated.
+          </p>
+        }
+
+        @case ('failed') {
+          <p class="lgu__hazard-state lgu__hazard-state--error">
+            Earthquake containment could not be loaded. Please try again.
+          </p>
+        }
+      }
+    </section>
+
     <!-- Two misreadings this panel exists to prevent, and both are easy to make: that the outline is the
          municipality's maritime jurisdiction, and that selecting it is the same gesture as opening a
          radius. -->
     <p class="lgu__note">
       <span class="lgu__note-lead">Land outline only.</span>
-      Not municipal waters — cities and municipalities administer waters to 15&nbsp;km offshore, and that
-      extent is not stored here.
+      Not municipal waters — cities and municipalities administer waters to 15&nbsp;km offshore, and
+      that extent is not stored here.
     </p>
 
     <p class="lgu__note">
       <span class="lgu__note-lead">This names a unit.</span>
-      It is not a radius. Distances and event counts elsewhere are measured from a representative point,
-      which answers a different question.
+      It is not a radius. Distances and event counts elsewhere are measured from a representative
+      point, which answers a different question.
     </p>
   </aside>
 }
