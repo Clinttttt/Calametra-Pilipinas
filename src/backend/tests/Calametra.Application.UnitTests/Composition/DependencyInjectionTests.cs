@@ -207,6 +207,10 @@ public sealed class DependencyInjectionTests
         },
 
         {
+            typeof(Features.Administrative.ConfirmLguSourceNameOverride.Command),
+            typeof(Domain.Abstractions.Result)
+        },
+        {
             typeof(Features.Administrative.ImportCodAbBoundaries.Command),
             typeof(Domain.Abstractions.Result<
                 Features.Administrative.ImportCodAbBoundaries.CodAbImportSummary>)

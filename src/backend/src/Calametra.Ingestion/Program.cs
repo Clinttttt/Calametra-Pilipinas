@@ -128,6 +128,10 @@ var isManualCorrespondence = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:ConfirmManualCorrespondences"],
     out var manualCorrFlag) && manualCorrFlag;
 
+var isNameOverride = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ConfirmNameOverrides"],
+    out var nameOvFlag) && nameOvFlag;
+
 var isCanonicalImport = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:ImportCanonicalBoundaries"],
     out var canonFlag) && canonFlag;
@@ -158,7 +162,8 @@ var isOneShot = isBackfill
     || isCorrespondenceProposal
     || isCorrespondenceClass
     || isManualCorrespondence
-    || isCanonicalImport;
+    || isCanonicalImport
+    || isNameOverride;
 
 if (!isOneShot)
 {
@@ -194,7 +199,8 @@ await using (var scope = host.Services.CreateAsyncScope())
         && !isCorrespondenceProposal
         && !isCorrespondenceClass
         && !isManualCorrespondence
-        && !isCanonicalImport;
+        && !isCanonicalImport
+        && !isNameOverride;
 
     if (needsFaultGeometry)
     {
@@ -637,6 +643,24 @@ if (isManualCorrespondence)
     await using var scope = host.Services.CreateAsyncScope();
 
     return await LguManualCorrespondenceRunner.ConfirmAsync(
+        scope.ServiceProvider.GetRequiredService<IDispatcher>(),
+        reviewedBy);
+}
+
+if (isNameOverride)
+{
+    var reviewedBy = builder.Configuration["Ingestion:Lgu:ReviewedBy"];
+
+    if (string.IsNullOrWhiteSpace(reviewedBy))
+    {
+        Console.WriteLine("Ingestion:Lgu:ReviewedBy is required. An override carries a person's name.");
+
+        return 1;
+    }
+
+    await using var scope = host.Services.CreateAsyncScope();
+
+    return await LguNameOverrideRunner.ConfirmAsync(
         scope.ServiceProvider.GetRequiredService<IDispatcher>(),
         reviewedBy);
 }

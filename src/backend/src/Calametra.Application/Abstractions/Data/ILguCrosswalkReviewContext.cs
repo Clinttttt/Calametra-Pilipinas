@@ -81,5 +81,8 @@ public interface ILguCrosswalkReviewContext
     /// </remarks>
     DbSet<LguEditionCorrespondence> LguEditionCorrespondences { get; }
 
+    /// <summary>Reviewed findings that a publisher's name for a unit is a superseded name.</summary>
+    DbSet<LguSourceNameOverride> LguSourceNameOverrides { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

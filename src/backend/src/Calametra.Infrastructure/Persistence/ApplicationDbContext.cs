@@ -57,6 +57,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<LguEditionCorrespondence> LguEditionCorrespondences =>
         Set<LguEditionCorrespondence>();
 
+    public DbSet<LguSourceNameOverride> LguSourceNameOverrides => Set<LguSourceNameOverride>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

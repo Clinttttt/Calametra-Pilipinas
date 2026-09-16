@@ -432,6 +432,46 @@ internal sealed class LguEditionCorrespondenceConfiguration
 }
 
 /// <summary>
+/// Reviewed findings that a publisher's name for a unit is a name the PSA has replaced.
+/// </summary>
+internal sealed class LguSourceNameOverrideConfiguration
+    : IEntityTypeConfiguration<LguSourceNameOverride>
+{
+    public void Configure(EntityTypeBuilder<LguSourceNameOverride> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("lgu_source_name_overrides");
+
+        builder.HasKey(item => item.Id);
+
+        builder.Property(item => item.CanonicalPsgcCode).HasMaxLength(10).IsFixedLength().IsRequired();
+        builder.Property(item => item.SourceName).HasMaxLength(200).IsRequired();
+        builder.Property(item => item.RegisterName).HasMaxLength(200).IsRequired();
+        builder.Property(item => item.ReviewedBy).HasMaxLength(200).IsRequired();
+        builder.Property(item => item.Reason).HasMaxLength(2000).IsRequired();
+
+        // One override per code and publisher name. Keyed on both so it excuses a named disagreement rather
+        // than the unit in general: a different name in a later vintage does not inherit this decision.
+        builder.HasIndex(item => new { item.CanonicalPsgcCode, item.SourceName })
+            .IsUnique()
+            .HasDatabaseName("ux_lgu_source_name_overrides_per_code_and_name");
+
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_lgu_source_name_overrides_code_is_ten_digits",
+                "canonical_psgc_code ~ '^[0-9]{10}$'");
+
+            // The reason is the whole justification, so the database refuses one too short to name evidence.
+            table.HasCheckConstraint(
+                "ck_lgu_source_name_overrides_reason_is_evidenced",
+                "char_length(btrim(reason)) >= 40");
+        });
+    }
+}
+
+/// <summary>
 /// The confirmed-only read boundary, mapped to a view rather than to the base table.
 /// </summary>
 /// <remarks>

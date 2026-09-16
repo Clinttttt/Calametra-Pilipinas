@@ -47,6 +47,7 @@ public static class ImportCodAbBoundaries
         int FeaturesRead,
         int MatchedOnCanonicalCode,
         int MatchedOnCorrespondence,
+        int MatchedOnNameOverride,
         IReadOnlyList<string> CodeNameConflicts,
         int Stored,
         int Unchanged,
@@ -125,6 +126,15 @@ public static class ImportCodAbBoundaries
                 }
             }
 
+            // Reviewed name overrides, keyed on the exact code and the exact publisher name.
+            var overrideRows = await review.LguSourceNameOverrides
+                .Select(item => new { item.CanonicalPsgcCode, item.SourceName })
+                .ToListAsync(cancellationToken);
+
+            var overrides = overrideRows
+                .Select(item => (item.CanonicalPsgcCode, item.SourceName))
+                .ToHashSet();
+
             var snapshot = await source.ReadAsync(cancellationToken);
 
             var extract = await ReconcileExtractAsync(snapshot, dataSource.Id, now, cancellationToken);
@@ -134,6 +144,7 @@ public static class ImportCodAbBoundaries
             var conflicts = new List<string>();
             var onCanonical = 0;
             var onCorrespondence = 0;
+            var onOverride = 0;
 
             foreach (var feature in snapshot.Features)
             {
@@ -161,6 +172,17 @@ public static class ImportCodAbBoundaries
                         lguId = direct.Id;
                         onCanonical++;
                         route = "canonical code";
+                    }
+                    else if (overrides.Contains((feature.CanonicalCode, feature.Name ?? string.Empty)))
+                    {
+                        // A reviewed override for this exact code and this exact publisher name. It says a
+                        // person checked that the publisher is using a name the PSA has replaced — COD-AB
+                        // writes "San Isidro" where the register now writes "Sawata". The guard is not
+                        // relaxed: any other disagreement, including a different name for the same code in a
+                        // later vintage, still refuses.
+                        lguId = direct.Id;
+                        onOverride++;
+                        route = "canonical code with reviewed name override";
                     }
                     else
                     {
@@ -297,6 +319,7 @@ public static class ImportCodAbBoundaries
                 snapshot.Features.Count,
                 onCanonical,
                 onCorrespondence,
+                onOverride,
                 conflicts,
                 stored,
                 unchanged,

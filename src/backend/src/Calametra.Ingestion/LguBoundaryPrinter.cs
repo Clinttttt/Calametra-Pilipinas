@@ -146,12 +146,13 @@ internal static class LguBoundaryPrinter
 
         Console.WriteLine();
         Console.WriteLine("GEOMETRY SANITY");
-        Console.WriteLine("  Areas are JURISDICTIONAL, not land: the OSM Philippine convention maps a");
-        Console.WriteLine("  municipality out to its municipal waters, 15 km from the coastline (RA 8550),");
-        Console.WriteLine("  so an island municipality's outline is mostly sea.");
+        Console.WriteLine("  These are LAND outlines (ADR-005 D2). They stop at the coast and are not");
+        Console.WriteLine("  municipal-water jurisdiction: Philippine LGUs do administer waters to 15 km");
+        Console.WriteLine("  offshore under RA 8550, but that is a separate concept (D2a) and is not stored");
+        Console.WriteLine("  here. Offshore and proximity questions stay with the radius.");
         Console.WriteLine(string.Create(
             culture,
-            $"  Total area         {report.TotalAreaSquareKm:N0} km2 of jurisdiction"));
+            $"  Total area         {report.TotalAreaSquareKm:N0} km2 of land, against roughly 300,000 km2 for the country"));
         Console.WriteLine(string.Create(
             culture,
             $"  Smallest outline   {report.SmallestAreaSquareKm:N2} km2"));
