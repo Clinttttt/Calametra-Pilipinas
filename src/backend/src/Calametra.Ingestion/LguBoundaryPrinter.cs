@@ -76,6 +76,29 @@ internal static class LguBoundaryPrinter
             $"  Superseded         {report.BoundariesSuperseded} retained with their validity period"));
         Console.WriteLine(string.Create(culture, $"  Repaired           {report.BoundariesRepaired}"));
         Console.WriteLine();
+        Console.WriteLine("PROVENANCE OF THE OUTLINES IN FORCE");
+        Console.WriteLine();
+
+        foreach (var extract in report.Extracts)
+        {
+            Console.WriteLine(string.Create(
+                culture,
+                $"  {extract.OutlinesInForce,5} outline(s)  {extract.Label}"));
+            Console.WriteLine($"        provenance   {extract.Provenance}");
+            Console.WriteLine($"        file         {extract.OriginalFileName ?? "n/a — read from an API"}");
+            Console.WriteLine($"        SHA-256      {extract.FileSha256 ?? "n/a — no single set of bytes"}");
+
+            if (extract.FileSizeBytes is { } bytes)
+            {
+                Console.WriteLine(string.Create(culture, $"        size         {bytes / (1024 * 1024)} MB"));
+            }
+
+            Console.WriteLine($"        vintage      {extract.Vintage?.ToString("yyyy-MM-dd", culture) ?? "not stated"}");
+            Console.WriteLine($"        acquired     {extract.AcquiredAt:yyyy-MM-dd HH:mm:ss} UTC");
+            Console.WriteLine($"        acquisition  {extract.AcquisitionNote ?? "not declared"}");
+            Console.WriteLine();
+        }
+
         Console.WriteLine("COVERAGE BY LEVEL, against the active register edition");
         Console.WriteLine();
 

@@ -87,6 +87,80 @@ public static class ImportLguBoundaries
         TimeProvider timeProvider,
         ILogger<Handler> logger) : ICommandHandler<Command, BoundaryImportSummary>
     {
+        /// <summary>
+        /// Finds or creates the row for this acquisition.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Keyed on the digest for a file, so re-reading the same extract reuses its row rather than adding
+        /// a second provenance record for one file. That is what makes re-running the import safe: the
+        /// partial Overpass acquisition and this extract are different rows, and the outlines from each stay
+        /// attributable to what they actually came from.
+        /// </para>
+        /// <para>
+        /// Keyed on label and route for an API read, which has no digest to key on — there is no single set
+        /// of bytes when the answer arrives in fifty-four pieces from whichever mirror was free.
+        /// </para>
+        /// </remarks>
+        private async Task<LguBoundaryExtract> ReconcileExtractAsync(
+            BoundarySnapshot snapshot,
+            Guid sourceId,
+            DateTimeOffset now,
+            CancellationToken cancellationToken)
+        {
+            var existing = snapshot.FileSha256 is { } digest
+                ? await review.LguBoundaryExtracts
+                    .FirstOrDefaultAsync(
+                        candidate => candidate.FileSha256 == digest,
+                        cancellationToken)
+                : await review.LguBoundaryExtracts
+                    .FirstOrDefaultAsync(
+                        candidate => candidate.Label == snapshot.Label
+                            && candidate.AccessRoute == snapshot.AccessRoute,
+                        cancellationToken);
+
+            if (existing is not null)
+            {
+                existing.WithUpstreamVintage(snapshot.Vintage);
+
+                return existing;
+            }
+
+            var created = LguBoundaryExtract.Create(
+                sourceId,
+                snapshot.Label,
+                snapshot.Provenance,
+                snapshot.AccessRoute,
+                now).Value;
+
+            if (snapshot.OriginalFileName is not null && snapshot.FileSha256 is not null)
+            {
+                var recorded = created.WithFile(
+                    snapshot.OriginalFileName,
+                    snapshot.FileSha256,
+                    snapshot.FileSizeBytes ?? 0L,
+                    snapshot.Vintage,
+                    snapshot.AcquisitionNote);
+
+                if (recorded.IsFailure)
+                {
+                    // A malformed digest must not be recorded as provenance at all. Better to fail the
+                    // import than to store geometry whose origin looks checkable and is not.
+                    throw new InvalidOperationException(
+                        $"The extract's acquisition chain was rejected: {recorded.Error!.Code} — "
+                        + recorded.Error.Description);
+                }
+            }
+            else
+            {
+                created.WithUpstreamVintage(snapshot.Vintage);
+            }
+
+            review.LguBoundaryExtracts.Add(created);
+
+            return created;
+        }
+
         /// <summary>The slug of the boundary <c>DataSource</c>, which must exist before geometry is stored.</summary>
         private const string BoundarySourceSlug = "openstreetmap-ph-admin-boundaries";
 
@@ -107,6 +181,8 @@ public static class ImportLguBoundaries
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(request);
+
+            var now = timeProvider.GetUtcNow();
 
             var source_ = await analytics.DataSources
                 .FirstOrDefaultAsync(candidate => candidate.Slug == BoundarySourceSlug, cancellationToken);
@@ -158,6 +234,11 @@ public static class ImportLguBoundaries
             var chunks = PhilippineBoundaryChunks.All;
 
             var snapshot = await source.ReadAsync(request.AdminLevel, chunks, cancellationToken);
+
+            // The dated acquisition, reconciled rather than duplicated. Re-reading the same file — same
+            // digest — reuses its row, so a re-run does not manufacture a second provenance record for one
+            // extract.
+            var extract = await ReconcileExtractAsync(snapshot, source_.Id, now, cancellationToken);
 
             var unitById = units.ToDictionary(unit => unit.Id);
             var claims = new Dictionary<Guid, List<BoundaryFeature>>();
@@ -218,14 +299,12 @@ public static class ImportLguBoundaries
                 inForceByLgu.TryAdd(boundary.LguId, boundary);
             }
 
-            var now = timeProvider.GetUtcNow();
             var stored = 0;
             var unchanged = 0;
             var superseded = 0;
             var repaired = 0;
             var ambiguous = new List<string>();
             var rejected = new List<string>();
-
             foreach (var (lguId, features) in claims)
             {
                 var unit = unitById[lguId];
@@ -261,6 +340,7 @@ public static class ImportLguBoundaries
                     lguId,
                     unit.CanonicalPsgcCode,
                     source_.Id,
+                    extract.Id,
                     feature.OsmRelationId,
                     feature.RefTag,
                     feature.Name,
@@ -295,6 +375,10 @@ public static class ImportLguBoundaries
                     superseded++;
                 }
             }
+
+            await review.SaveChangesAsync(cancellationToken);
+
+            extract.RecordBoundariesRead(stored, now);
 
             await review.SaveChangesAsync(cancellationToken);
 

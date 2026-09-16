@@ -63,5 +63,14 @@ public interface ILguCrosswalkReviewContext
     /// </remarks>
     DbSet<LguBoundary> LguBoundaries { get; }
 
+    /// <summary>
+    /// Dated, hashed acquisitions of boundary geometry.
+    /// </summary>
+    /// <remarks>
+    /// One row per extract, pointed at by every outline read from it — the same relationship
+    /// <see cref="PsgcRegisterEdition"/> has with the units read from it, and for the same reason.
+    /// </remarks>
+    DbSet<LguBoundaryExtract> LguBoundaryExtracts { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

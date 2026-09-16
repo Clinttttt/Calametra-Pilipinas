@@ -64,6 +64,21 @@ public static class GetLguBoundaryCoverage
     /// the country's ~300,000 km² of land would therefore be comparing two different quantities, and any
     /// area this platform publishes has to say which one it is.
     /// </remarks>
+    /// <param name="Extracts">
+    /// Every acquisition behind the outlines in force, so a coverage figure can name where its geometry came
+    /// from rather than merely how much of it there is.
+    /// </param>
+    public sealed record ExtractProvenance(
+        string Label,
+        string Provenance,
+        string? OriginalFileName,
+        string? FileSha256,
+        long? FileSizeBytes,
+        DateOnly? Vintage,
+        string? AcquisitionNote,
+        DateTimeOffset AcquiredAt,
+        int OutlinesInForce);
+
     public sealed record BoundaryCoverageReport(
         bool AnyBoundariesHeld,
         string? SourceSlug,
@@ -73,6 +88,7 @@ public static class GetLguBoundaryCoverage
         int BoundariesInForce,
         int BoundariesSuperseded,
         int BoundariesRepaired,
+        IReadOnlyList<ExtractProvenance> Extracts,
         IReadOnlyList<LevelCoverage> Levels,
         IReadOnlyList<MissingUnit> MissingUnits,
         IReadOnlyList<string> UnitsWithMultipleVersions,
@@ -119,7 +135,7 @@ public static class GetLguBoundaryCoverage
             if (edition is null)
             {
                 return Result<BoundaryCoverageReport>.Success(new BoundaryCoverageReport(
-                    false, null, null, null, null, 0, 0, 0, [], [], [], 0d, 0d, 0d, null, false,
+                    false, null, null, null, null, 0, 0, 0, [], [], [], [], 0d, 0d, 0d, null, false,
                     "No register edition is held, so there is no population to measure coverage against."));
             }
 
@@ -141,6 +157,7 @@ public static class GetLguBoundaryCoverage
                     boundary.ExtractedAt,
                     boundary.ExtractVersion,
                     boundary.SourceId,
+                    boundary.ExtractId,
                 })
                 .ToListAsync(cancellationToken);
 
@@ -229,6 +246,33 @@ public static class GetLguBoundaryCoverage
                 : await analytics.DataSources
                     .FirstOrDefaultAsync(candidate => candidate.Id == sourceId, cancellationToken);
 
+            // Which acquisitions the outlines in force actually came from. Counted per extract, because
+            // after a partial API read followed by a file import the honest answer is "some of each", and a
+            // single "extracted at" would name only whichever happened to be newest.
+            var extractIds = inForce.Select(boundary => boundary.ExtractId).Distinct().ToList();
+
+            var extractRows = await review.LguBoundaryExtracts
+                .Where(extract => extractIds.Contains(extract.Id))
+                .ToListAsync(cancellationToken);
+
+            var inForceByExtract = inForce
+                .GroupBy(boundary => boundary.ExtractId)
+                .ToDictionary(group => group.Key, group => group.Count());
+
+            var provenance = extractRows
+                .Select(extract => new ExtractProvenance(
+                    extract.Label,
+                    extract.Provenance.ToString(),
+                    extract.OriginalFileName,
+                    extract.FileSha256,
+                    extract.FileSizeBytes,
+                    extract.Vintage,
+                    extract.AcquisitionNote,
+                    extract.AcquiredAt,
+                    inForceByExtract.GetValueOrDefault(extract.Id)))
+                .OrderByDescending(item => item.OutlinesInForce)
+                .ToList();
+
             return Result<BoundaryCoverageReport>.Success(new BoundaryCoverageReport(
                 inForce.Count > 0,
                 source?.Slug,
@@ -238,6 +282,7 @@ public static class GetLguBoundaryCoverage
                 inForce.Count,
                 superseded,
                 inForce.Count(boundary => boundary.WasRepaired),
+                provenance,
                 levels,
                 missing,
                 duplicated,

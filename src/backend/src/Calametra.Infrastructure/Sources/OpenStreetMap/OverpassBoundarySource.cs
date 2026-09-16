@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 
 using Calametra.Application.Abstractions.Sources;
+using Calametra.Domain.Administrative;
 using Calametra.Domain.Geospatial;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -38,8 +39,7 @@ internal sealed class OverpassBoundarySource(
     IOptions<OpenStreetMapOptions> options,
     TimeProvider timeProvider,
     ILogger<OverpassBoundarySource> logger) : ILguBoundarySource
-{
-    private readonly OpenStreetMapOptions options = options.Value;
+{    private readonly OpenStreetMapOptions options = options.Value;
 
     /// <summary>
     /// WGS 84. The geometry is stored as geography, so no projection happens anywhere in this adapter.
@@ -150,6 +150,9 @@ internal sealed class OverpassBoundarySource(
             ExtractVersion = extractVersion,
             Unassembled = unassembled,
             FailedChunks = failedChunks,
+            Provenance = BoundaryProvenance.OverpassApi,
+            Label = $"Overpass read, admin_level {adminLevel}, {extractVersion ?? "vintage not stated"}",
+            AccessRoute = options.BoundaryEndpoints[0],
         };
     }
 

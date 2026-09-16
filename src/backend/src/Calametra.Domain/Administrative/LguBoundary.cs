@@ -16,6 +16,12 @@ public static class LguBoundaryErrors
         "A boundary must name the data source it came from, so the licence and the extract travel with "
         + "the geometry.");
 
+    public static readonly Error ExtractRequired = new(
+        ErrorType.Validation,
+        "lgu_boundary.extract_required",
+        "A boundary must point at the dated extract it was read from, so a containment figure can name the "
+        + "boundary edition behind it.");
+
     public static readonly Error GeometryRequired = new(
         ErrorType.Validation,
         "lgu_boundary.geometry_required",
@@ -81,6 +87,7 @@ public sealed class LguBoundary : AuditableEntity
         Guid lguId,
         string canonicalPsgcCode,
         Guid sourceId,
+        Guid extractId,
         long osmRelationId,
         string? osmRefTag,
         string? osmName,
@@ -97,6 +104,7 @@ public sealed class LguBoundary : AuditableEntity
         LguId = lguId;
         CanonicalPsgcCode = canonicalPsgcCode;
         SourceId = sourceId;
+        ExtractId = extractId;
         OsmRelationId = osmRelationId;
         OsmRefTag = osmRefTag;
         OsmName = osmName;
@@ -122,6 +130,13 @@ public sealed class LguBoundary : AuditableEntity
     public string CanonicalPsgcCode { get; private set; } = string.Empty;
 
     public Guid SourceId { get; private set; }
+
+    /// <summary>The dated, hashed acquisition this outline was read from.</summary>
+    /// <remarks>
+    /// ADR-005 D7 requires a containment figure to be able to name the boundary edition behind it. This
+    /// pointer makes that possible without repeating the filename and digest on sixteen hundred rows.
+    /// </remarks>
+    public Guid ExtractId { get; private set; }
 
     /// <summary>The OSM relation this outline was assembled from.</summary>
     public long OsmRelationId { get; private set; }
@@ -188,6 +203,7 @@ public sealed class LguBoundary : AuditableEntity
         Guid lguId,
         string canonicalPsgcCode,
         Guid sourceId,
+        Guid extractId,
         long osmRelationId,
         string? osmRefTag,
         string? osmName,
@@ -208,6 +224,11 @@ public sealed class LguBoundary : AuditableEntity
         if (sourceId == Guid.Empty)
         {
             return Result<LguBoundary>.Failure(LguBoundaryErrors.SourceRequired);
+        }
+
+        if (extractId == Guid.Empty)
+        {
+            return Result<LguBoundary>.Failure(LguBoundaryErrors.ExtractRequired);
         }
 
         if (geometry is null)
@@ -240,6 +261,7 @@ public sealed class LguBoundary : AuditableEntity
             lguId,
             canonicalPsgcCode.Trim(),
             sourceId,
+            extractId,
             osmRelationId,
             string.IsNullOrWhiteSpace(osmRefTag) ? null : osmRefTag.Trim(),
             string.IsNullOrWhiteSpace(osmName) ? null : osmName.Trim(),

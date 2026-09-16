@@ -19,6 +19,7 @@
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="ClosedXML" />
+    <PackageReference Include="OsmSharp" />
   </ItemGroup>
 
 </Project>

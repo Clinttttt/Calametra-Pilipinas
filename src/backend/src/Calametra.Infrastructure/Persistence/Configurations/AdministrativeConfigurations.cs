@@ -263,6 +263,7 @@ internal sealed class LguBoundaryConfiguration : IEntityTypeConfiguration<LguBou
 
         builder.HasIndex(boundary => boundary.LguId);
         builder.HasIndex(boundary => boundary.OsmRelationId);
+        builder.HasIndex(boundary => boundary.ExtractId);
 
         // The question every containment query asks: which outline is in force for this unit. Partial, so
         // the index holds one row per unit however many superseded versions accumulate behind it.
@@ -297,6 +298,55 @@ internal sealed class LguBoundaryConfiguration : IEntityTypeConfiguration<LguBou
             table.HasCheckConstraint(
                 "ck_lgu_boundaries_repair_is_explained",
                 "NOT was_repaired OR repair_note IS NOT NULL");
+        });
+    }
+}
+
+/// <summary>
+/// One dated acquisition of boundary geometry, with the chain that makes it checkable.
+/// </summary>
+internal sealed class LguBoundaryExtractConfiguration : IEntityTypeConfiguration<LguBoundaryExtract>
+{
+    public void Configure(EntityTypeBuilder<LguBoundaryExtract> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("lgu_boundary_extracts");
+
+        builder.HasKey(extract => extract.Id);
+
+        builder.Property(extract => extract.Label).HasMaxLength(300).IsRequired();
+        builder.Property(extract => extract.Provenance).HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(extract => extract.AccessRoute).HasMaxLength(600).IsRequired();
+        builder.Property(extract => extract.OriginalFileName).HasMaxLength(300);
+        builder.Property(extract => extract.AcquisitionNote).HasMaxLength(2000);
+
+        // Exactly 64 lowercase hex characters, as the register edition's digest is. Fixed length because a
+        // truncated digest is worse than none: it looks verifiable and is not.
+        builder.Property(extract => extract.FileSha256).HasMaxLength(64).IsFixedLength();
+
+        // One row per set of bytes. Re-reading the same extract must reuse its provenance record rather than
+        // adding a second answer to "where did this geometry come from".
+        builder.HasIndex(extract => extract.FileSha256)
+            .IsUnique()
+            .HasFilter("file_sha256 IS NOT NULL")
+            .HasDatabaseName("ux_lgu_boundary_extracts_per_file");
+
+        builder.HasIndex(extract => new { extract.Label, extract.AccessRoute });
+
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_lgu_boundary_extracts_hash_is_hex",
+                "file_sha256 IS NULL OR file_sha256 ~ '^[0-9a-f]{64}$'");
+
+            // A file-based extract without its filename and digest is an unauditable claim about where
+            // geometry came from. An API read legitimately has neither, so the rule is conditional on one
+            // of them being present rather than on the provenance value.
+            table.HasCheckConstraint(
+                "ck_lgu_boundary_extracts_file_details_are_paired",
+                "(original_file_name IS NULL AND file_sha256 IS NULL) "
+                + "OR (original_file_name IS NOT NULL AND file_sha256 IS NOT NULL)");
         });
     }
 }

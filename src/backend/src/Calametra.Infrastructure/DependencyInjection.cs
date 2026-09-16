@@ -234,7 +234,7 @@ public static class DependencyInjection
         // national query is one heavy request against a shared public instance, and Overpass's usage
         // policy asks callers not to retry heavy queries automatically.
 
-        services.AddHttpClient<ILguBoundarySource, OverpassBoundarySource>((provider, client) =>
+        services.AddHttpClient<OverpassBoundarySource>((provider, client) =>
             {
                 var options = provider.GetRequiredService<IOptions<OpenStreetMapOptions>>().Value;
 
@@ -247,6 +247,10 @@ public static class DependencyInjection
                 client.Timeout = options.BoundaryTimeout;
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
             });
+
+        // The reader is stateless; the composite decides between a dated local extract and the API.
+        services.AddScoped<OsmPbfBoundaryReader>();
+        services.AddScoped<ILguBoundarySource, OsmBoundarySource>();
         // The adapter retries once per chunk itself, with a twenty-second pause. That is deliberate rather
         // than delegated to a resilience handler: it retries at the granularity of a chunk, so a refusal
         // costs one box rather than restarting a national fetch, and it stays inside the two-slot limit

@@ -6,6 +6,7 @@ using Calametra.Application.Features.Ingestion;
 using Calametra.Domain.Administrative;
 using Calametra.Ingestion;
 using Calametra.Infrastructure;
+using Calametra.Infrastructure.Sources.OpenStreetMap;
 using Calametra.Infrastructure.Persistence.Seed;
 using Serilog;
 
@@ -115,6 +116,10 @@ var isBoundaryImport = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:ImportBoundaries"],
     out var boundaryFlag) && boundaryFlag;
 
+var isBoundarySurvey = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:BoundarySurvey"],
+    out var surveyFlag) && surveyFlag;
+
 var isBoundaryCoverage = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:BoundaryCoverage"],
     out var coverageFlag) && coverageFlag;
@@ -132,7 +137,8 @@ var isOneShot = isBackfill
     || isExceptionAcceptance
     || isLinkRejection
     || isBoundaryImport
-    || isBoundaryCoverage;
+    || isBoundaryCoverage
+    || isBoundarySurvey;
 
 if (!isOneShot)
 {
@@ -163,7 +169,8 @@ await using (var scope = host.Services.CreateAsyncScope())
         && !isExceptionAcceptance
         && !isLinkRejection
         && !isBoundaryImport
-        && !isBoundaryCoverage;
+        && !isBoundaryCoverage
+        && !isBoundarySurvey;
 
     if (needsFaultGeometry)
     {
@@ -523,6 +530,42 @@ if (isLinkRejection)
     }
 
     Console.WriteLine($"Pairing {linkId} rejected by {reviewedBy}.");
+
+    return 0;
+}
+
+// ── ADR-005 D2: WHAT DOES THE EXTRACT ACTUALLY CONTAIN ─────────────────────
+//
+// A diagnostic, not an import. It exists because the extract yielded far fewer level-6 relations than the
+// register holds units, and "OSM has not mapped the rest" and "this reader is reading the wrong tier" are
+// very different conclusions to draw from one number.
+if (isBoundarySurvey)
+{
+    var path = builder.Configuration["Sources:OpenStreetMap:BoundaryExtractFile"];
+
+    if (string.IsNullOrWhiteSpace(path))
+    {
+        Console.WriteLine("Sources:OpenStreetMap:BoundaryExtractFile is required for the survey.");
+
+        return 1;
+    }
+
+    var survey = OsmPbfBoundaryReader.Survey(path, CancellationToken.None);
+
+    Console.WriteLine();
+    Console.WriteLine("OSM ADMINISTRATIVE RELATIONS IN THE EXTRACT");
+    Console.WriteLine("===========================================");
+    Console.WriteLine();
+    Console.WriteLine("  admin_level    total   with ref   ten-digit ref");
+
+    foreach (var level in survey)
+    {
+        Console.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"  {level.AdminLevel,-12} {level.Total,7} {level.WithRef,10} {level.WithTenDigitRef,15}"));
+    }
+
+    Console.WriteLine();
 
     return 0;
 }

@@ -48,6 +48,18 @@
       MIT licensed. Pinned exactly, as everything here is.
     -->
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
+
+    <!--
+      OsmSharp reads the Geofabrik .osm.pbf extract.
+
+      A PBF is protobuf-framed, delta-encoded and zlib-compressed per block, so parsing it by hand would
+      be a few hundred lines of format handling for no benefit. The alternative was the Overpass API, and
+      that route is closed: measured on 2026-09-15 the public gateway returns 504 at about 31 seconds for
+      every query formulation tried, which national boundary geometry cannot fit inside.
+
+      MIT licensed. Pinned exactly, as everything here is.
+    -->
+    <PackageVersion Include="OsmSharp" Version="6.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="Hosts">

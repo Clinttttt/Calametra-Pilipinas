@@ -121,6 +121,42 @@ public sealed class OpenStreetMapOptions
     public TimeSpan BoundaryPause { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
+    /// Path to a dated <c>.osm.pbf</c> regional extract. When set, it is used instead of Overpass.
+    /// </summary>
+    /// <remarks>
+    /// Checked before the API for the same reason the PSGC register checks its local publication first: an
+    /// operator who downloaded a dated extract means to use it, and preferring a live service would make the
+    /// result depend on which upstream happened to answer.
+    /// </remarks>
+    public string? BoundaryExtractFile { get; set; }
+
+    /// <summary>
+    /// The operator's declaration that the file is a Geofabrik extract of OpenStreetMap.
+    /// </summary>
+    /// <remarks>
+    /// Nothing infers this. A <c>.osm.pbf</c> looks identical whether Geofabrik built it or somebody
+    /// assembled it by hand, and provenance that can be guessed is provenance nobody can rely on.
+    /// </remarks>
+    public bool BoundaryExtractIsGeofabrik { get; set; }
+
+    /// <summary>What a person would cite, e.g. "Geofabrik Philippines extract, 2026-09-13".</summary>
+    public string? BoundaryExtractLabel { get; set; }
+
+    /// <summary>
+    /// The date the extract represents, as the upstream states it.
+    /// </summary>
+    /// <remarks>
+    /// Geofabrik encodes it in the filename — <c>philippines-260913.osm.pbf</c> is 13 September 2026. Taken
+    /// from configuration rather than parsed out of the name, because a filename is a convention and a
+    /// vintage is a claim. When absent it falls back to the newest edit timestamp seen in the file, which is
+    /// a floor rather than the answer.
+    /// </remarks>
+    public string? BoundaryExtractVintage { get; set; }
+
+    /// <summary>Where the operator says they got it, in their own words.</summary>
+    public string? BoundaryExtractAcquisitionNote { get; set; }
+
+    /// <summary>
     /// How far a candidate town centre may be from the gazetteer's point and still be accepted as
     /// the same place.
     /// </summary>

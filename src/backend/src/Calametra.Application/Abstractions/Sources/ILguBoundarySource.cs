@@ -1,3 +1,4 @@
+using Calametra.Domain.Administrative;
 using NetTopologySuite.Geometries;
 
 namespace Calametra.Application.Abstractions.Sources;
@@ -57,6 +58,29 @@ public sealed record BoundarySnapshot
 
     /// <summary>Chunks the adapter asked for and did not get, so partial coverage is never silent.</summary>
     public required IReadOnlyList<string> FailedChunks { get; init; }
+
+    /// <summary>
+    /// How this geometry reached the platform. Declared for a file, never inferred.
+    /// </summary>
+    public required BoundaryProvenance Provenance { get; init; }
+
+    /// <summary>What a person would cite, e.g. "Geofabrik Philippines extract, 2026-09-13".</summary>
+    public required string Label { get; init; }
+
+    /// <summary>The path or endpoint read.</summary>
+    public required string AccessRoute { get; init; }
+
+    public string? OriginalFileName { get; init; }
+
+    /// <summary>SHA-256 of the original bytes, taken before parsing.</summary>
+    public string? FileSha256 { get; init; }
+
+    public long? FileSizeBytes { get; init; }
+
+    /// <summary>The date the upstream states the extract represents, not the date it was downloaded.</summary>
+    public DateOnly? Vintage { get; init; }
+
+    public string? AcquisitionNote { get; init; }
 }
 
 public sealed record UnassembledRelation(long OsmRelationId, string? RefTag, string? Name, string Reason);
