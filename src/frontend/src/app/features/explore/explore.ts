@@ -11,12 +11,33 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Map as MapLibreMap, NavigationControl, ScaleControl, type GeoJSONSource } from 'maplibre-gl';
+import {
+  Map as MapLibreMap,
+  NavigationControl,
+  ScaleControl,
+  type GeoJSONSource,
+  type PointLike,
+} from 'maplibre-gl';
 
 import { APP_CONFIG } from '../../core/config/app-config';
 import { CalametraApi } from '../../core/api/calametra-api';
 import { ComparisonStore } from '../../core/comparison/comparison-store';
 import { CrossSectionPlot } from './cross-section/cross-section-plot';
+import {
+  LGU_HOVER_FILL,
+  LGU_LINE_COLOUR,
+  LGU_SELECTED_FILL,
+  LGU_SELECTED_LINE,
+} from '../../core/administrative/lgu-palette';
+import { LguSelectionStore } from '../../core/administrative/lgu-selection-store';
+import {
+  LGU_BAND_LOCAL,
+  LGU_BAND_REGIONAL,
+  lguInteractiveAt,
+  lguLineOpacityExpression,
+  lguLineWidthExpression,
+} from '../../core/administrative/lgu-zoom-bands';
+import { LGU_SOURCE_LAYER, lguBoundarySource } from '../../core/layers/lgu-boundary-source';
 import { CrossSectionStore } from '../../core/cross-section/cross-section-store';
 import { CyclonePanel } from './panels/cyclone-panel';
 import { CycloneStore } from '../../core/cyclones/cyclone-store';
@@ -164,6 +185,36 @@ export class Explore {
   ] as const;
 
   private static readonly highlightSourceId = 'calametra-highlight';
+
+  // ---- Administrative boundaries -----------------------------------------
+
+  private static readonly lguSourceId = 'calametra-lgu-boundaries';
+  private static readonly lguLineLayerId = 'calametra-lgu-line';
+  private static readonly lguHoverLayerId = 'calametra-lgu-hover';
+  private static readonly lguSelectedFillLayerId = 'calametra-lgu-selected-fill';
+  private static readonly lguSelectedLineLayerId = 'calametra-lgu-selected-line';
+
+  /**
+   * Layers whose features own a click before the land under them does.
+   *
+   * Every interactive data layer, not merely the earthquake markers. A municipality is the largest
+   * thing under the pointer almost everywhere, so anything omitted here is a feature the reader can no
+   * longer click once boundaries are interactive.
+   *
+   * The constant ids only. Fault and trench lines are registered per catalogued layer with generated
+   * ids, so they are collected in {@link interactiveVectorLayerIds} as they are attached rather than
+   * guessed at here.
+   */
+  private static higherPriorityLayerIds(): readonly string[] {
+    return [
+    Explore.earthquakeLayerId,
+    Explore.earthquakeHaloLayerId,
+    Explore.cycloneTrackLayerId,
+    Explore.cyclonePositionLayerId,
+    Explore.cycloneFixLayerId,
+      Explore.placeCentreLayerId,
+    ];
+  }
   private static readonly highlightRingLayerId = 'calametra-highlight-ring';
   private static readonly highlightCentreLayerId = 'calametra-highlight-centre';
   private static readonly highlightRangeLayerId = 'calametra-highlight-range';
@@ -242,6 +293,16 @@ export class Explore {
   private readonly layerStore = inject(HazardLayerStore);
   private readonly presentationStore = inject(PresentationStore);
   private readonly crossSectionStore = inject(CrossSectionStore);
+
+  /**
+   * Which municipality the reader has selected, and which they are pointing at.
+   *
+   * Deliberately not PlaceStore. ADR-005 D1 keeps containment and proximity as two concepts, and this
+   * is where collapsing them would be least visible: a municipality click becoming a radius selection
+   * would have every figure downstream measured from a town centre while the reader believed they had
+   * asked about an administrative unit.
+   */
+  protected readonly lguSelection = inject(LguSelectionStore);
   private readonly similarEventsStore = inject(SimilarEventsStore);
   private readonly comparisonStore = inject(ComparisonStore);
   private readonly cycloneStore = inject(CycloneStore);
@@ -293,6 +354,24 @@ export class Explore {
    * platform's own rendering look like somebody's dataset.
    */
   readonly epicentresVisible = signal(true);
+
+  /**
+   * Whether the bulk municipality outlines are drawn.
+   *
+   * Separate from the selected unit on purpose. ADR-005 D6 distinguishes "draw many boundaries" from
+   * "always draw that one": hiding the layer removes the mesh, and the municipality the reader selected
+   * stays, because it is part of the answer rather than part of the basemap.
+   */
+  readonly boundariesVisible = signal(true);
+
+  /**
+   * Line ids of catalogued vector layers that respond to a click.
+   *
+   * Collected as they are attached because fault and trench lines are registered per catalogued layer
+   * with generated ids. Without this, a municipality click would fire on top of a fault trace the reader
+   * was aiming at.
+   */
+  private readonly interactiveVectorLayerIds = new Set<string>();
 
   /**
    * The map's current zoom, tracked so the layers panel can say why a ticked layer is not drawing.
@@ -535,6 +614,18 @@ export class Explore {
       if (map) {
         this.applyEpicentreVisibility(map);
       }
+    });
+
+    // Municipality hover, selection and the bulk toggle, kept in step with the store.
+    //
+    // One effect for all three because they resolve to the same three MapLibre filters, and splitting
+    // them would mean a hover change re-deciding the selected filter from a stale read.
+    effect(() => {
+      this.lguSelection.hoveredPsgc();
+      this.lguSelection.selectedPsgc();
+      this.boundariesVisible();
+
+      this.applyLguState();
     });
 
     // The drawn section line, kept in step with the store for the same reason.
@@ -1532,6 +1623,9 @@ export class Explore {
 
     map.on('load', () => {      this.applyBasemapPalette(map);
       this.addTerrainSource(map);
+      // Boundaries first, so every data layer added after this sits above them. A municipality
+      // outline is context for the archive, not a thing drawn over it.
+      this.addLguBoundaryLayers(map);
       this.addEarthquakeLayers(map);
       this.addSectionLayers(map);
       this.addComparisonLayers(map);
@@ -2104,8 +2198,211 @@ export class Explore {
     });
   }
 
-  /** Sets one hazard's layers visible or hidden, skipping any the style has not registered. */  private static setLayerGroupVisible(
-    map: MapLibreMap,
+  // ---- Administrative boundaries -----------------------------------------
+
+  /**
+   * Attaches the current-LGU boundary tiles and the three states they are drawn in.
+   *
+   * **Three layers, not one styled three ways.** MapLibre resolves a paint property per feature, so
+   * hover and selection could in principle be expressions on one layer. They are separate because the
+   * selected outline must survive the bulk layer being switched off — ADR-005 D6 treats a selected unit
+   * as part of the answer rather than part of the basemap, and a single layer cannot be both hidden and
+   * showing one feature.
+   *
+   * **Filtered on the PSGC, not on feature-state.** Feature-state is per tile and is lost when a tile is
+   * evicted, so a selection would silently vanish on pan. A filter on the code survives eviction, tile
+   * reloads and re-imports, which is exactly why the server sends the code as the feature id.
+   */
+  private addLguBoundaryLayers(map: MapLibreMap): void {
+    if (map.getSource(Explore.lguSourceId)) {
+      return;
+    }
+
+    map.addSource(Explore.lguSourceId, {
+      ...lguBoundarySource(this.config.apiBaseUrl),
+    } as never);
+
+    // The bulk outline. minzoom is the tile floor: below it nothing is served, so drawing would show
+    // an empty layer with no explanation.
+    map.addLayer({
+      id: Explore.lguLineLayerId,
+      type: 'line',
+      source: Explore.lguSourceId,
+      'source-layer': LGU_SOURCE_LAYER,
+      minzoom: LGU_BAND_REGIONAL,
+      paint: {
+        'line-color': LGU_LINE_COLOUR,
+        'line-width': lguLineWidthExpression() as never,
+        'line-opacity': lguLineOpacityExpression() as never,
+      },
+    });
+
+    // Hover. A fill rather than a heavier line: at these zooms a thicker outline reads as a selection,
+    // and the reader has not selected anything yet. Only from the local band, because below it the
+    // pointer covers several municipalities and highlighting one of them is a guess.
+    map.addLayer({
+      id: Explore.lguHoverLayerId,
+      type: 'fill',
+      source: Explore.lguSourceId,
+      'source-layer': LGU_SOURCE_LAYER,
+      minzoom: LGU_BAND_LOCAL,
+      paint: {
+        'fill-color': LGU_HOVER_FILL,
+        'fill-opacity': 0.14,
+      },
+      filter: ['==', ['get', 'psgc'], ''],
+    });
+
+    // The selected unit. No minzoom: a reader who selected a municipality and then zoomed out to see
+    // where it sits in the country must still see which one they chose.
+    map.addLayer({
+      id: Explore.lguSelectedFillLayerId,
+      type: 'fill',
+      source: Explore.lguSourceId,
+      'source-layer': LGU_SOURCE_LAYER,
+      paint: {
+        'fill-color': LGU_SELECTED_FILL,
+        'fill-opacity': 0.2,
+      },
+      filter: ['==', ['get', 'psgc'], ''],
+    });
+
+    map.addLayer({
+      id: Explore.lguSelectedLineLayerId,
+      type: 'line',
+      source: Explore.lguSourceId,
+      'source-layer': LGU_SOURCE_LAYER,
+      paint: {
+        'line-color': LGU_SELECTED_LINE,
+        'line-width': 2,
+        'line-opacity': 0.95,
+      },
+      filter: ['==', ['get', 'psgc'], ''],
+    });
+
+    this.wireLguInteraction(map);
+  }
+
+  /**
+   * Hover and click for municipalities, both deferring to anything higher-priority.
+   *
+   * **Precedence is checked, not assumed.** The map already carries earthquake markers, cyclone tracks
+   * and fix markers, fault and trench lines, and a proxied raster whose identify call is asynchronous. A
+   * municipality is the largest thing under the pointer almost everywhere, so an unconditional listener
+   * would win every click the reader meant for a marker. It therefore fires only when
+   * `queryRenderedFeatures` finds none of the interactive data layers under the point — the same guard
+   * `wireRasterInteraction` already uses for earthquake markers, extended to every interactive layer
+   * rather than only that one.
+   */
+  private wireLguInteraction(map: MapLibreMap): void {
+    map.on('mousemove', Explore.lguHoverLayerId, (event) => {
+      if (!lguInteractiveAt(map.getZoom()) || this.higherPriorityHit(map, event.point)) {
+        this.lguSelection.clearHover();
+
+        return;
+      }
+
+      const psgc = event.features?.[0]?.properties?.['psgc'];
+
+      if (typeof psgc === 'string') {
+        this.lguSelection.hover(psgc);
+      }
+    });
+
+    // Leaving the outline clears hover and nothing else. A reader who has selected a municipality and
+    // then moves the pointer away still has it selected, and the panel must not close under them.
+    map.on('mouseleave', Explore.lguHoverLayerId, () => this.lguSelection.clearHover());
+
+    map.on('click', Explore.lguHoverLayerId, (event) => {
+      // The section tool takes precedence over everything: while it is capturing, a click on a
+      // municipality is still a click on the map at that location.
+      if (this.crossSectionStore.capturingClicks()) {
+        return;
+      }
+
+      if (!lguInteractiveAt(map.getZoom()) || this.higherPriorityHit(map, event.point)) {
+        return;
+      }
+
+      const properties = event.features?.[0]?.properties;
+
+      if (properties === undefined || typeof properties['psgc'] !== 'string') {
+        return;
+      }
+
+      // Replaces rather than accumulates: one municipality is selected at a time, because the panel
+      // answers a question about one unit.
+      //
+      // Nothing here touches PlaceStore, moves the camera, or fetches place context. ADR-005 D1 keeps
+      // containment and proximity apart, and this is the one place where collapsing them would be
+      // easiest and least visible.
+      this.lguSelection.select({
+        psgc: properties['psgc'],
+        name: typeof properties['name'] === 'string' ? properties['name'] : properties['psgc'],
+        kind: typeof properties['kind'] === 'string' ? properties['kind'] : 'Municipality',
+        areaSquareKm: typeof properties['area_km2'] === 'number' ? properties['area_km2'] : 0,
+      });
+    });
+  }
+
+  /**
+   * Whether a click at this point belongs to a data feature rather than to the land under it.
+   *
+   * Queries only layers the style has actually registered: asking MapLibre for a layer that does not
+   * exist throws, and which data layers are present depends on the hazard the reader chose.
+   */
+  private higherPriorityHit(map: MapLibreMap, point: PointLike): boolean {
+    const candidates = [
+      ...Explore.higherPriorityLayerIds(),
+      ...this.interactiveVectorLayerIds,
+    ].filter((layerId) => map.getLayer(layerId));
+
+    if (candidates.length === 0) {
+      return false;
+    }
+
+    return map.queryRenderedFeatures(point, { layers: candidates }).length > 0;
+  }
+
+  /**
+   * Applies hover and selection to the map, and honours the bulk toggle.
+   *
+   * The selected layers are filtered independently of the bulk layer's visibility, which is the whole
+   * point: hiding boundaries removes the mesh and keeps the answer.
+   */
+  private applyLguState(): void {
+    const map = this.map;
+
+    if (!map || !this.styleReady || !map.getLayer(Explore.lguLineLayerId)) {
+      return;
+    }
+
+    const hovered = this.lguSelection.hoveredPsgc();
+    const selected = this.lguSelection.selectedPsgc();
+
+    map.setLayoutProperty(
+      Explore.lguLineLayerId,
+      'visibility',
+      this.boundariesVisible() ? 'visible' : 'none',
+    );
+
+    // Hover follows the bulk layer: it is a pointing affordance for the mesh, so it has no meaning
+    // once the mesh is hidden.
+    map.setFilter(Explore.lguHoverLayerId, [
+      '==',
+      ['get', 'psgc'],
+      this.boundariesVisible() && hovered !== null && hovered !== selected ? hovered : '',
+    ]);
+
+    for (const layerId of [Explore.lguSelectedFillLayerId, Explore.lguSelectedLineLayerId]) {
+      map.setFilter(layerId, ['==', ['get', 'psgc'], selected ?? '']);
+    }
+
+    map.getCanvas().style.cursor = hovered === null ? '' : 'pointer';
+  }
+
+  /** Sets one hazard's layers visible or hidden, skipping any the style has not registered. */
+  private static setLayerGroupVisible(    map: MapLibreMap,
     layerIds: readonly string[],
     visible: boolean,
   ): void {
@@ -2236,6 +2533,9 @@ export class Explore {
     );
 
     this.wireFaultInteraction(map, lineId, layer);
+
+    // Registered so a municipality click cannot fire on top of a fault trace the reader was aiming at.
+    this.interactiveVectorLayerIds.add(lineId);
 
     return [casingId, lineId];
   }

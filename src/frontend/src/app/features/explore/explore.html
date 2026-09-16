@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   Explore.
 
   The map holds the whole viewport. Everything else floats over it, and nothing is
@@ -211,6 +211,7 @@
     <div class="explore__side-panel">
       <cal-layers-panel
         [(epicentresVisible)]="epicentresVisible"
+        [(boundariesVisible)]="boundariesVisible"
         [zoom]="mapZoom()"
         (zoomRequested)="zoomTo($event)"
         (closed)="closeTool()"

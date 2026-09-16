@@ -50,6 +50,75 @@
       </section>
     }
 
+    <!-- Administrative boundaries. The platform's own rendering, like the epicentres, so it sits with
+         them rather than under a lens. The caveat is beside the toggle rather than behind the
+         disclosure, because a reader who takes a land outline for maritime jurisdiction reads every
+         island municipality as thousands of square kilometres larger than it is — and that is a
+         misreading the toggle itself invites. -->
+    <section class="lens lens--own">
+      <ul class="lens__layers">
+        <li class="layer-row">
+          <div class="layer-row__main">
+            <button
+              class="layer"
+              type="button"
+              [attr.aria-pressed]="boundariesVisible()"
+              (click)="toggleBoundaries()"
+            >
+              <span class="layer__indicator" aria-hidden="true">
+                @if (boundariesVisible()) {
+                  <svg viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path
+                      d="M2 5.2 4 7.2 8 3"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                }
+              </span>
+
+              <span class="layer__text">
+                <span class="layer__name">Municipality boundaries</span>
+                <span class="layer__meta">
+                  <span>{{ boundarySemantics.summary }}</span>
+                  <span class="layer__delivery">stored</span>
+                </span>
+              </span>
+            </button>
+
+            <button
+              class="c-icon-button"
+              type="button"
+              [attr.aria-expanded]="boundaryDetailOpen()"
+              (click)="toggleBoundaryDetail()"
+            >
+              <cal-icon
+                name="info"
+                [size]="13"
+                label="About the municipality boundary layer"
+              />
+            </button>
+          </div>
+
+          @if (boundaryDetailOpen()) {
+            <div class="layer-row__detail">
+              <p class="layer-note">
+                {{ boundarySemantics.attribution }} ({{ boundarySemantics.licence }}).
+              </p>
+              <p class="layer-note">{{ boundarySemantics.waters }}</p>
+              <p class="layer-note">
+                Coverage: {{ boundarySemantics.combinedCoverage }};
+                {{ boundarySemantics.municipalityCoverage }}.
+              </p>
+              <p class="layer-note">{{ boundarySemantics.exceptions }}</p>
+            </div>
+          }
+        </li>
+      </ul>
+    </section>
+
     @if (!loaded()) {
       <p class="layers__empty"><span class="c-label">Loading catalogue</span></p>
     } @else if (groups().length === 0) {

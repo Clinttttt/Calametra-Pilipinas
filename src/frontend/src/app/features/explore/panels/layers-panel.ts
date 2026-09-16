@@ -62,6 +62,43 @@ export class LayersPanel {
   readonly epicentresVisible = model(true);
 
   /**
+   * Whether the bulk municipality outlines are drawn.
+   *
+   * Alongside the epicentre control and for the same reason: this is the platform's own rendering
+   * decision rather than a catalogued hazard layer, and the reader already comes here to decide what is
+   * drawn. Hiding it removes the mesh and keeps whatever municipality is selected, because ADR-005 D6
+   * treats a selected unit as part of the answer rather than part of the basemap.
+   */
+  readonly boundariesVisible = model(true);
+
+  /** Whether the boundary set's provenance and coverage detail is expanded. */
+  protected readonly boundaryDetailOpen = signal(false);
+
+  /**
+   * What the boundary layer is, in the words a reader needs before interpreting an outline.
+   *
+   * Held here rather than fetched so the caveat is present the first time the panel opens. The figures
+   * are the measured ones and are not rounded up: coverage is not complete, and the two things a reader
+   * could most easily get wrong are that these are maritime jurisdiction (they are not) and that every
+   * municipality has one (31 do not).
+   */
+  protected readonly boundarySemantics = {
+    summary: 'Land administrative outlines — not municipal waters.',
+    attribution: 'OCHA COD-AB, from NAMRIA and the Philippine Statistics Authority',
+    licence: 'CC BY 3.0 IGO',
+    combinedCoverage: '1,611 of 1,642 cities and municipalities (98.11%)',
+    municipalityCoverage: '1,462 of 1,493 municipalities (97.92%)',
+    exceptions:
+      '31 units have no outline: 23 Maguindanao municipalities the PSA renumbered without publishing '
+      + 'a correspondence, and the 8 Bangsamoro Special Geographic Area municipalities, which postdate '
+      + 'this edition. They are known exceptions rather than gaps to be guessed at.',
+    waters:
+      'Philippine cities and municipalities administer waters to 15 km offshore under RA 8550. That '
+      + 'extent is a separate concept and is not stored here, so no area or count on this layer covers '
+      + 'it. Offshore and proximity questions use the radius instead.',
+  } as const;
+
+  /**
    * The map's current zoom.
    *
    * Needed because MapLibre honours a layer's minimum zoom silently: the tick stays on and nothing
@@ -153,6 +190,14 @@ export class LayersPanel {
 
   protected toggleEpicentres(): void {
     this.epicentresVisible.update((visible) => !visible);
+  }
+
+  protected toggleBoundaries(): void {
+    this.boundariesVisible.update((visible) => !visible);
+  }
+
+  protected toggleBoundaryDetail(): void {
+    this.boundaryDetailOpen.update((open) => !open);
   }
 
   protected close(): void {
