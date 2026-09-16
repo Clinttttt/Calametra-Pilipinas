@@ -6,14 +6,26 @@
   flex-direction: column;
   gap: var(--space-3);
   width: 19rem;
-  padding: var(--space-3);
-  background-color: var(--surface-glass);
 
-  /* Blur rather than opacity alone. Over imagery a translucent panel picks up whatever is beneath it,
-     and a coastline crossing the text is the one thing that makes a figure unreadable. */
-  backdrop-filter: blur(20px) saturate(120%);
+  /* Sized to its content rather than the rail's full height, so the map stays visible past the text.
+     `align-self` is what stops the flex parent stretching it top to bottom. */
+  align-self: flex-start;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-3);
+
+  /* Lighter than --surface-glass (82%). At panel size that token reads as a solid block dropped on the
+     imagery; the point here is to stay legible while letting the reader still see the outline and the
+     terrain underneath, because the panel is describing them. The blur is what buys that: it lifts
+     contrast without the opacity, so text stays readable over a coastline at 68%. */
+  background-color: rgb(9 14 20 / 68%);
+  backdrop-filter: blur(24px) saturate(120%);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-md);
+
+  /* A soft shadow rather than a heavier fill. Over satellite imagery the panel needs an edge to read as
+     a surface at all, and a shadow gives it one without darkening what it covers. */
+  box-shadow: 0 10px 30px rgb(3 5 8 / 45%);
 }
 
 .lgu__header {

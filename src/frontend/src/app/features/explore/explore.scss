@@ -353,7 +353,13 @@
    being read is worse than one that is occasionally further from its subject than it needed to be. */
 .explore__side-panel--left {
   right: auto;
-  left: calc(var(--space-3) + 3.5rem);
+  left: var(--space-3);
+
+  /* Cleared below the camera group, which owns the top-left corner. Overlapping it hid PLAN, OBLIQUE and
+     TERRAIN behind the panel — the controls were still there and unreachable, which is worse than a
+     panel placed slightly lower. The offset is the group's own height plus its top inset and a gap,
+     rather than a round number, so the two stay clear if either changes. */
+  top: calc(var(--space-3) + 2.25rem + var(--space-2));
 }
 
 /* The storm list sits on the left, opposite the rail. Cyclone work is a browse-then-inspect task
