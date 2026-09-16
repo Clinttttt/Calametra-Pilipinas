@@ -223,6 +223,11 @@
        names fault traces, so it must not be renderable over a storm map by any route. -->
   @if (earthquakesActive() && placesOpen()) {
     <div class="explore__side-panel">
+      <!-- The selected administrative unit. Above the place panel because a click on the land is the
+           more recent gesture, and beside it rather than replacing it because they answer different
+           questions: containment here, proximity there. -->
+      <cal-lgu-panel />
+
       <cal-place-panel
         (placeSelected)="locatePlace($event)"
         (eventSelected)="locatePlaceEvent($event)"

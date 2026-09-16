@@ -30,6 +30,7 @@ import {
   LGU_SELECTED_LINE,
 } from '../../core/administrative/lgu-palette';
 import { LguSelectionStore } from '../../core/administrative/lgu-selection-store';
+import { LguPanel } from './panels/lgu-panel';
 import {
   LGU_BAND_LOCAL,
   LGU_BAND_REGIONAL,
@@ -153,6 +154,7 @@ type OpenTool = 'hazards' | 'timeline' | 'legend' | 'layers' | 'filter' | null;
     EventComparison,
     EventDetail,
     LayersPanel,
+    LguPanel,
     FilterPanel,
     FeatureInspector,
     Timeline,
@@ -191,6 +193,7 @@ export class Explore {
   private static readonly lguSourceId = 'calametra-lgu-boundaries';
   private static readonly lguLineLayerId = 'calametra-lgu-line';
   private static readonly lguHoverLayerId = 'calametra-lgu-hover';
+  private static readonly lguHitLayerId = 'calametra-lgu-hit';
   private static readonly lguSelectedFillLayerId = 'calametra-lgu-selected-fill';
   private static readonly lguSelectedLineLayerId = 'calametra-lgu-selected-line';
 
@@ -2280,6 +2283,22 @@ export class Explore {
       filter: ['==', ['get', 'psgc'], ''],
     });
 
+    // The hit target. Transparent, unfiltered, and the only layer the pointer handlers bind to.
+    //
+    // This exists because of a defect worth naming: the handlers were originally bound to the hover
+    // layer, which is filtered to the hovered feature alone. MapLibre only fires a layer-scoped event for
+    // a feature that layer actually renders, so a layer filtered to nothing renders nothing and no event
+    // could ever fire — the interaction was dead at every zoom, not merely below the local band. A hit
+    // layer renders every feature and paints none of them.
+    map.addLayer({
+      id: Explore.lguHitLayerId,
+      type: 'fill',
+      source: Explore.lguSourceId,
+      'source-layer': LGU_SOURCE_LAYER,
+      minzoom: LGU_BAND_LOCAL,
+      paint: { 'fill-opacity': 0 },
+    });
+
     this.wireLguInteraction(map);
   }
 
@@ -2295,7 +2314,7 @@ export class Explore {
    * rather than only that one.
    */
   private wireLguInteraction(map: MapLibreMap): void {
-    map.on('mousemove', Explore.lguHoverLayerId, (event) => {
+    map.on('mousemove', Explore.lguHitLayerId, (event) => {
       if (!lguInteractiveAt(map.getZoom()) || this.higherPriorityHit(map, event.point)) {
         this.lguSelection.clearHover();
 
@@ -2311,9 +2330,9 @@ export class Explore {
 
     // Leaving the outline clears hover and nothing else. A reader who has selected a municipality and
     // then moves the pointer away still has it selected, and the panel must not close under them.
-    map.on('mouseleave', Explore.lguHoverLayerId, () => this.lguSelection.clearHover());
+    map.on('mouseleave', Explore.lguHitLayerId, () => this.lguSelection.clearHover());
 
-    map.on('click', Explore.lguHoverLayerId, (event) => {
+    map.on('click', Explore.lguHitLayerId, (event) => {
       // The section tool takes precedence over everything: while it is capturing, a click on a
       // municipality is still a click on the map at that location.
       if (this.crossSectionStore.capturingClicks()) {

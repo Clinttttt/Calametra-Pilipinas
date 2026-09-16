@@ -31,13 +31,14 @@ const LGU_LINE = 'calametra-lgu-line';
 const LGU_HOVER = 'calametra-lgu-hover';
 const LGU_SELECTED_FILL = 'calametra-lgu-selected-fill';
 const LGU_SELECTED_LINE = 'calametra-lgu-selected-line';
+const LGU_HIT = 'calametra-lgu-hit';
 const EARTHQUAKES = 'calametra-earthquakes-circles';
 
 function fakeMap(present: readonly string[] = [], zoom = 12): FakeMap {
   const canvas = { style: { cursor: '' } };
 
   return {
-    layers: new Set([LGU_LINE, LGU_HOVER, LGU_SELECTED_FILL, LGU_SELECTED_LINE, ...present]),
+    layers: new Set([LGU_LINE, LGU_HOVER, LGU_HIT, LGU_SELECTED_FILL, LGU_SELECTED_LINE, ...present]),
     filters: new Map<string, unknown>(),
     visibility: new Map<string, string>(),
     hits: [],
@@ -212,6 +213,22 @@ describe('Explore municipality interaction', () => {
     applyLguState(map, store, true);
 
     expect(map.filters.get(LGU_SELECTED_LINE)).toEqual(['==', ['get', 'psgc'], '0102801000']);
+  });
+
+  it('binds pointer handlers to an unfiltered layer, not to the filtered hover layer', () => {
+    // The defect this pins down: the handlers were originally bound to the hover layer, which is
+    // filtered to the hovered feature alone. MapLibre only fires a layer-scoped event for a feature that
+    // layer actually renders, so a layer filtered to nothing renders nothing and no event could ever
+    // fire. The interaction was dead at every zoom, and it looked like a zoom-band decision.
+    //
+    // The hit layer therefore carries no filter. Asserting the absence of one is the whole point.
+    const map = fakeMap();
+    const store = new LguSelectionStore();
+
+    applyLguState(map, store, true);
+
+    expect(map.filters.has('calametra-lgu-hit')).toBe(false);
+    expect(map.getLayer('calametra-lgu-hit')).toBeDefined();
   });
 
   it('shows a pointer cursor only while a municipality is under the pointer', () => {
