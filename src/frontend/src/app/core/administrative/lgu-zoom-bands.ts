@@ -26,34 +26,55 @@ export const LGU_BAND_REGIONAL = LGU_MIN_ZOOM;
  */
 export const LGU_BAND_LOCAL = 9;
 
-/** Opacity of the ordinary outline, interpolated across the bands. */
-export const LGU_LINE_OPACITY: readonly (number | readonly number[])[] = [
-  'interpolate',
-  ['linear'],
-  ['zoom'],
-  // Faint where the band begins: present enough to say the country is subdivided, not so present that
-  // it competes with the coastline or the hazard layers underneath.
-  LGU_BAND_REGIONAL,
-  0.18,
-  LGU_BAND_LOCAL,
-  0.55,
-  LGU_MAX_ZOOM,
-  0.75,
-];
+/**
+ * Opacity of the ordinary outline, interpolated across the bands.
+ *
+ * A function returning `unknown[]`, as `fault-style` does: a MapLibre expression is a heterogeneous
+ * array — strings for the operator, numbers for the stops, nested arrays for the inputs — and typing it
+ * as an array of numbers is what broke the build while the unit tests, which do not type-check, passed.
+ */
+export function lguLineOpacityExpression(): unknown[] {
+  return [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    // Faint where the band begins: present enough to say the country is subdivided, not so present that
+    // it competes with the coastline or the hazard layers underneath.
+    LGU_BAND_REGIONAL,
+    0.18,
+    LGU_BAND_LOCAL,
+    0.55,
+    LGU_MAX_ZOOM,
+    0.75,
+  ];
+}
 
 /** Width of the ordinary outline, in pixels. */
-export const LGU_LINE_WIDTH: readonly (number | readonly number[])[] = [
-  'interpolate',
-  ['linear'],
-  ['zoom'],
-  // A hairline regionally. Anything thicker at this zoom reads as a road network.
-  LGU_BAND_REGIONAL,
-  0.4,
-  LGU_BAND_LOCAL,
-  0.9,
-  LGU_MAX_ZOOM,
-  1.4,
-];
+export function lguLineWidthExpression(): unknown[] {
+  return [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    // A hairline regionally. Anything thicker at this zoom reads as a road network.
+    LGU_BAND_REGIONAL,
+    0.4,
+    LGU_BAND_LOCAL,
+    0.9,
+    LGU_MAX_ZOOM,
+    1.4,
+  ];
+}
+
+/**
+ * The opacity stops alone, for the legend and for tests.
+ *
+ * Kept beside the expression so a change to one that is not made to the other is visible rather than
+ * silent.
+ */
+export const LGU_OPACITY_STOPS: readonly number[] = [0.18, 0.55, 0.75];
+
+/** The width stops alone, in pixels. */
+export const LGU_WIDTH_STOPS: readonly number[] = [0.4, 0.9, 1.4];
 
 /**
  * Whether the bulk layer should be drawn at a given zoom.

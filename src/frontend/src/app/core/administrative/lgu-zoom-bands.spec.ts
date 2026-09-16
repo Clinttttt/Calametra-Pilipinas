@@ -4,11 +4,13 @@ import { LGU_MAX_ZOOM } from '../layers/lgu-boundary-source';
 import {
   LGU_BAND_LOCAL,
   LGU_BAND_REGIONAL,
-  LGU_LINE_OPACITY,
-  LGU_LINE_WIDTH,
+  LGU_OPACITY_STOPS,
+  LGU_WIDTH_STOPS,
   lguBand,
   lguBoundariesVisibleAt,
   lguInteractiveAt,
+  lguLineOpacityExpression,
+  lguLineWidthExpression,
 } from './lgu-zoom-bands';
 
 describe('LGU zoom bands', () => {
@@ -45,7 +47,7 @@ describe('LGU zoom bands', () => {
   });
 
   it('grows opacity monotonically across the bands', () => {
-    const stops = LGU_LINE_OPACITY.slice(3).filter((_, index) => index % 2 === 1) as number[];
+    const stops = [...LGU_OPACITY_STOPS];
 
     expect(stops).toEqual([...stops].sort((left, right) => left - right));
     expect(stops[0]).toBeLessThan(0.25);
@@ -53,15 +55,29 @@ describe('LGU zoom bands', () => {
   });
 
   it('grows width monotonically and stays a hairline regionally', () => {
-    const stops = LGU_LINE_WIDTH.slice(3).filter((_, index) => index % 2 === 1) as number[];
+    const stops = [...LGU_WIDTH_STOPS];
 
     expect(stops).toEqual([...stops].sort((left, right) => left - right));
     expect(stops[0]).toBeLessThan(0.5);
   });
 
-  it('interpolates between the two bands and the deepest served zoom', () => {
-    expect(LGU_LINE_OPACITY).toContain(LGU_BAND_REGIONAL);
-    expect(LGU_LINE_OPACITY).toContain(LGU_BAND_LOCAL);
-    expect(LGU_LINE_OPACITY).toContain(LGU_MAX_ZOOM);
+  it('interpolates on zoom as the outermost expression', () => {
+    // MapLibre rejects a paint property whose zoom reference sits inside another expression, which is
+    // why fault-style makes the same point. Asserted rather than assumed, because the failure is a
+    // thrown error at style load rather than a wrong colour.
+    const opacity = lguLineOpacityExpression();
+
+    expect(opacity[0]).toBe('interpolate');
+    expect(opacity[2]).toEqual(['zoom']);
+    expect(opacity).toContain(LGU_BAND_REGIONAL);
+    expect(opacity).toContain(LGU_BAND_LOCAL);
+    expect(opacity).toContain(LGU_MAX_ZOOM);
+  });
+
+  it('builds the width expression the same way', () => {
+    const width = lguLineWidthExpression();
+
+    expect(width[0]).toBe('interpolate');
+    expect(width[2]).toEqual(['zoom']);
   });
 });
