@@ -158,7 +158,7 @@
   color: var(--text-secondary);
 }
 
-.lgu__hazard-disclosure {
+.lgu__disclosure {
   align-self: flex-start;
   margin-top: var(--space-1);
   padding: 0;
@@ -172,18 +172,18 @@
   cursor: pointer;
 }
 
-.lgu__hazard-disclosure:hover {
+.lgu__disclosure:hover {
   color: var(--text-primary);
   border-bottom-color: var(--line-accent);
 }
 
-.lgu__hazard-disclosure:focus-visible {
+.lgu__disclosure:focus-visible {
   color: var(--text-primary);
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.lgu__hazard-methodology {
+.lgu__methodology {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -231,13 +231,25 @@
   border-left: 1px solid var(--state-error);
 }
 
-.lgu__note {
-  margin: 0;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  color: var(--text-tertiary);
+.lgu__boundary-about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.lgu__note-lead {
+.lgu__boundary-summary,
+.lgu__boundary-methodology p {
+  margin: 0;
+}
+
+.lgu__boundary-summary {
+  font-size: var(--text-small);
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
+}
+
+.lgu__boundary-methodology p {
+  font-size: var(--text-micro);
+  line-height: var(--leading-normal);
+  color: var(--text-tertiary);
 }

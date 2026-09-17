@@ -56,13 +56,12 @@
               }
 
               <p class="lgu__hazard-summary">
-                Counts distinct earthquake events whose canonical epicentres fall within or on this
-                LGU's current land boundary. Offshore epicentres and duplicate agency observations
-                are not included.
+                Counts distinct earthquake epicentres within or on this LGU&rsquo;s land boundary.
+                Offshore events and duplicate agency reports are excluded.
               </p>
 
               <button
-                class="lgu__hazard-disclosure"
+                class="lgu__disclosure lgu__hazard-disclosure"
                 type="button"
                 [attr.aria-expanded]="containmentDetailsExpanded()"
                 aria-controls="lgu-earthquake-methodology"
@@ -72,7 +71,7 @@
               </button>
 
               @if (containmentDetailsExpanded()) {
-                <div id="lgu-earthquake-methodology" class="lgu__hazard-methodology">
+                <div id="lgu-earthquake-methodology" class="lgu__methodology">
                   <p class="lgu__hazard-detail-label">Methodology</p>
                   <p class="lgu__hazard-semantics">{{ state.summary.countSemantics }}</p>
                   <p class="lgu__hazard-attribution">
@@ -107,19 +106,38 @@
       }
     </section>
 
-    <!-- Two misreadings this panel exists to prevent, and both are easy to make: that the outline is the
-         municipality's maritime jurisdiction, and that selecting it is the same gesture as opening a
-         radius. -->
-    <p class="lgu__note">
-      <span class="lgu__note-lead">Land outline only.</span>
-      Not municipal waters — cities and municipalities administer waters to 15&nbsp;km offshore, and
-      that extent is not stored here.
-    </p>
+    <section class="lgu__boundary-about" aria-labelledby="lgu-boundary-about-heading">
+      <h3 id="lgu-boundary-about-heading" class="c-label">About this boundary</h3>
 
-    <p class="lgu__note">
-      <span class="lgu__note-lead">This names a unit.</span>
-      It is not a radius. Distances and event counts elsewhere are measured from a representative
-      point, which answers a different question.
-    </p>
+      <p class="lgu__boundary-summary">
+        This outline represents the LGU&rsquo;s land area only; municipal waters are not included.
+        Selecting it identifies an administrative unit, not a search radius. Distance-based results
+        elsewhere use a representative point and answer a different spatial question.
+      </p>
+
+      <button
+        class="lgu__disclosure lgu__boundary-disclosure"
+        type="button"
+        [attr.aria-expanded]="boundaryDetailsExpanded()"
+        aria-controls="lgu-boundary-methodology"
+        (click)="toggleBoundaryDetails()"
+      >
+        {{ boundaryDetailsExpanded() ? 'Show less' : 'Read more' }}
+      </button>
+
+      @if (boundaryDetailsExpanded()) {
+        <div id="lgu-boundary-methodology" class="lgu__methodology lgu__boundary-methodology">
+          <p>
+            Municipal waters are a separate spatial concept and are not represented by this COD-AB
+            land outline. Where relevant, they may extend up to 15&nbsp;km offshore.
+          </p>
+          <p>
+            Administrative containment asks whether an event lies within the land polygon;
+            representative-point proximity asks what lies within a chosen radius. Selecting this LGU
+            does not calculate or change radius-based results.
+          </p>
+        </div>
+      }
+    </section>
   </aside>
 }

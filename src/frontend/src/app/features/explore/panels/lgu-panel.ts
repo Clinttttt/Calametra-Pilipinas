@@ -40,12 +40,14 @@ export class LguPanel {
 
   /** Presentation state only; every newly selected administrative unit starts with details collapsed. */
   protected readonly containmentDetailsExpanded = signal(false);
+  protected readonly boundaryDetailsExpanded = signal(false);
 
   constructor() {
     effect((onCleanup) => {
       const selected = this.store.selected();
 
       this.containmentDetailsExpanded.set(false);
+      this.boundaryDetailsExpanded.set(false);
 
       if (selected === null) {
         this.earthquakeContainment.set({ status: 'idle' });
@@ -80,6 +82,10 @@ export class LguPanel {
 
   protected toggleContainmentDetails(): void {
     this.containmentDetailsExpanded.update((expanded) => !expanded);
+  }
+
+  protected toggleBoundaryDetails(): void {
+    this.boundaryDetailsExpanded.update((expanded) => !expanded);
   }
 }
 

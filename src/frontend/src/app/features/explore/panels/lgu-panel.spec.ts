@@ -100,7 +100,9 @@ describe('LguPanel earthquake containment', () => {
     expect(host.textContent).toContain(
       'Distinct earthquake epicentres within/on the current land boundary',
     );
-    expect(host.textContent).toContain('Offshore epicentres and duplicate agency observations');
+    expect(normalisedText(host.querySelector('.lgu__hazard-summary'))).toBe(
+      'Counts distinct earthquake epicentres within or on this LGU\u2019s land boundary. Offshore events and duplicate agency reports are excluded.',
+    );
     expect(host.textContent).toContain('COD-AB Philippines administrative boundaries');
     expect(host.textContent).toContain('2024-10-31');
     expect(host.textContent).not.toContain('Points exactly on the boundary are included');
@@ -151,6 +153,41 @@ describe('LguPanel earthquake containment', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(host.querySelector('#lgu-earthquake-methodology')).toBeNull();
     expect(host.textContent).not.toContain('Points exactly on the boundary are included');
+  });
+
+  it('keeps boundary clarification collapsed by default and toggles it accessibly', async () => {
+    store.select(CANTILAN);
+    await fixture.whenStable();
+
+    expect(normalisedText(host.querySelector('.lgu__boundary-summary'))).toBe(
+      'This outline represents the LGU\u2019s land area only; municipal waters are not included. Selecting it identifies an administrative unit, not a search radius. Distance-based results elsewhere use a representative point and answer a different spatial question.',
+    );
+
+    const toggle = host.querySelector<HTMLButtonElement>('.lgu__boundary-disclosure')!;
+    expect(toggle.textContent?.trim()).toBe('Read more');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe('lgu-boundary-methodology');
+    expect(host.querySelector('#lgu-boundary-methodology')).toBeNull();
+    expect(host.textContent).not.toContain('separate spatial concept');
+
+    toggle.click();
+    await fixture.whenStable();
+
+    expect(toggle.textContent?.trim()).toBe('Show less');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('#lgu-boundary-methodology')?.textContent).toContain(
+      'may extend up to 15',
+    );
+    expect(host.querySelector('#lgu-boundary-methodology')?.textContent).toContain(
+      'does not calculate or change radius-based results',
+    );
+
+    toggle.click();
+    await fixture.whenStable();
+
+    expect(toggle.textContent?.trim()).toBe('Read more');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('#lgu-boundary-methodology')).toBeNull();
   });
 
   it('renders a successful zero distinctly from unavailable data', async () => {
@@ -215,8 +252,10 @@ describe('LguPanel earthquake containment', () => {
     await fixture.whenStable();
 
     host.querySelector<HTMLButtonElement>('.lgu__hazard-disclosure')!.click();
+    host.querySelector<HTMLButtonElement>('.lgu__boundary-disclosure')!.click();
     await fixture.whenStable();
     expect(host.querySelector('#lgu-earthquake-methodology')).not.toBeNull();
+    expect(host.querySelector('#lgu-boundary-methodology')).not.toBeNull();
 
     store.select(CEBU_CITY);
     await fixture.whenStable();
@@ -227,5 +266,14 @@ describe('LguPanel earthquake containment', () => {
     expect(toggle?.textContent?.trim()).toBe('Read more');
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
     expect(host.querySelector('#lgu-earthquake-methodology')).toBeNull();
+    expect(host.querySelector('.lgu__boundary-disclosure')?.getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    expect(host.querySelector('#lgu-boundary-methodology')).toBeNull();
+    expect(host.textContent).not.toContain('A_FUTURE_EQUIVALENT_PREDICATE');
   });
 });
+
+function normalisedText(element: Element | null): string {
+  return element?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+}
