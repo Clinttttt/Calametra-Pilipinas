@@ -55,8 +55,39 @@
                 </p>
               }
 
-              <p class="lgu__hazard-semantics">{{ state.summary.countSemantics }}</p>
-              <p class="lgu__hazard-source">Boundary: {{ state.summary.boundary.label }}</p>
+              <p class="lgu__hazard-summary">
+                Counts distinct earthquake events whose canonical epicentres fall within or on this
+                LGU's current land boundary. Offshore epicentres and duplicate agency observations
+                are not included.
+              </p>
+
+              <button
+                class="lgu__hazard-disclosure"
+                type="button"
+                [attr.aria-expanded]="containmentDetailsExpanded()"
+                aria-controls="lgu-earthquake-methodology"
+                (click)="toggleContainmentDetails()"
+              >
+                {{ containmentDetailsExpanded() ? 'Show less' : 'Read more' }}
+              </button>
+
+              @if (containmentDetailsExpanded()) {
+                <div id="lgu-earthquake-methodology" class="lgu__hazard-methodology">
+                  <p class="lgu__hazard-detail-label">Methodology</p>
+                  <p class="lgu__hazard-semantics">{{ state.summary.countSemantics }}</p>
+                  <p class="lgu__hazard-attribution">
+                    Attribution &middot; {{ state.summary.boundary.attribution }}
+                  </p>
+                </div>
+              }
+
+              <div class="lgu__hazard-source" aria-label="Boundary provenance">
+                <p>Boundary &middot; {{ state.summary.boundary.label }}</p>
+                <p>
+                  Vintage &middot;
+                  {{ state.summary.boundary.vintage ?? 'Not stated' }}
+                </p>
+              </div>
             }
           }
         }

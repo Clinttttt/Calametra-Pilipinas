@@ -38,9 +38,14 @@ export class LguPanel {
   /** Local, hazard-specific request state. It never reads or mutates the place/radius store. */
   protected readonly earthquakeContainment = signal<EarthquakeContainmentState>({ status: 'idle' });
 
+  /** Presentation state only; every newly selected administrative unit starts with details collapsed. */
+  protected readonly containmentDetailsExpanded = signal(false);
+
   constructor() {
     effect((onCleanup) => {
       const selected = this.store.selected();
+
+      this.containmentDetailsExpanded.set(false);
 
       if (selected === null) {
         this.earthquakeContainment.set({ status: 'idle' });
@@ -71,6 +76,10 @@ export class LguPanel {
    */
   protected icon(kind: string): IconName {
     return kind === 'City' ? 'lens-exposure' : 'locate';
+  }
+
+  protected toggleContainmentDetails(): void {
+    this.containmentDetailsExpanded.update((expanded) => !expanded);
   }
 }
 

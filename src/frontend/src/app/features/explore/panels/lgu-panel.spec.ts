@@ -100,8 +100,57 @@ describe('LguPanel earthquake containment', () => {
     expect(host.textContent).toContain(
       'Distinct earthquake epicentres within/on the current land boundary',
     );
-    expect(host.textContent).toContain('Points exactly on the boundary are included');
+    expect(host.textContent).toContain('Offshore epicentres and duplicate agency observations');
+    expect(host.textContent).toContain('COD-AB Philippines administrative boundaries');
+    expect(host.textContent).toContain('2024-10-31');
+    expect(host.textContent).not.toContain('Points exactly on the boundary are included');
     expect(host.textContent).not.toContain('A_FUTURE_EQUIVALENT_PREDICATE');
+  });
+
+  it('keeps full methodology collapsed by default and expands it accessibly', async () => {
+    store.select(CANTILAN);
+    await fixture.whenStable();
+    api.responses.get(CANTILAN.psgc)!.next(containment(12));
+    await fixture.whenStable();
+
+    const toggle = host.querySelector<HTMLButtonElement>('.lgu__hazard-disclosure');
+
+    expect(toggle?.textContent?.trim()).toBe('Read more');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle?.getAttribute('aria-controls')).toBe('lgu-earthquake-methodology');
+    expect(host.querySelector('#lgu-earthquake-methodology')).toBeNull();
+    expect(host.textContent).not.toContain('Points exactly on the boundary are included');
+
+    toggle!.click();
+    await fixture.whenStable();
+
+    expect(toggle?.textContent?.trim()).toBe('Show less');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('#lgu-earthquake-methodology')?.textContent).toContain(
+      'Points exactly on the boundary are included',
+    );
+    expect(host.querySelector('#lgu-earthquake-methodology')?.textContent).toContain(
+      'United Nations OCHA',
+    );
+    expect(host.textContent).not.toContain('A_FUTURE_EQUIVALENT_PREDICATE');
+  });
+
+  it('collapses the methodology again when Show less is used', async () => {
+    store.select(CANTILAN);
+    await fixture.whenStable();
+    api.responses.get(CANTILAN.psgc)!.next(containment(12));
+    await fixture.whenStable();
+
+    const toggle = host.querySelector<HTMLButtonElement>('.lgu__hazard-disclosure')!;
+    toggle.click();
+    await fixture.whenStable();
+    toggle.click();
+    await fixture.whenStable();
+
+    expect(toggle.textContent?.trim()).toBe('Read more');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('#lgu-earthquake-methodology')).toBeNull();
+    expect(host.textContent).not.toContain('Points exactly on the boundary are included');
   });
 
   it('renders a successful zero distinctly from unavailable data', async () => {
@@ -157,5 +206,26 @@ describe('LguPanel earthquake containment', () => {
 
     expect(host.textContent).toContain('City of Cebu');
     expect(host.querySelector('.lgu__hazard-count')?.textContent?.trim()).toBe('34');
+  });
+
+  it('resets expanded methodology when another LGU is selected', async () => {
+    store.select(CANTILAN);
+    await fixture.whenStable();
+    api.responses.get(CANTILAN.psgc)!.next(containment(12));
+    await fixture.whenStable();
+
+    host.querySelector<HTMLButtonElement>('.lgu__hazard-disclosure')!.click();
+    await fixture.whenStable();
+    expect(host.querySelector('#lgu-earthquake-methodology')).not.toBeNull();
+
+    store.select(CEBU_CITY);
+    await fixture.whenStable();
+    api.responses.get(CEBU_CITY.psgc)!.next(containment(34, CEBU_CITY.psgc));
+    await fixture.whenStable();
+
+    const toggle = host.querySelector<HTMLButtonElement>('.lgu__hazard-disclosure');
+    expect(toggle?.textContent?.trim()).toBe('Read more');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('#lgu-earthquake-methodology')).toBeNull();
   });
 });
