@@ -2372,7 +2372,8 @@ export class Explore {
         psgc: properties['psgc'],
         name: typeof properties['name'] === 'string' ? properties['name'] : properties['psgc'],
         kind: typeof properties['kind'] === 'string' ? properties['kind'] : 'Municipality',
-        areaSquareKm: typeof properties['area_km2'] === 'number' ? properties['area_km2'] : 0,
+        boundaryGeometryAreaSquareKm:
+          typeof properties['area_km2'] === 'number' ? properties['area_km2'] : 0,
       });
     });
   }

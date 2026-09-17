@@ -20,6 +20,7 @@ import {
   type HazardFeatureCollection,
   type HazardLayer,
   type MapDataResponse,
+  type AdministrativeUnit,
   type LguEarthquakeContainment,
   type NearbyCycloneTracks,
   type PaginatedList,
@@ -299,6 +300,13 @@ export class CalametraApi {
   getLguEarthquakeContainment(canonicalPsgcCode: string): Observable<LguEarthquakeContainment> {
     return this.http.get<LguEarthquakeContainment>(
       `/api/lgu-boundaries/${encodeURIComponent(canonicalPsgcCode)}/earthquakes`,
+    );
+  }
+
+  /** Canonical administrative identity and independently published current official land area. */
+  getAdministrativeUnit(canonicalPsgcCode: string): Observable<AdministrativeUnit> {
+    return this.http.get<AdministrativeUnit>(
+      `/api/lgus/${encodeURIComponent(canonicalPsgcCode)}`,
     );
   }
 

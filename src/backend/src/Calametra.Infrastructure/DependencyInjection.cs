@@ -219,6 +219,18 @@ public static class DependencyInjection
                 "Calametra/1.0 (+https://github.com/calametra; research platform; PSGC register import)");
         });
 
+        services.AddOptions<PsaOfficialLandAreaOptions>()
+            .Bind(configuration.GetSection(PsaOfficialLandAreaOptions.SectionName));
+
+        // One small metadata response and one national JSON-stat payload per operator-invoked import.
+        // No automatic retry: a partial or transient read must remain a failed acquisition, not be hidden.
+        services.AddHttpClient<IOfficialLandAreaSource, PsaOfficialLandAreaSource>(client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(3);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Calametra/1.0 (+https://github.com/calametra; PSA OpenSTAT land-area import)");
+        });
+
         services.AddOptions<OpenStreetMapOptions>()
             .Bind(configuration.GetSection(OpenStreetMapOptions.SectionName))
             .ValidateDataAnnotations()            .ValidateOnStart();

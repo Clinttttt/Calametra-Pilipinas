@@ -79,6 +79,12 @@ var isRegisterImport = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:ImportRegister"],
     out var registerFlag) && registerFlag;
 
+// Official/statistical area is its own versioned source, not a property of boundary geometry:
+//   dotnet run --project src/Calametra.Ingestion -- --Ingestion:Lgu:ImportOfficialLandAreas=true
+var isOfficialLandAreaImport = bool.TryParse(
+    builder.Configuration["Ingestion:Lgu:ImportOfficialLandAreas"],
+    out var officialAreaFlag) && officialAreaFlag;
+
 var isLinkProposal = bool.TryParse(
     builder.Configuration["Ingestion:Lgu:ProposeLinks"],
     out var proposeFlag) && proposeFlag;
@@ -150,6 +156,7 @@ var isOneShot = isBackfill
     || isCoordinateRefinement
     || isNameApplication
     || isRegisterImport
+    || isOfficialLandAreaImport
     || isLinkProposal
     || isReadinessReport
     || isReviewQueue
@@ -187,6 +194,7 @@ await using (var scope = host.Services.CreateAsyncScope())
     // geometry, so fetching it would be a minute of pointless traffic and one more upstream service that
     // could fail a run with nothing to do with faults — which is exactly what it did.
     var needsFaultGeometry = !isRegisterImport
+        && !isOfficialLandAreaImport
         && !isLinkProposal
         && !isReadinessReport
         && !isReviewQueue
@@ -381,6 +389,49 @@ if (isRegisterImport)
     LguReadinessPrinter.PrintImport(summary);
 
     return 0;
+}
+
+// ── OFFICIAL/STATISTICAL AREA — INDEPENDENT OF BOUNDARY GEOMETRY ──────────────────────────────
+if (isOfficialLandAreaImport)
+{
+    await using var scope = host.Services.CreateAsyncScope();
+
+    var result = await scope.ServiceProvider
+        .GetRequiredService<IDispatcher>()
+        .Send(new ImportOfficialLandAreas.Command());
+
+    if (result.IsFailure)
+    {
+        Console.WriteLine(
+            $"Official land-area import failed: {result.Error!.Code} — {result.Error.Description}");
+        return 1;
+    }
+
+    var summary = result.Value;
+
+    Console.WriteLine();
+    Console.WriteLine("PSA OFFICIAL/STATISTICAL LGU LAND AREA");
+    Console.WriteLine("======================================");
+    Console.WriteLine($"Edition: {summary.EditionLabel}");
+    Console.WriteLine($"Matrix: {summary.MatrixId}");
+    Console.WriteLine($"Payload SHA-256: {summary.PayloadSha256}");
+    Console.WriteLine($"Active city/municipality LGUs: {summary.ActiveLguCount}");
+    Console.WriteLine($"Imported exact-code records: {summary.ImportedLguCount}");
+    Console.WriteLine($"Missing active codes: {summary.MissingCanonicalPsgcCodes.Count}");
+    Console.WriteLine($"Extra source codes (aggregates/non-active): {summary.ExtraSourceCodes.Count}");
+    Console.WriteLine($"Activated for reader queries: {summary.Activated}");
+
+    if (summary.MissingCanonicalPsgcCodes.Count > 0)
+    {
+        Console.WriteLine($"Missing: {string.Join(", ", summary.MissingCanonicalPsgcCodes)}");
+    }
+
+    if (summary.ExtraSourceCodes.Count > 0)
+    {
+        Console.WriteLine($"Extras: {string.Join(", ", summary.ExtraSourceCodes)}");
+    }
+
+    return summary.Activated ? 0 : 2;
 }
 
 // ── ADR-005 PHASE 2: PROPOSALS ONLY ────────────────────────────────────────

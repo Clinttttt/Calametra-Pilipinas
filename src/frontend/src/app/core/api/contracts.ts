@@ -809,6 +809,27 @@ export interface LguBoundaryEdition {
   readonly attribution: string;
 }
 
+/** A published statistical area, versioned independently from mapped boundary geometry. */
+export interface LguOfficialLandArea {
+  readonly squareKm: number;
+  readonly basis: 'Unspecified' | 'CadastralSurvey' | 'Estimated';
+  readonly editionLabel: string;
+  readonly referenceYear: number;
+  readonly matrixId: string;
+  readonly sourceUpdatedAt: string | null;
+  readonly provenanceLabel: string;
+  readonly attribution: string;
+}
+
+/** Canonical PSGC identity and its current official-area observation, if one exists. */
+export interface AdministrativeUnit {
+  readonly canonicalPsgcCode: string;
+  readonly name: string;
+  readonly level: string;
+  readonly registerEdition: string;
+  readonly officialLandArea: LguOfficialLandArea | null;
+}
+
 /**
  * Earthquakes whose canonical epicentres fall within/on one current LGU land boundary.
  *
@@ -819,6 +840,8 @@ export interface LguEarthquakeContainment {
   readonly canonicalPsgcCode: string;
   readonly name: string;
   readonly level: string;
+  readonly boundaryGeometryAreaSquareKm: number;
+  /** @deprecated Compatibility alias; this is not an official/statistical LGU land area. */
   readonly landAreaSquareKm: number;
   readonly earthquakeCount: number;
 

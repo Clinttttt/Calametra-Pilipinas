@@ -8,32 +8,46 @@ import {
   type SelectedLgu,
 } from '../../../core/administrative/lgu-selection-store';
 import { CalametraApi } from '../../../core/api/calametra-api';
-import { type LguEarthquakeContainment } from '../../../core/api/contracts';
+import {
+  type AdministrativeUnit,
+  type LguEarthquakeContainment,
+} from '../../../core/api/contracts';
 import { LguPanel } from './lgu-panel';
 
 const CANTILAN: SelectedLgu = {
-  psgc: '1606801000',
+  psgc: '1606805000',
   name: 'Cantilan',
   kind: 'Municipality',
-  areaSquareKm: 327.1,
+  boundaryGeometryAreaSquareKm: 327.1,
 };
 
 const CEBU_CITY: SelectedLgu = {
   psgc: '0730600000',
   name: 'City of Cebu',
   kind: 'City',
-  areaSquareKm: 315,
+  boundaryGeometryAreaSquareKm: 315,
+};
+
+const LANUZA: SelectedLgu = {
+  psgc: '1606810000',
+  name: 'Lanuza',
+  kind: 'Municipality',
+  boundaryGeometryAreaSquareKm: 318.6,
 };
 
 function containment(
   earthquakeCount: number,
   canonicalPsgcCode = CANTILAN.psgc,
 ): LguEarthquakeContainment {
+  const boundaryGeometryAreaSquareKm =
+    canonicalPsgcCode === LANUZA.psgc ? LANUZA.boundaryGeometryAreaSquareKm : 327.1;
+
   return {
     canonicalPsgcCode,
     name: 'Cantilan',
     level: 'Municipality',
-    landAreaSquareKm: 327.1,
+    boundaryGeometryAreaSquareKm,
+    landAreaSquareKm: boundaryGeometryAreaSquareKm,
     earthquakeCount,
     // Deliberately arbitrary: the panel must consume the semantics, not branch on this diagnostic value.
     spatialPredicate: 'A_FUTURE_EQUIVALENT_PREDICATE',
@@ -47,14 +61,48 @@ function containment(
   };
 }
 
+function administrativeUnit(
+  selected: SelectedLgu,
+  officialSquareKm: number | null,
+): AdministrativeUnit {
+  return {
+    canonicalPsgcCode: selected.psgc,
+    name: selected.name,
+    level: selected.kind,
+    registerEdition: 'PSGC 2Q 2026 (PSA publication datafile)',
+    officialLandArea:
+      officialSquareKm === null
+        ? null
+        : {
+            squareKm: officialSquareKm,
+            basis: 'Unspecified',
+            editionLabel: 'PSA 2024 POPCEN official land area / 2019 masterlist',
+            referenceYear: 2019,
+            matrixId: '1A6DLPD0',
+            sourceUpdatedAt: '2026-08-07T01:00:00Z',
+            provenanceLabel: 'PSA 2024 POPCEN / DENR-LMB 2019',
+            attribution: 'Philippine Statistics Authority; Land Management Bureau',
+          },
+  };
+}
+
 class ApiStub {
   readonly requestedCodes: string[] = [];
   readonly responses = new Map<string, Subject<LguEarthquakeContainment>>();
+  readonly administrativeRequestedCodes: string[] = [];
+  readonly administrativeResponses = new Map<string, Subject<AdministrativeUnit>>();
 
   getLguEarthquakeContainment(code: string): Subject<LguEarthquakeContainment> {
     this.requestedCodes.push(code);
     const response = new Subject<LguEarthquakeContainment>();
     this.responses.set(code, response);
+    return response;
+  }
+
+  getAdministrativeUnit(code: string): Subject<AdministrativeUnit> {
+    this.administrativeRequestedCodes.push(code);
+    const response = new Subject<AdministrativeUnit>();
+    this.administrativeResponses.set(code, response);
     return response;
   }
 }
@@ -82,21 +130,21 @@ describe('LguPanel earthquake containment', () => {
     host = fixture.nativeElement as HTMLElement;
   });
 
-  it('loads the selected LGU and keeps its land area visible', async () => {
+  it('loads the selected LGU and keeps its boundary area visible with containment', async () => {
     store.select(CANTILAN);
     await fixture.whenStable();
 
     expect(api.requestedCodes).toEqual([CANTILAN.psgc]);
+    expect(api.administrativeRequestedCodes).toEqual([CANTILAN.psgc]);
     expect(host.querySelector('.lgu__hazard-state')?.textContent).toContain(
       'Counting distinct earthquake epicentres',
     );
-    expect(host.textContent).toContain('327.1 km');
-
     api.responses.get(CANTILAN.psgc)!.next(containment(12));
     api.responses.get(CANTILAN.psgc)!.complete();
     await fixture.whenStable();
 
     expect(host.querySelector('.lgu__hazard-count')?.textContent?.trim()).toBe('12');
+    expect(host.textContent).toContain('327.1 km');
     expect(host.textContent).toContain(
       'Distinct earthquake epicentres within/on the current land boundary',
     );
@@ -107,6 +155,48 @@ describe('LguPanel earthquake containment', () => {
     expect(host.textContent).toContain('2024-10-31');
     expect(host.textContent).not.toContain('Points exactly on the boundary are included');
     expect(host.textContent).not.toContain('A_FUTURE_EQUIVALENT_PREDICATE');
+  });
+
+  it('shows Lanuza official and boundary areas as distinct sourced values', async () => {
+    store.select(LANUZA);
+    await fixture.whenStable();
+
+    api.administrativeResponses.get(LANUZA.psgc)!.next(administrativeUnit(LANUZA, 292.27));
+    api.responses.get(LANUZA.psgc)!.next(containment(6, LANUZA.psgc));
+    await fixture.whenStable();
+
+    expect(normalisedText(host.querySelector('.lgu__facts'))).toContain(
+      'Official land area 292.27 km²',
+    );
+    expect(normalisedText(host.querySelector('.lgu__identity-source'))).toContain(
+      'Administrative identity · PSA PSGC, 2Q 2026',
+    );
+    expect(normalisedText(host.querySelector('.lgu__identity-source'))).toContain(
+      'Official land area · PSA 2024 POPCEN / DENR-LMB 2019',
+    );
+    expect(normalisedText(host.querySelector('.lgu__hazard-source'))).toContain(
+      'Boundary area · 318.6 km²',
+    );
+    expect(normalisedText(host.querySelector('.lgu__hazard-source'))).toContain(
+      'Area · Computed from the mapped boundary',
+    );
+  });
+
+  it('never falls back to polygon area when official area is missing', async () => {
+    store.select(LANUZA);
+    await fixture.whenStable();
+
+    api.administrativeResponses.get(LANUZA.psgc)!.next(administrativeUnit(LANUZA, null));
+    api.responses.get(LANUZA.psgc)!.next(containment(6, LANUZA.psgc));
+    await fixture.whenStable();
+
+    expect(normalisedText(host.querySelector('.lgu__facts'))).toContain(
+      'Official land area Not available',
+    );
+    expect(normalisedText(host.querySelector('.lgu__hazard-source'))).toContain(
+      'Boundary area · 318.6 km²',
+    );
+    expect(normalisedText(host.querySelector('.lgu__facts'))).not.toContain('318.6');
   });
 
   it('keeps full methodology collapsed by default and expands it accessibly', async () => {

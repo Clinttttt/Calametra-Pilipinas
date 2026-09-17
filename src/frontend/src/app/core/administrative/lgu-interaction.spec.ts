@@ -142,7 +142,7 @@ describe('Explore municipality interaction', () => {
     const map = fakeMap();
     const store = new LguSelectionStore();
 
-    store.select({ psgc: '1660200000', name: 'Cantilan', kind: 'Municipality', areaSquareKm: 218.2 });
+    store.select({ psgc: '1606805000', name: 'Cantilan', kind: 'Municipality', boundaryGeometryAreaSquareKm: 203.6 });
     store.hover('1660300000');
     applyLguState(map, store, true);
 
@@ -152,7 +152,7 @@ describe('Explore municipality interaction', () => {
     applyLguState(map, store, true);
 
     expect(map.filters.get(LGU_HOVER)).toEqual(['==', ['get', 'psgc'], '']);
-    expect(selectedFilterCode(map)).toBe('1660200000');
+    expect(selectedFilterCode(map)).toBe('1606805000');
   });
 
   it('does not draw hover over the unit already selected', () => {
@@ -160,8 +160,8 @@ describe('Explore municipality interaction', () => {
     const map = fakeMap();
     const store = new LguSelectionStore();
 
-    store.select({ psgc: '1660200000', name: 'Cantilan', kind: 'Municipality', areaSquareKm: 218.2 });
-    store.hover('1660200000');
+    store.select({ psgc: '1606805000', name: 'Cantilan', kind: 'Municipality', boundaryGeometryAreaSquareKm: 203.6 });
+    store.hover('1606805000');
     applyLguState(map, store, true);
 
     expect(map.filters.get(LGU_HOVER)).toEqual(['==', ['get', 'psgc'], '']);
@@ -171,8 +171,8 @@ describe('Explore municipality interaction', () => {
     const map = fakeMap();
     const store = new LguSelectionStore();
 
-    store.select({ psgc: '1660200000', name: 'Cantilan', kind: 'Municipality', areaSquareKm: 218.2 });
-    store.select({ psgc: '0730600000', name: 'City of Cebu', kind: 'City', areaSquareKm: 326.2 });
+    store.select({ psgc: '1606805000', name: 'Cantilan', kind: 'Municipality', boundaryGeometryAreaSquareKm: 203.6 });
+    store.select({ psgc: '0730600000', name: 'City of Cebu', kind: 'City', boundaryGeometryAreaSquareKm: 326.2 });
     applyLguState(map, store, true);
 
     expect(selectedFilterCode(map)).toBe('0730600000');
@@ -184,12 +184,12 @@ describe('Explore municipality interaction', () => {
     const map = fakeMap();
     const store = new LguSelectionStore();
 
-    store.select({ psgc: '1660200000', name: 'Cantilan', kind: 'Municipality', areaSquareKm: 218.2 });
+    store.select({ psgc: '1606805000', name: 'Cantilan', kind: 'Municipality', boundaryGeometryAreaSquareKm: 203.6 });
     applyLguState(map, store, false);
 
     expect(map.visibility.get(LGU_LINE)).toBe('none');
-    expect(selectedFilterCode(map)).toBe('1660200000');
-    expect(map.filters.get(LGU_SELECTED_FILL)).toEqual(['==', ['get', 'psgc'], '1660200000']);
+    expect(selectedFilterCode(map)).toBe('1606805000');
+    expect(map.filters.get(LGU_SELECTED_FILL)).toEqual(['==', ['get', 'psgc'], '1606805000']);
   });
 
   it('suppresses hover while the bulk layer is hidden', () => {
@@ -197,7 +197,7 @@ describe('Explore municipality interaction', () => {
     const map = fakeMap();
     const store = new LguSelectionStore();
 
-    store.hover('1660200000');
+    store.hover('1606805000');
     applyLguState(map, store, false);
 
     expect(map.filters.get(LGU_HOVER)).toEqual(['==', ['get', 'psgc'], '']);
@@ -209,7 +209,7 @@ describe('Explore municipality interaction', () => {
     const map = fakeMap();
     const store = new LguSelectionStore();
 
-    store.select({ psgc: '0102801000', name: 'Adams', kind: 'Municipality', areaSquareKm: 159.3 });
+    store.select({ psgc: '0102801000', name: 'Adams', kind: 'Municipality', boundaryGeometryAreaSquareKm: 159.3 });
     applyLguState(map, store, true);
 
     expect(map.filters.get(LGU_SELECTED_LINE)).toEqual(['==', ['get', 'psgc'], '0102801000']);
@@ -241,7 +241,7 @@ describe('Explore municipality interaction', () => {
 
     expect(store.hasSelection()).toBe(false);
 
-    store.select({ psgc: '1660200000', name: 'Cantilan', kind: 'Municipality', areaSquareKm: 203.6 });
+    store.select({ psgc: '1606805000', name: 'Cantilan', kind: 'Municipality', boundaryGeometryAreaSquareKm: 203.6 });
 
     expect(store.hasSelection()).toBe(true);
 
@@ -257,7 +257,7 @@ describe('Explore municipality interaction', () => {
     applyLguState(map, store, true);
     expect(map.getCanvas().style.cursor).toBe('');
 
-    store.hover('1660200000');
+    store.hover('1606805000');
     applyLguState(map, store, true);
     expect(map.getCanvas().style.cursor).toBe('pointer');
   });

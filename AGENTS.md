@@ -63,7 +63,9 @@ Do not quietly reverse an accepted ADR. A durable reversal requires an explicit 
 - Containment and radius/proximity answer different questions. Containment attributes an event to an
   administrative land polygon; radius/proximity supports equal-distance comparison from a representative
   point. Neither replaces the other.
-- Every boundary-derived figure must state the unit's land area and the boundary edition/provenance.
+- Every boundary-derived figure must state the computed area of the geometry actually used and the
+  boundary edition/provenance. An official/statistical LGU area is a separate versioned observation;
+  neither area may substitute for the other.
   Offshore events remain outside land containment and remain explorable through proximity tools.
 - `LguSelectionStore` and `PlaceStore` must remain separate. Selecting an LGU must not silently open or
   mutate the representative-point/radius workflow.

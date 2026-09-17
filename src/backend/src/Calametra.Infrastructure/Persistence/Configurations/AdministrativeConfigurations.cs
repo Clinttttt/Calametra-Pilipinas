@@ -1,5 +1,6 @@
 using Calametra.Application.Abstractions.Data;
 using Calametra.Domain.Administrative;
+using Calametra.Domain.Sources;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -349,6 +350,103 @@ internal sealed class LguBoundaryExtractConfiguration : IEntityTypeConfiguration
                 "ck_lgu_boundary_extracts_file_details_are_paired",
                 "(original_file_name IS NULL AND file_sha256 IS NULL) "
                 + "OR (original_file_name IS NOT NULL AND file_sha256 IS NOT NULL)");
+        });
+    }
+}
+
+/// <summary>One hashed PSA statistical land-area acquisition, versioned independently of geometry.</summary>
+internal sealed class LguOfficialLandAreaEditionConfiguration
+    : IEntityTypeConfiguration<LguOfficialLandAreaEdition>
+{
+    public void Configure(EntityTypeBuilder<LguOfficialLandAreaEdition> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("lgu_official_land_area_editions");
+        builder.HasKey(edition => edition.Id);
+
+        builder.Property(edition => edition.Label).HasMaxLength(300).IsRequired();
+        builder.Property(edition => edition.MatrixId).HasMaxLength(40).IsRequired();
+        builder.Property(edition => edition.AccessRoute).HasMaxLength(600).IsRequired();
+        builder.Property(edition => edition.MetadataSha256).HasMaxLength(64).IsFixedLength().IsRequired();
+        builder.Property(edition => edition.PayloadSha256).HasMaxLength(64).IsFixedLength().IsRequired();
+        // Text, not jsonb: PostgreSQL normalizes jsonb and would make the retained bytes disagree with
+        // the SHA-256 of the exact response. These are audit snapshots, not documents queried by field.
+        builder.Property(edition => edition.MetadataSnapshot).HasColumnType("text").IsRequired();
+        builder.Property(edition => edition.PayloadSnapshot).HasColumnType("text").IsRequired();
+        builder.Property(edition => edition.Attribution).HasMaxLength(2000).IsRequired();
+        builder.Property(edition => edition.MissingCanonicalPsgcCodes).HasColumnType("text");
+        builder.Property(edition => edition.ExtraSourceCodes).HasColumnType("text");
+
+        builder.HasIndex(edition => new { edition.PayloadSha256, edition.RegisterEditionId }).IsUnique();
+        builder.HasIndex(edition => edition.SourceId)
+            .IsUnique()
+            .HasFilter("activated_at IS NOT NULL AND superseded_at IS NULL")
+            .HasDatabaseName("ux_lgu_official_land_area_editions_current_per_source");
+
+        builder.HasOne<DataSource>()
+            .WithMany()
+            .HasForeignKey(edition => edition.SourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<PsgcRegisterEdition>()
+            .WithMany()
+            .HasForeignKey(edition => edition.RegisterEditionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_lgu_official_land_area_editions_hashes_are_hex",
+                "metadata_sha256 ~ '^[0-9a-f]{64}$' AND payload_sha256 ~ '^[0-9a-f]{64}$'");
+            table.HasCheckConstraint(
+                "ck_lgu_official_land_area_editions_activation_is_complete",
+                "activated_at IS NULL OR (missing_active_lgu_count = 0 AND imported_lgu_count > 0)");
+            table.HasCheckConstraint(
+                "ck_lgu_official_land_area_editions_supersession_is_complete",
+                "(superseded_at IS NULL AND superseded_by_edition_id IS NULL) OR "
+                + "(superseded_at IS NOT NULL AND superseded_by_edition_id IS NOT NULL)");
+        });
+    }
+}
+
+/// <summary>A fixed-precision published value, deliberately unrelated to LguBoundary.AreaSquareKm.</summary>
+internal sealed class LguOfficialLandAreaConfiguration : IEntityTypeConfiguration<LguOfficialLandArea>
+{
+    public void Configure(EntityTypeBuilder<LguOfficialLandArea> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("lgu_official_land_areas");
+        builder.HasKey(area => area.Id);
+
+        builder.Property(area => area.CanonicalPsgcCode).HasMaxLength(10).IsFixedLength().IsRequired();
+        builder.Property(area => area.AreaSquareKm).HasPrecision(12, 2).IsRequired();
+        builder.Property(area => area.Basis).HasConversion<string>().HasMaxLength(24).IsRequired();
+        builder.Property(area => area.SourceLabel).HasMaxLength(300).IsRequired();
+
+        builder.HasIndex(area => new { area.EditionId, area.LguId }).IsUnique();
+        builder.HasIndex(area => new { area.EditionId, area.CanonicalPsgcCode }).IsUnique();
+        builder.HasIndex(area => area.LguId);
+
+        builder.HasOne<Lgu>()
+            .WithMany()
+            .HasForeignKey(area => area.LguId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<LguOfficialLandAreaEdition>()
+            .WithMany()
+            .HasForeignKey(area => area.EditionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_lgu_official_land_areas_code_is_ten_digits",
+                "char_length(canonical_psgc_code) = 10 AND canonical_psgc_code ~ '^[0-9]+$'");
+            table.HasCheckConstraint(
+                "ck_lgu_official_land_areas_value_is_positive",
+                "area_square_km > 0");
         });
     }
 }

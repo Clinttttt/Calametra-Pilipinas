@@ -60,6 +60,12 @@ public interface IApplicationDbContext
     /// <summary>Dated acquisitions behind administrative geometry.</summary>
     DbSet<LguBoundaryExtract> LguBoundaryExtracts { get; }
 
+    /// <summary>Independently versioned editions of published official/statistical LGU land area.</summary>
+    DbSet<LguOfficialLandAreaEdition> LguOfficialLandAreaEditions { get; }
+
+    /// <summary>Fixed-precision published LGU areas; never computed from boundary geometry.</summary>
+    DbSet<LguOfficialLandArea> LguOfficialLandAreas { get; }
+
     /// <summary>
     /// Reviewed code pairings only.
     /// </summary>

@@ -3,7 +3,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 
 import { CalametraApi } from '../../../core/api/calametra-api';
-import { type LguEarthquakeContainment, type ProblemDetails } from '../../../core/api/contracts';
+import {
+  type AdministrativeUnit,
+  type LguEarthquakeContainment,
+  type ProblemDetails,
+} from '../../../core/api/contracts';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { type IconName } from '../../../shared/ui/icon/icon-paths';
 import { LguSelectionStore } from '../../../core/administrative/lgu-selection-store';
@@ -16,9 +20,9 @@ import { LguSelectionStore } from '../../../core/administrative/lgu-selection-st
  * a distance of one representative point. Selecting a municipality here does not open a radius, and the
  * panel says so — otherwise a reader would reasonably assume the two are the same question asked twice.
  *
- * The area is shown because ADR-005 D1 requires any figure derived from a boundary to state the unit's
- * area beside it. Philippine LGUs differ in area by more than two orders of magnitude, so a count inside a
- * boundary encodes land area as much as anything else, and the area is what lets a reader see that.
+ * The boundary area is shown because ADR-005 D1 requires a containment figure to state the area of the
+ * actual geometry used. It is a measurement of the mapped COD-AB polygon, not an official statistical or
+ * cadastral LGU area; those are separate, independently sourced concepts.
  *
  * It carries its own surface, as `place-panel` does. The first version relied on variables that do not
  * exist in this project's token set, so `color-mix` resolved to nothing and the panel rendered as text
@@ -38,6 +42,9 @@ export class LguPanel {
   /** Local, hazard-specific request state. It never reads or mutates the place/radius store. */
   protected readonly earthquakeContainment = signal<EarthquakeContainmentState>({ status: 'idle' });
 
+  /** Administrative identity enrichment; independent from containment and from PlaceStore. */
+  protected readonly administrativeUnit = signal<AdministrativeUnitState>({ status: 'idle' });
+
   /** Presentation state only; every newly selected administrative unit starts with details collapsed. */
   protected readonly containmentDetailsExpanded = signal(false);
   protected readonly boundaryDetailsExpanded = signal(false);
@@ -51,12 +58,14 @@ export class LguPanel {
 
       if (selected === null) {
         this.earthquakeContainment.set({ status: 'idle' });
+        this.administrativeUnit.set({ status: 'idle' });
         return;
       }
 
       this.earthquakeContainment.set({ status: 'loading' });
+      this.administrativeUnit.set({ status: 'loading' });
 
-      const subscription = this.api.getLguEarthquakeContainment(selected.psgc).subscribe({
+      const containmentSubscription = this.api.getLguEarthquakeContainment(selected.psgc).subscribe({
         next: (summary) => this.earthquakeContainment.set({ status: 'ready', summary }),
         error: (error: unknown) =>
           this.earthquakeContainment.set({
@@ -64,9 +73,17 @@ export class LguPanel {
           }),
       });
 
+      const administrativeSubscription = this.api.getAdministrativeUnit(selected.psgc).subscribe({
+        next: (unit) => this.administrativeUnit.set({ status: 'ready', unit }),
+        error: () => this.administrativeUnit.set({ status: 'failed' }),
+      });
+
       // Selection can change while a request is in flight. Cancelling prevents the previous LGU's count
       // from replacing the current one when responses arrive out of order.
-      onCleanup(() => subscription.unsubscribe());
+      onCleanup(() => {
+        containmentSubscription.unsubscribe();
+        administrativeSubscription.unsubscribe();
+      });
     });
   }
 
@@ -87,6 +104,10 @@ export class LguPanel {
   protected toggleBoundaryDetails(): void {
     this.boundaryDetailsExpanded.update((expanded) => !expanded);
   }
+
+  protected registerEditionDisplay(label: string): string {
+    return label.replace(/^PSGC\s+/i, '').replace(/\s+\([^)]*\)$/, '');
+  }
 }
 
 type EarthquakeContainmentState =
@@ -94,6 +115,12 @@ type EarthquakeContainmentState =
   | { readonly status: 'loading' }
   | { readonly status: 'ready'; readonly summary: LguEarthquakeContainment }
   | { readonly status: 'unavailable' }
+  | { readonly status: 'failed' };
+
+type AdministrativeUnitState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'loading' }
+  | { readonly status: 'ready'; readonly unit: AdministrativeUnit }
   | { readonly status: 'failed' };
 
 function isBoundaryUnavailable(error: unknown): boolean {

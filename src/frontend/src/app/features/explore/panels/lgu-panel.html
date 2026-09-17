@@ -17,10 +17,8 @@
       </div>
     </div>
 
-    <!-- Code and area, not a list of facts for its own sake. The code is what anything durable is keyed
-         to, and ADR-005 D1 requires the area beside any figure derived from a boundary: Philippine LGUs
-         differ in area by more than two orders of magnitude, so a count inside one encodes land area
-         unless the area is visible. -->
+    <!-- Administrative identity and the separately sourced published area. The computed COD-AB polygon
+         area stays with the containment result below; neither value substitutes for the other. -->
     <dl class="lgu__facts">
       <div class="lgu__fact">
         <dt>Canonical PSGC</dt>
@@ -28,10 +26,44 @@
       </div>
 
       <div class="lgu__fact">
-        <dt>Land area</dt>
-        <dd>{{ lgu.areaSquareKm | number: '1.0-1' }} km²</dd>
+        <dt>Official land area</dt>
+        <dd>
+          @switch (administrativeUnit().status) {
+            @case ('loading') {
+              Loading&hellip;
+            }
+            @case ('ready') {
+              @if (administrativeUnit(); as state) {
+                @if (state.status === 'ready') {
+                  @if (state.unit.officialLandArea; as area) {
+                    {{ area.squareKm | number: '1.2-2' }} km²
+                  } @else {
+                    Not available
+                  }
+                }
+              }
+            }
+            @case ('failed') {
+              Unavailable
+            }
+          }
+        </dd>
       </div>
     </dl>
+
+    @if (administrativeUnit(); as state) {
+      @if (state.status === 'ready') {
+        <div class="lgu__identity-source" aria-label="Administrative data provenance">
+          <p>
+            Administrative identity &middot; PSA PSGC,
+            {{ registerEditionDisplay(state.unit.registerEdition) }}
+          </p>
+          @if (state.unit.officialLandArea; as area) {
+            <p>Official land area &middot; {{ area.provenanceLabel }}</p>
+          }
+        </div>
+      }
+    }
 
     <section class="lgu__hazard" aria-labelledby="lgu-earthquakes-heading" aria-live="polite">
       <h3 id="lgu-earthquakes-heading" class="lgu__hazard-heading">Earthquakes</h3>
@@ -81,7 +113,12 @@
               }
 
               <div class="lgu__hazard-source" aria-label="Boundary provenance">
+                <p>
+                  Boundary area &middot;
+                  {{ state.summary.boundaryGeometryAreaSquareKm | number: '1.0-1' }} km²
+                </p>
                 <p>Boundary &middot; {{ state.summary.boundary.label }}</p>
+                <p>Area &middot; Computed from the mapped boundary</p>
                 <p>
                   Vintage &middot;
                   {{ state.summary.boundary.vintage ?? 'Not stated' }}

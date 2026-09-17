@@ -49,9 +49,15 @@ this platform exists to refuse. Equal-area comparison needs a circle. Administra
 needs a polygon.
 
 So `GetPlaceContext` keeps its radius exactly as it is, the Compare page keeps comparing at a shared
-radius, and boundary containment arrives as **its own query with its own caveats**. Any figure
-derived from a boundary must state the unit's area beside it, for the same reason every magnitude
-states its scale.
+radius, and boundary containment arrives as **its own query with its own caveats**. Any containment
+figure must state the computed area, edition and provenance of the actual boundary geometry used, for
+the same reason every magnitude states its scale.
+
+An official or statistical LGU land area is a separate published observation. It may come from a
+cadastral survey, an estimate, or another stated government method, and it has its own source and
+edition. It is not the area computed from the polygon merely because both are expressed in square
+kilometres. The two may be shown together when their provenance is clear; neither may silently
+substitute for the other.
 
 ### D2 — On-land administrative geometry comes from the OCHA COD-AB register, under CC BY 3.0 IGO
 
@@ -70,6 +76,11 @@ land outline is the shape that answers that question.
 | Via reviewed edition correspondence | +115 mechanical, +12 manual |
 | Licence | CC BY 3.0 IGO — attribution, **not** share-alike |
 | Total area | 293,507 km², against roughly 300,000 km² of Philippine land |
+
+`LguBoundary.AreaSquareKm` is the geodetic area Calametra computes from each normalized boundary
+geometry at import. It is retained for geometry QA and as the spatial denominator/context of
+containment. It is not an official or cadastral LGU land-area statistic, including where its value is
+close to one.
 
 **OpenStreetMap `admin_level` 6 is retained as a registered source but is no longer the canonical
 municipality geometry.** Measured the same day: OSM holds boundary relations for 892 of 1,642 units, only
@@ -270,7 +281,8 @@ mutated in place**. A superseded boundary is retained.
 
 The consequence a reader must see: an event from 1976 attributed to a unit created in 2022 is being
 attributed by *today's* boundary. Any containment figure states which edition of the boundary set it
-used, and the ingestion records the OSM extract date it came from.
+used, its provenance, and the computed area of that geometry. Official/statistical area editions are
+versioned independently and do not replace or revise boundary geometry records.
 
 ## What must be settled before any code
 

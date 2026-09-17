@@ -137,7 +137,7 @@ internal static class GetEarthquakeContainmentEndpoint
                 + "reported by both PHIVOLCS and USGS remains one event.\n\n"
                 + "This is land containment, not proximity or maritime jurisdiction. Offshore earthquakes "
                 + "are outside the answer and remain available through the existing radius tools. The "
-                + "response includes land area and the dated boundary edition so the count cannot be read "
+                + "response includes computed boundary area and the dated boundary edition so the count cannot be read "
                 + "without its spatial denominator and provenance.")
             .Produces<object>(StatusCodes.Status200OK)
             .ProducesValidationProblem()

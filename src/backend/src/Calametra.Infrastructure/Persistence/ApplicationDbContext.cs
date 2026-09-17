@@ -54,6 +54,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<LguBoundaryExtract> LguBoundaryExtracts => Set<LguBoundaryExtract>();
 
+    public DbSet<LguOfficialLandAreaEdition> LguOfficialLandAreaEditions =>
+        Set<LguOfficialLandAreaEdition>();
+
+    public DbSet<LguOfficialLandArea> LguOfficialLandAreas => Set<LguOfficialLandArea>();
+
     public DbSet<LguEditionCorrespondence> LguEditionCorrespondences =>
         Set<LguEditionCorrespondence>();
 

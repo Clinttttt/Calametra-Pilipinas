@@ -17,14 +17,14 @@ export interface SelectedLgu {
   readonly kind: string;
 
   /**
-   * Land area in square kilometres.
+   * Area of the selected boundary geometry in square kilometres.
    *
    * Carried because ADR-005 D1 requires any figure derived from a boundary to state the unit's area
    * beside it: Philippine LGUs differ in area by more than two orders of magnitude, so a count inside
-   * a boundary encodes land area unless the area is shown. The client cannot compute it from a
+   * a boundary encodes polygon area unless the area is shown. The client cannot compute it from a
    * simplified tile, so the server sends it.
    */
-  readonly areaSquareKm: number;
+  readonly boundaryGeometryAreaSquareKm: number;
 }
 
 /**
@@ -34,7 +34,7 @@ export interface SelectedLgu {
  * two concepts: an LGU boundary answers *which unit is this in*, while the place directory's
  * representative point and radius answer *how much of the archive lies within this distance*. They are
  * not substitutes — Philippine LGUs differ in area by more than two orders of magnitude, so counts
- * inside boundaries compare land area as much as anything else, which is why the radius exists.
+ * inside boundaries compare polygon area as much as anything else, which is why the radius exists.
  *
  * Reusing `PlaceStore` would collapse that distinction in the one place it is most tempting to: a
  * municipality click would silently become a radius selection, and every figure downstream would then

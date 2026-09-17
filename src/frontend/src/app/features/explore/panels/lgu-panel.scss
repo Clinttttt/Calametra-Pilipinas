@@ -107,6 +107,20 @@
   letter-spacing: 0.02em;
 }
 
+.lgu__identity-source {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: calc(-1 * var(--space-1));
+  font-size: var(--text-micro);
+  line-height: var(--leading-normal);
+  color: var(--text-tertiary);
+}
+
+.lgu__identity-source p {
+  margin: 0;
+}
+
 .lgu__hazard {
   display: flex;
   flex-direction: column;

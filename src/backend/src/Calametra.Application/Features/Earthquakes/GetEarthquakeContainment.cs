@@ -50,11 +50,19 @@ public static class GetEarthquakeContainment
         string CanonicalPsgcCode,
         string Name,
         string Level,
-        double LandAreaSquareKm,
+        double BoundaryGeometryAreaSquareKm,
         int EarthquakeCount,
         string SpatialPredicate,
         string CountSemantics,
-        BoundaryEdition Boundary);
+        BoundaryEdition Boundary)
+    {
+        /// <summary>
+        /// Compatibility alias retained for the first frontend consumer. This has always been the
+        /// computed COD-AB polygon area; new consumers use <see cref="BoundaryGeometryAreaSquareKm"/>.
+        /// </summary>
+        [Obsolete("Use BoundaryGeometryAreaSquareKm. This value is not an official LGU land area.")]
+        public double LandAreaSquareKm => BoundaryGeometryAreaSquareKm;
+    }
 
     internal sealed class Validator : AbstractValidator<Query>
     {

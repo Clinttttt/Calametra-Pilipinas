@@ -53,6 +53,7 @@ public sealed class DependencyInjectionTests
         // this test is meant to keep honest.
         services.AddScoped(_ => Substitute.For<ILguCrosswalkReviewContext>());
         services.AddScoped(_ => Substitute.For<IPsgcRegisterSource>());
+        services.AddScoped(_ => Substitute.For<IOfficialLandAreaSource>());
         services.AddScoped(_ => Substitute.For<ILguBoundarySource>());
         services.AddScoped(_ => Substitute.For<IBoundaryCatalogueSource>());
         services.AddScoped(_ => Substitute.For<ICanonicalBoundarySource>());
@@ -267,6 +268,10 @@ public sealed class DependencyInjectionTests
             typeof(Domain.Abstractions.Result<GetEarthquakeContainment.Response>)
         },
         {
+            typeof(Features.Administrative.GetAdministrativeUnit.Query),
+            typeof(Domain.Abstractions.Result<Features.Administrative.GetAdministrativeUnit.Response>)
+        },
+        {
             typeof(GetCatalogueCompleteness.Query),
             typeof(Domain.Abstractions.Result<GetCatalogueCompleteness.CompletenessResponse>)
         },
@@ -305,6 +310,10 @@ public sealed class DependencyInjectionTests
         {
             typeof(ImportActiveFaults.Command),
             typeof(Domain.Abstractions.Result<ImportActiveFaults.FaultImportSummary>)
+        },
+        {
+            typeof(ImportOfficialLandAreas.Command),
+            typeof(Domain.Abstractions.Result<ImportOfficialLandAreas.Summary>)
         },
         {
             typeof(ImportPlaces.Command),

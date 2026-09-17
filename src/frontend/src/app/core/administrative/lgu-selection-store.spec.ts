@@ -6,14 +6,14 @@ const adams: SelectedLgu = {
   psgc: '0102801000',
   name: 'Adams',
   kind: 'Municipality',
-  areaSquareKm: 159.3,
+  boundaryGeometryAreaSquareKm: 159.3,
 };
 
 const cebu: SelectedLgu = {
   psgc: '0730600000',
   name: 'City of Cebu',
   kind: 'City',
-  areaSquareKm: 326.2,
+  boundaryGeometryAreaSquareKm: 326.2,
 };
 
 describe('LguSelectionStore', () => {
@@ -42,7 +42,7 @@ describe('LguSelectionStore', () => {
   it('carries the area, because a figure from a boundary must state it', () => {
     store.select(adams);
 
-    expect(store.selected()?.areaSquareKm).toBe(159.3);
+    expect(store.selected()?.boundaryGeometryAreaSquareKm).toBe(159.3);
   });
 
   it('replaces the selection rather than accumulating', () => {

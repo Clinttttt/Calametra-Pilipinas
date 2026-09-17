@@ -49,6 +49,7 @@ public sealed class ReferenceDataSeeder(
         await EnsureCycloneAgenciesAsync(now, cancellationToken);
         await EnsureGeoNamesAsync(now, cancellationToken);
         await EnsurePsgcRegisterAsync(now, cancellationToken);
+        await EnsureOfficialLandAreaAsync(now, cancellationToken);
         await EnsureOpenStreetMapAsync(now, cancellationToken);
         await EnsureOpenStreetMapBoundariesAsync(now, cancellationToken);
         await EnsureCodAbBoundariesAsync(now, cancellationToken);
@@ -296,6 +297,47 @@ public sealed class ReferenceDataSeeder(
         }
 
         return created;
+    }
+
+    private async Task<DataSource> EnsureOfficialLandAreaAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await context.DataSources.FirstOrDefaultAsync(
+            source => source.Slug == PsaOfficialLandAreaOptions.Slug,
+            cancellationToken);
+
+        var source = existing ?? DataSource.Create(
+                PsaOfficialLandAreaOptions.Slug,
+                agency: "Philippine Statistics Authority",
+                datasetName: "2024 POPCEN population density — city/municipality land area",
+                SourceAccessKind.RestApi,
+                attribution:
+                    "Land-area statistics published by the Philippine Statistics Authority from the "
+                    + "DENR-LMB 2019 Masterlist of Land Areas and stated BARMM sources.",
+                now)
+            .Value;
+
+        source
+            .WithLinks(
+                sourceUrl:
+                    "https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1A__PO_2024/0221A6DLPD0.px/",
+                termsUrl: "https://psa.gov.ph/terms-use")
+            .WithCoverage(
+                minimumReliableMagnitude: null,
+                coverageNotes:
+                    "Official/statistical LGU land area, separate from the measured area of any mapped "
+                    + "boundary. Matrix 1A6DLPD0 uses the DENR-LMB 2019 Masterlist, LMB certifications "
+                    + "for Embo barangays, and MENRE-BARMM land area for the Special Geographic Area. "
+                    + "The matrix does not expose a cadastral-versus-estimated classification per row.")
+            .WithPermissions(isRedistributable: true, isAuthoritativeForPhilippines: true);
+
+        if (existing is null)
+        {
+            context.DataSources.Add(source);
+        }
+
+        return source;
     }
 
     /// <summary>

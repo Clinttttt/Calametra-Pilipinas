@@ -55,6 +55,7 @@ app.MapCyclones();
 app.MapHazardLayers();
 app.MapPlaces();
 app.MapDataSources();
+app.MapLgus();
 app.MapLguBoundaries();
 
 await app.RunAsync();

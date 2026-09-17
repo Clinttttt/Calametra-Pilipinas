@@ -37,7 +37,7 @@ public sealed class LguEarthquakeContainmentTests(PostgisApiFixture fixture)
         body.ShouldNotBeNull();
         body.CanonicalPsgcCode.ShouldBe(CoveredCode);
         body.EarthquakeCount.ShouldBe(2);
-        body.LandAreaSquareKm.ShouldBe(100d);
+        body.BoundaryGeometryAreaSquareKm.ShouldBe(100d);
         body.SpatialPredicate.ShouldBe("ST_Intersects");
         body.CountSemantics.ShouldContain("Points exactly on the boundary are included");
         body.CountSemantics.ShouldContain("observation rows are not counted");
