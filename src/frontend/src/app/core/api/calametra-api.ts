@@ -22,6 +22,7 @@ import {
   type MapDataResponse,
   type AdministrativeUnit,
   type LguEarthquakeContainment,
+  type LguContainedEarthquakeMapData,
   type NearbyCycloneTracks,
   type PaginatedList,
   type PlaceContext,
@@ -87,6 +88,15 @@ export class CalametraApi {
    */
   getEarthquakeMapData(): Observable<MapDataResponse> {
     return this.http.get<MapDataResponse>('/api/earthquakes/map');
+  }
+
+  /** Compact map points whose canonical events are contained by one current LGU land boundary. */
+  getLguContainedEarthquakeMapData(
+    canonicalPsgcCode: string,
+  ): Observable<LguContainedEarthquakeMapData> {
+    return this.http.get<LguContainedEarthquakeMapData>(
+      `/api/lgu-boundaries/${encodeURIComponent(canonicalPsgcCode)}/earthquakes/map`,
+    );
   }
 
   /**

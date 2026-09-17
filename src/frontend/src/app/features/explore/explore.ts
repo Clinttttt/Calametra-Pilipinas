@@ -75,6 +75,12 @@ import {
 } from '../../core/visual/fault-style';
 import { HIGHLIGHT_COLOUR } from '../../core/visual/highlight-style';
 import { EarthquakeFilterStore } from '../../core/earthquakes/earthquake-filter-store';
+import { LguEarthquakeMapScopeStore } from '../../core/earthquakes/lgu-earthquake-map-scope-store';
+import {
+  containmentMapClause,
+  eventMatchesEarthquakeMapView,
+  type LoadedEarthquakeMapEvent,
+} from '../../core/earthquakes/earthquake-map-view';
 import { FilterPanel } from './panels/filter-panel';
 import { FeatureInspector } from './panels/feature-inspector';
 import { firstValueFrom } from 'rxjs';
@@ -307,6 +313,7 @@ export class Explore {
    * asked about an administrative unit.
    */
   protected readonly lguSelection = inject(LguSelectionStore);
+  protected readonly lguEarthquakeMapScope = inject(LguEarthquakeMapScopeStore);
   private readonly similarEventsStore = inject(SimilarEventsStore);
   private readonly comparisonStore = inject(ComparisonStore);
   private readonly cycloneStore = inject(CycloneStore);
@@ -402,12 +409,7 @@ export class Explore {
    * Kept so the visible count can be recomputed without re-querying the map or the
    * API as the filters move.
    */
-  private loadedEvents: {
-    epochMs: number;
-    magnitude: number | null;
-    depthKm: number | null;
-    depthMeasured: boolean;
-  }[] = [];
+  private loadedEvents: LoadedEarthquakeMapEvent[] = [];
 
   protected readonly ready = signal(false);
   protected readonly cameraMode = signal<CameraMode>('top');
@@ -488,6 +490,12 @@ export class Explore {
 
   /** How many events are visible under the current filters. */
   protected readonly visibleCount = signal<number | null>(null);
+
+  /** The semantic denominator for the readout: contained set while active, national archive otherwise. */
+  protected readonly readoutTotalCount = computed(() => {
+    const scope = this.lguEarthquakeMapScope.state();
+    return scope.status === 'ready' ? scope.data.count : this.eventCount();
+  });
 
   /** True when any filter is narrowing the archive. */
   protected readonly filtered = computed(() => this.visibleCount() !== null);
@@ -640,6 +648,16 @@ export class Explore {
       this.boundariesVisible();
 
       this.applyLguState();
+    });
+
+    // Administrative containment is one more map-filter clause. Loading a replacement LGU hides the
+    // previous set immediately; unavailable/failed scopes truthfully fall back to the whole archive.
+    effect(() => {
+      this.lguEarthquakeMapScope.state();
+
+      if (this.map) {
+        this.applyFilters();
+      }
     });
 
     // The drawn section line, kept in step with the store for the same reason.
@@ -2027,6 +2045,7 @@ export class Explore {
       }
 
       this.loadedEvents = archive.points.map((point) => ({
+        id: point.i,
         epochMs: point.t,
         magnitude: point.m,
         depthKm: point.d,
@@ -2083,6 +2102,21 @@ export class Explore {
 
     if (this.map) {
       this.applyHazardToMap(this.map);
+    }
+  }
+
+  /** Activates server-authoritative LGU containment without changing place/radius state or camera. */
+  protected exploreSelectedLguEarthquakes(): void {
+    if (!this.hazardStore.isEarthquakes()) {
+      this.hazardStore.select('earthquakes');
+      this.closeHazardSpecificTools('earthquakes');
+    }
+
+    this.lguEarthquakeMapScope.activate();
+
+    if (this.map) {
+      this.applyHazardToMap(this.map);
+      this.applyFilters();
     }
   }
 
@@ -2785,9 +2819,16 @@ export class Explore {
     const instantMs = this.timeInstantMs();
     const filter = this.filterStore.filter();
     const clauses: unknown[] = [];
+    const containmentScope = this.lguEarthquakeMapScope.state();
 
-    // Isolation overrides every other clause, because it is the reader's most specific request: they
-    // named one event. Applied first so the intent is legible in the assembled predicate.
+    const containmentClause = containmentMapClause(containmentScope);
+
+    if (containmentClause !== null) {
+      clauses.push(containmentClause);
+    }
+
+    // Isolation composes with containment and every reader-set filter. Naming an event never grants it
+    // membership in an LGU it is outside, and entering containment never clears an existing isolation.
     const isolated = this.isolatedEventId();
 
     if (isolated !== null) {
@@ -2862,9 +2903,17 @@ export class Explore {
   private recountVisible(): void {
     const instantMs = this.timeInstantMs();
     const filter = this.filterStore.filter();
+    const isolated = this.isolatedEventId();
+    const containmentScope = this.lguEarthquakeMapScope.state();
+    const containedIds = containmentScope.status === 'ready'
+      ? new Set(containmentScope.data.points.map((point) => point.i))
+      : null;
 
-    if (instantMs === null && !this.filterStore.isFiltered()) {
+    if (instantMs === null && !this.filterStore.isFiltered() && isolated === null) {
       this.visibleCount.set(null);
+      this.lguEarthquakeMapScope.setShownCount(
+        containmentScope.status === 'ready' ? containmentScope.data.count : null,
+      );
 
       return;
     }
@@ -2876,18 +2925,13 @@ export class Explore {
     // The predicate deliberately mirrors the paint filter clause for clause, including the
     // treatment of an absent magnitude or depth. A count that disagreed with the map would be worse
     // than no count: the figure in the corner is what a reader quotes.
-    this.visibleCount.set(
-      this.loadedEvents.filter(
-        (event) =>
-          (instantMs === null || event.epochMs <= instantMs)
-          && (filter.fromMs === null || event.epochMs >= filter.fromMs)
-          && (filter.toMs === null || event.epochMs <= filter.toMs)
-          && (filter.minMagnitude === null || (event.magnitude ?? -1) >= filter.minMagnitude)
-          && (filter.maxMagnitude === null || (event.magnitude ?? 99) <= filter.maxMagnitude)
-          && (filter.minDepthKm === null || (event.depthKm ?? -1) >= filter.minDepthKm)
-          && (filter.maxDepthKm === null || (event.depthKm ?? 9999) <= filter.maxDepthKm)
-          && (filter.includeAssignedDepth || event.depthMeasured),
-      ).length,
+    const visible = this.loadedEvents.filter((event) =>
+      eventMatchesEarthquakeMapView(event, filter, instantMs, isolated, containedIds),
+    ).length;
+
+    this.visibleCount.set(visible);
+    this.lguEarthquakeMapScope.setShownCount(
+      containmentScope.status === 'ready' ? visible : null,
     );
   }
 

@@ -1,7 +1,7 @@
 using Calametra.Application.Abstractions.Data;
 using Calametra.Application.Abstractions.Messaging;
+using Calametra.Application.Features.Earthquakes.Shared;
 using Calametra.Domain.Abstractions;
-using Calametra.Domain.Administrative;
 using Calametra.Domain.Events;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -33,12 +33,6 @@ namespace Calametra.Application.Features.Earthquakes;
 /// </remarks>
 public static class GetEarthquakeContainment
 {
-    private static readonly Error BoundaryUnavailable = new(
-        ErrorType.NotFound,
-        "lgu_boundary.not_available",
-        "The local government unit is known, but no current COD-AB land boundary is available. No geometry "
-        + "is fabricated for a known coverage exception.");
-
     public sealed record Query(string CanonicalPsgcCode) : IQuery<Response>;
 
     public sealed record BoundaryEdition(
@@ -75,74 +69,40 @@ public static class GetEarthquakeContainment
 
     internal sealed class Handler(IApplicationDbContext context) : IQueryHandler<Query, Response>
     {
-        private const string Predicate = "ST_Intersects";
-
-        private const string Semantics =
-            "Distinct earthquake events whose canonical epicentres are covered by the selected current "
-            + "COD-AB land boundary. Points exactly on the boundary are included. Offshore epicentres and "
-            + "per-agency observation rows are not counted.";
-
         public async Task<Result<Response>> Handle(Query request, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            var lgu = await context.Lgus
-                .AsNoTracking()
-                .Where(candidate => candidate.CanonicalPsgcCode == request.CanonicalPsgcCode)
-                .Select(candidate => new { candidate.Id, candidate.Name, candidate.Level })
-                .SingleOrDefaultAsync(cancellationToken);
+            var resolved = await EarthquakeContainmentQuery.ResolveAsync(
+                context,
+                request.CanonicalPsgcCode,
+                cancellationToken);
 
-            if (lgu is null)
+            if (resolved.IsFailure)
             {
-                return Result<Response>.Failure(LguErrors.NotFound);
+                return Result<Response>.Failure(resolved.Error!);
             }
 
-            var boundary = await (
-                    from outline in context.LguBoundaries.AsNoTracking()
-                    join extract in context.LguBoundaryExtracts.AsNoTracking()
-                        on outline.ExtractId equals extract.Id
-                    join source in context.DataSources.AsNoTracking()
-                        on outline.SourceId equals source.Id
-                    where outline.LguId == lgu.Id
-                        && outline.ValidTo == null
-                        && extract.Provenance == BoundaryProvenance.OchaCodAb
-                    select new
-                    {
-                        outline.Id,
-                        outline.AreaSquareKm,
-                        ExtractLabel = extract.Label,
-                        extract.Vintage,
-                        source.Attribution,
-                    })
-                .SingleOrDefaultAsync(cancellationToken);
-
-            if (boundary is null)
-            {
-                return Result<Response>.Failure(BoundaryUnavailable);
-            }
+            var boundary = resolved.Value;
 
             // One SQL query. The outline remains in PostGIS rather than being materialised into managed
             // memory, and Intersects translates to ST_Intersects(geography, geography), allowing the event
             // GiST index to apply its bounding-box prefilter before the exact predicate.
-            var earthquakeCount = await (
-                    from outline in context.LguBoundaries.AsNoTracking()
-                    from earthquake in context.HazardEvents.AsNoTracking()
-                    where outline.Id == boundary.Id
-                        && earthquake.Type == HazardEventType.Earthquake
-                        && outline.Geometry.Intersects(earthquake.CanonicalEpicenter)
-                    select earthquake.Id)
-                .Distinct()
+            var earthquakeCount = await EarthquakeContainmentQuery.EventIds(context, boundary.BoundaryId)
                 .CountAsync(cancellationToken);
 
             return Result<Response>.Success(new Response(
                 request.CanonicalPsgcCode,
-                lgu.Name,
-                lgu.Level.ToString(),
-                Math.Round(boundary.AreaSquareKm, 1, MidpointRounding.AwayFromZero),
+                boundary.Name,
+                boundary.Level,
+                boundary.BoundaryGeometryAreaSquareKm,
                 earthquakeCount,
-                Predicate,
-                Semantics,
-                new BoundaryEdition(boundary.ExtractLabel, boundary.Vintage, boundary.Attribution)));
+                EarthquakeContainmentQuery.Predicate,
+                EarthquakeContainmentQuery.Semantics,
+                new BoundaryEdition(
+                    boundary.BoundaryLabel,
+                    boundary.BoundaryVintage,
+                    boundary.BoundaryAttribution)));
         }
     }
 }

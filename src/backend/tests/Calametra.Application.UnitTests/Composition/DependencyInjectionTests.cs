@@ -268,6 +268,10 @@ public sealed class DependencyInjectionTests
             typeof(Domain.Abstractions.Result<GetEarthquakeContainment.Response>)
         },
         {
+            typeof(GetContainedEarthquakeMapData.Query),
+            typeof(Domain.Abstractions.Result<GetContainedEarthquakeMapData.Response>)
+        },
+        {
             typeof(Features.Administrative.GetAdministrativeUnit.Query),
             typeof(Domain.Abstractions.Result<Features.Administrative.GetAdministrativeUnit.Response>)
         },

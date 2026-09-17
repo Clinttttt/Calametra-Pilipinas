@@ -65,22 +65,31 @@ public static class GetEarthquakeMapData
         long T,
         bool N);
 
-    internal sealed class Handler(IApplicationDbContext context)
-        : IQueryHandler<Query, MapDataResponse>
+    internal sealed record MapRow(
+        Guid Id,
+        DateTimeOffset OccurredAt,
+        double Latitude,
+        double Longitude,
+        double? Magnitude,
+        MagnitudeType MagnitudeScale,
+        double? DepthKilometres,
+        DepthQuality DepthQuality,
+        int ObservationCount);
+
+    /// <summary>Shared compact projection for the national archive and authoritative contained subsets.</summary>
+    internal static IQueryable<MapRow> Rows(
+        IApplicationDbContext context,
+        IQueryable<Guid>? eventIds = null)
     {
-        public async Task<Result<MapDataResponse>> Handle(
-            Query request,
-            CancellationToken cancellationToken)
+        if (eventIds is null)
         {
-            // Projected in the database so the wide entity rows are never materialised.
-            var rows = await (
+            return (
                 from hazardEvent in context.HazardEvents.AsNoTracking()
                 join observation in context.EarthquakeObservations.AsNoTracking()
                     on hazardEvent.PreferredObservationId equals observation.Id
                 where hazardEvent.Type == HazardEventType.Earthquake
                 orderby hazardEvent.CanonicalOccurredAt
-                select new
-                {
+                select new MapRow(
                     hazardEvent.Id,
                     hazardEvent.CanonicalOccurredAt,
                     observation.Latitude,
@@ -89,24 +98,52 @@ public static class GetEarthquakeMapData
                     observation.MagnitudeScale,
                     observation.DepthKilometres,
                     observation.DepthQuality,
-                    ObservationCount = hazardEvent.Observations.Count,
-                }).ToListAsync(cancellationToken);
+                    hazardEvent.Observations.Count));
+        }
 
-            var points = rows
-                .Select(row => new MapPoint(
-                    row.Id,
-                    // Rounded to five decimals, about a metre. Full double precision
-                    // would add characters per row for detail no screen can render and
-                    // no epicentre is accurate to.
-                    Math.Round(row.Latitude, 5),
-                    Math.Round(row.Longitude, 5),
-                    row.MagnitudeValue,
-                    row.MagnitudeScale.Label(),
-                    row.DepthKilometres is { } depth ? Math.Round(depth, 1) : null,
-                    (int)row.DepthQuality,
-                    row.CanonicalOccurredAt.ToUnixTimeMilliseconds(),
-                    row.ObservationCount > 1))
-                .ToList();
+        return
+            from eventId in eventIds
+            join hazardEvent in context.HazardEvents.AsNoTracking()
+                on eventId equals hazardEvent.Id
+            join observation in context.EarthquakeObservations.AsNoTracking()
+                on hazardEvent.PreferredObservationId equals observation.Id
+            where hazardEvent.Type == HazardEventType.Earthquake
+            orderby hazardEvent.CanonicalOccurredAt
+            select new MapRow(
+                hazardEvent.Id,
+                hazardEvent.CanonicalOccurredAt,
+                observation.Latitude,
+                observation.Longitude,
+                observation.MagnitudeValue,
+                observation.MagnitudeScale,
+                observation.DepthKilometres,
+                observation.DepthQuality,
+                hazardEvent.Observations.Count);
+    }
+
+    internal static IReadOnlyList<MapPoint> ToPoints(IEnumerable<MapRow> rows) =>
+        rows.Select(row => new MapPoint(
+                row.Id,
+                Math.Round(row.Latitude, 5),
+                Math.Round(row.Longitude, 5),
+                row.Magnitude,
+                row.MagnitudeScale.Label(),
+                row.DepthKilometres is { } depth ? Math.Round(depth, 1) : null,
+                (int)row.DepthQuality,
+                row.OccurredAt.ToUnixTimeMilliseconds(),
+                row.ObservationCount > 1))
+            .ToList();
+
+    internal sealed class Handler(IApplicationDbContext context)
+        : IQueryHandler<Query, MapDataResponse>
+    {
+        public async Task<Result<MapDataResponse>> Handle(
+            Query request,
+            CancellationToken cancellationToken)
+        {
+            // Projected in the database so the wide entity rows are never materialised.
+            var rows = await Rows(context).ToListAsync(cancellationToken);
+            var points = ToPoints(rows);
 
             return Result<MapDataResponse>.Success(new MapDataResponse(points.Count, points));
         }

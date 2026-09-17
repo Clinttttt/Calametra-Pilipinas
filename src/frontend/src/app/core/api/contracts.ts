@@ -176,6 +176,18 @@ export interface MapDataResponse {
   readonly points: readonly MapPoint[];
 }
 
+/** Compact canonical earthquake events authoritatively contained by one current COD-AB land outline. */
+export interface LguContainedEarthquakeMapData {
+  readonly canonicalPsgcCode: string;
+  readonly name: string;
+  readonly level: string;
+  readonly boundaryGeometryAreaSquareKm: number;
+  readonly count: number;
+  readonly points: readonly MapPoint[];
+  readonly countSemantics: string;
+  readonly boundary: LguBoundaryEdition;
+}
+
 /** Depth quality codes as sent by the compact map endpoint. */
 export const DEPTH_QUALITY = {
   unknown: 0,

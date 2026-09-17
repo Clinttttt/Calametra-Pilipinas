@@ -157,6 +157,23 @@ describe('LguPanel earthquake containment', () => {
     expect(host.textContent).not.toContain('A_FUTURE_EQUIVALENT_PREDICATE');
   });
 
+  it('offers a quiet map action that delegates activation to Explore', async () => {
+    let requests = 0;
+    fixture.componentInstance.mapRequested.subscribe(() => requests++);
+    store.select(CANTILAN);
+    await fixture.whenStable();
+    api.responses.get(CANTILAN.psgc)!.next(containment(12));
+    await fixture.whenStable();
+
+    const action = host.querySelector<HTMLButtonElement>('.lgu__map-action');
+    expect(action?.textContent?.trim()).toBe('Explore on map');
+
+    action!.click();
+    await fixture.whenStable();
+
+    expect(requests).toBe(1);
+  });
+
   it('shows Lanuza official and boundary areas as distinct sourced values', async () => {
     store.select(LANUZA);
     await fixture.whenStable();

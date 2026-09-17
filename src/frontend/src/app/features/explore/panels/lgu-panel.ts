@@ -1,6 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, output, signal } from '@angular/core';
 
 import { CalametraApi } from '../../../core/api/calametra-api';
 import {
@@ -11,6 +11,7 @@ import {
 import { Icon } from '../../../shared/ui/icon/icon';
 import { type IconName } from '../../../shared/ui/icon/icon-paths';
 import { LguSelectionStore } from '../../../core/administrative/lgu-selection-store';
+import { LguEarthquakeMapScopeStore } from '../../../core/earthquakes/lgu-earthquake-map-scope-store';
 
 /**
  * What the reader selected, and what that selection does and does not mean.
@@ -37,7 +38,10 @@ import { LguSelectionStore } from '../../../core/administrative/lgu-selection-st
 })
 export class LguPanel {
   protected readonly store = inject(LguSelectionStore);
+  protected readonly mapScope = inject(LguEarthquakeMapScopeStore);
   private readonly api = inject(CalametraApi);
+
+  readonly mapRequested = output<void>();
 
   /** Local, hazard-specific request state. It never reads or mutates the place/radius store. */
   protected readonly earthquakeContainment = signal<EarthquakeContainmentState>({ status: 'idle' });
@@ -103,6 +107,14 @@ export class LguPanel {
 
   protected toggleBoundaryDetails(): void {
     this.boundaryDetailsExpanded.update((expanded) => !expanded);
+  }
+
+  protected toggleMapScope(): void {
+    if (this.mapScope.enabled()) {
+      this.mapScope.clear();
+    } else {
+      this.mapRequested.emit();
+    }
   }
 
   protected registerEditionDisplay(label: string): string {

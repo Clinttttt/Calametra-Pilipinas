@@ -186,6 +186,20 @@
   cursor: pointer;
 }
 
+.lgu__map-action {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom-color: transparent;
+}
+
+.lgu__map-status {
+  margin: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-normal);
+  color: var(--text-tertiary);
+}
+
 .lgu__disclosure:hover {
   color: var(--text-primary);
   border-bottom-color: var(--line-accent);

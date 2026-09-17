@@ -45,6 +45,32 @@ public sealed class LguEarthquakeContainmentTests(PostgisApiFixture fixture)
     }
 
     [Fact]
+    public async Task Compact_map_events_exactly_match_the_containment_count_and_semantics()
+    {
+        await ArrangeAsync();
+
+        using var client = fixture.CreateClient();
+        var count = await client.GetFromJsonAsync<GetEarthquakeContainment.Response>(
+            $"/api/lgu-boundaries/{CoveredCode}/earthquakes");
+        var map = await client.GetFromJsonAsync<GetContainedEarthquakeMapData.Response>(
+            $"/api/lgu-boundaries/{CoveredCode}/earthquakes/map");
+
+        count.ShouldNotBeNull();
+        map.ShouldNotBeNull();
+        map.Count.ShouldBe(count.EarthquakeCount);
+        map.Points.Count.ShouldBe(map.Count);
+        map.Count.ShouldBe(2);
+        map.BoundaryGeometryAreaSquareKm.ShouldBe(100d);
+        map.CountSemantics.ShouldBe(count.CountSemantics);
+
+        // The western-edge point is included, the outside point is absent, and the cyclone has no map
+        // record. The inside event's two agency observations remain one point with its disclosure flag.
+        map.Points.ShouldContain(point => point.X == 100.00 && point.Y == 1.05);
+        map.Points.ShouldContain(point => point.X == 100.05 && point.Y == 1.05 && point.N);
+        map.Points.ShouldNotContain(point => point.X == 100.20 && point.Y == 1.20);
+    }
+
+    [Fact]
     public async Task A_known_unit_without_a_boundary_is_not_given_a_fabricated_answer()
     {
         await ArrangeAsync();
@@ -56,6 +82,13 @@ public sealed class LguEarthquakeContainmentTests(PostgisApiFixture fixture)
 
         using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         problem.RootElement.GetProperty("code").GetString().ShouldBe("lgu_boundary.not_available");
+
+        var mapResponse = await client.GetAsync(
+            $"/api/lgu-boundaries/{MissingCode}/earthquakes/map");
+
+        mapResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        using var mapProblem = JsonDocument.Parse(await mapResponse.Content.ReadAsStringAsync());
+        mapProblem.RootElement.GetProperty("code").GetString().ShouldBe("lgu_boundary.not_available");
     }
 
     [Fact]
@@ -65,6 +98,20 @@ public sealed class LguEarthquakeContainmentTests(PostgisApiFixture fixture)
         var response = await client.GetAsync("/api/lgu-boundaries/123/earthquakes");
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        var mapResponse = await client.GetAsync("/api/lgu-boundaries/123/earthquakes/map");
+        mapResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Unknown_lgu_is_not_found_for_count_and_map()
+    {
+        using var client = fixture.CreateClient();
+
+        (await client.GetAsync("/api/lgu-boundaries/9999999999/earthquakes"))
+            .StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await client.GetAsync("/api/lgu-boundaries/9999999999/earthquakes/map"))
+            .StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     private async Task ArrangeAsync() =>

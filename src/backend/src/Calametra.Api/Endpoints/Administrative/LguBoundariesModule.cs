@@ -145,6 +145,37 @@ internal static class GetEarthquakeContainmentEndpoint
 }
 
 /// <summary>
+/// GET /api/lgu-boundaries/{canonicalPsgcCode}/earthquakes/map — compact canonical events covered by
+/// one current COD-AB land outline.
+/// </summary>
+internal static class GetContainedEarthquakeMapDataEndpoint
+{
+    public static void Map(RouteGroupBuilder group) =>
+        group.MapGet("/{canonicalPsgcCode}/earthquakes/map", async (
+                string canonicalPsgcCode,
+                IDispatcher dispatcher,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await dispatcher.Send(
+                    new GetContainedEarthquakeMapData.Query(canonicalPsgcCode),
+                    cancellationToken);
+
+                return result.ToHttpResult();
+            })
+            .WithName("GetContainedEarthquakeMapData")
+            .WithSummary("Compact earthquake map data contained by one LGU land outline")
+            .WithDescription(
+                "Returns the same terse map-point representation as /api/earthquakes/map, restricted "
+                + "server-side to distinct canonical earthquake events whose canonical epicentres fall "
+                + "within or exactly on the current COD-AB land boundary. It does not derive containment "
+                + "from vector tiles or return agency observation rows. The response carries the computed "
+                + "boundary geometry area, edition and attribution; this is not official land area.")
+            .Produces<object>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+}
+
+/// <summary>
 /// Routes for the administrative boundary delivery path.
 /// </summary>
 internal static class LguBoundariesModule
@@ -159,5 +190,6 @@ internal static class LguBoundariesModule
         GetLguBoundaryCoverageEndpoint.Map(group);
         GetLguBoundaryTileEndpoint.Map(group);
         GetEarthquakeContainmentEndpoint.Map(group);
+        GetContainedEarthquakeMapDataEndpoint.Map(group);
     }
 }

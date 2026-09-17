@@ -30,18 +30,23 @@
 
   <!-- Archive readout. States the catalogue and its floor, because a bare count
        would invite "this is every earthquake in the Philippines", which is false. -->
-  @if (earthquakesActive() && eventCount(); as count) {
+  @if (earthquakesActive() && readoutTotalCount() !== null) {
+    @let count = readoutTotalCount() ?? 0;
     <div class="explore__readout">
-      <p class="readout__figure">
-        <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
-        @if (filtered()) {
-          <span class="readout__of">of {{ count.toLocaleString() }}</span>
-        }
-      </p>
-      <p class="readout__caption">
-        Earthquakes Â· USGS catalogue
-        <span class="readout__note">{{ floorLabel() }}</span>
-      </p>
+      @if (lguEarthquakeMapScope.state().status === 'loading') {
+        <p class="readout__isolated">Loading selected-LGU containment&hellip;</p>
+      } @else {
+        <p class="readout__figure">
+          <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
+          @if (filtered()) {
+            <span class="readout__of">of {{ count.toLocaleString() }}</span>
+          }
+        </p>
+        <p class="readout__caption">
+          Earthquakes Â· USGS catalogue
+          <span class="readout__note">{{ floorLabel() }}</span>
+        </p>
+      }
 
       <!-- Stated, with the way out. The map is showing one event because the reader asked for one; a
            single dot beside a five-figure total would misrepresent what is on screen. -->
@@ -49,6 +54,26 @@
         <button class="readout__isolated" type="button" (click)="showWholeArchive()">
           Showing this event alone — show the whole archive
         </button>
+      }
+
+      @if (lguEarthquakeMapScope.enabled()) {
+        @switch (lguEarthquakeMapScope.state().status) {
+          @case ('ready') {
+            <button class="readout__isolated" type="button" (click)="lguEarthquakeMapScope.clear()">
+              LGU land-boundary containment &mdash; show all earthquakes
+            </button>
+          }
+          @case ('unavailable') {
+            <button class="readout__isolated" type="button" (click)="lguEarthquakeMapScope.clear()">
+              Boundary unavailable; showing the whole archive &mdash; clear LGU filter
+            </button>
+          }
+          @case ('failed') {
+            <button class="readout__isolated" type="button" (click)="lguEarthquakeMapScope.clear()">
+              LGU containment could not be loaded; showing the whole archive &mdash; clear LGU filter
+            </button>
+          }
+        }
       }
     </div>
   } @else if (earthquakesActive() && loadFailed()) {
@@ -229,7 +254,7 @@
       class="explore__side-panel"
       [class.explore__side-panel--left]="lguPanelSide() === 'left'"
     >
-      <cal-lgu-panel />
+      <cal-lgu-panel (mapRequested)="exploreSelectedLguEarthquakes()" />
     </div>
   }
 

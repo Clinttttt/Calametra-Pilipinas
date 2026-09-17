@@ -93,6 +93,27 @@
               </p>
 
               <button
+                class="lgu__disclosure lgu__map-action"
+                type="button"
+                (click)="toggleMapScope()"
+              >
+                {{ mapScope.enabled() ? 'Show all earthquakes' : 'Explore on map' }}
+              </button>
+
+              @if (mapScope.state(); as mapState) {
+                @if (mapScope.enabled() && mapState.status === 'loading') {
+                  <p class="lgu__map-status">Loading contained earthquakes&hellip;</p>
+                }
+                @if (mapState.status === 'ready') {
+                  @if (mapScope.shownCount() !== null) {
+                    <p class="lgu__map-status">
+                      {{ mapScope.shownCount() | number }} of {{ mapState.data.count | number }} shown with current filters
+                    </p>
+                  }
+                }
+              }
+
+              <button
                 class="lgu__disclosure lgu__hazard-disclosure"
                 type="button"
                 [attr.aria-expanded]="containmentDetailsExpanded()"
