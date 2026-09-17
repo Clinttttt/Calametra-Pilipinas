@@ -1,4 +1,3 @@
-
 import { EarthquakeFilterStore } from './earthquake-filter-store';
 
 /**
@@ -88,5 +87,19 @@ describe('EarthquakeFilterStore', () => {
     // 43% of the archive carries a depth the agency assigned rather than measured, so hiding them
     // changes the count materially and the interface has to say so.
     expect(filter.isFiltered()).toBe(true);
+  });
+
+  it('round-trips every filter field and its named preset', () => {
+    const filter = store();
+    filter.applyPreset('five-years', now);
+    filter.setMagnitudeRange(4.2, 7.1);
+    filter.setDepthRange(12, 90);
+    filter.setIncludeAssignedDepth(false);
+    const snapshot = filter.snapshot();
+
+    filter.clear();
+    filter.restore(snapshot);
+
+    expect(filter.snapshot()).toEqual(snapshot);
   });
 });

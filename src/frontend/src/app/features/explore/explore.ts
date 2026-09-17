@@ -31,7 +31,8 @@ import {
 } from '../../core/administrative/lgu-palette';
 import { LguSelectionStore } from '../../core/administrative/lgu-selection-store';
 import { LguPanel } from './panels/lgu-panel';
-import { panelSideFor } from '../../core/administrative/panel-side';
+import { oppositePanelSide, panelSideFor } from '../../core/administrative/panel-side';
+import { LguEarthquakeBrowser } from './panels/lgu-earthquake-browser';
 import {
   LGU_BAND_LOCAL,
   LGU_BAND_REGIONAL,
@@ -76,6 +77,7 @@ import {
 import { HIGHLIGHT_COLOUR } from '../../core/visual/highlight-style';
 import { EarthquakeFilterStore } from '../../core/earthquakes/earthquake-filter-store';
 import { LguEarthquakeMapScopeStore } from '../../core/earthquakes/lgu-earthquake-map-scope-store';
+import { LguEarthquakeFocusSession } from '../../core/earthquakes/lgu-earthquake-focus-session';
 import {
   containmentMapClause,
   eventMatchesEarthquakeMapView,
@@ -99,6 +101,7 @@ import {
   type PlaceEvent,
   type PlaceMatch,
   type SimilarEarthquake,
+  type MapPoint,
   DEPTH_QUALITY,
 } from '../../core/api/contracts';
 import { type IconName } from '../../shared/ui/icon/icon-paths';
@@ -162,6 +165,7 @@ type OpenTool = 'hazards' | 'timeline' | 'legend' | 'layers' | 'filter' | null;
     EventDetail,
     LayersPanel,
     LguPanel,
+    LguEarthquakeBrowser,
     FilterPanel,
     FeatureInspector,
     Timeline,
@@ -394,6 +398,9 @@ export class Explore {
   /** Which side the administrative panel occupies. */
   protected readonly lguPanelSide = computed(() => panelSideFor(this.lguClickX()));
 
+  /** The focus browser takes the other side so it never competes with the administrative answer. */
+  protected readonly lguFocusPanelSide = computed(() => oppositePanelSide(this.lguPanelSide()));
+
   /**
    * The map's current zoom, tracked so the layers panel can say why a ticked layer is not drawing.
    *
@@ -558,6 +565,8 @@ export class Explore {
    * while the corner reads 27,242 would be lying about what is on screen.
    */
   protected readonly isolatedEventId = signal<string | null>(null);
+  private readonly focusSession = new LguEarthquakeFocusSession();
+  private focusedCanonicalPsgcCode: string | null = null;
 
   /** Read-only views for the template and the Time Machine, so only this component mutates them. */
   protected readonly activeMagnitudeFloor = this.magnitudeFloor;
@@ -650,10 +659,32 @@ export class Explore {
       this.applyLguState();
     });
 
-    // Administrative containment is one more map-filter clause. Loading a replacement LGU hides the
-    // previous set immediately; unavailable/failed scopes truthfully fall back to the whole archive.
+    // Administrative containment is one more map-filter clause. A newly selected LGU resets the
+    // temporary focus context to its complete contained set and returns master-detail to the list.
     effect(() => {
-      this.lguEarthquakeMapScope.state();
+      const scope = this.lguEarthquakeMapScope.state();
+      const canonicalPsgcCode =
+        scope.status === 'ready'
+          ? scope.data.canonicalPsgcCode
+          : scope.status === 'inactive'
+            ? null
+            : scope.canonicalPsgcCode;
+
+      if (canonicalPsgcCode !== null && canonicalPsgcCode !== this.focusedCanonicalPsgcCode) {
+        this.focusedCanonicalPsgcCode = canonicalPsgcCode;
+        const focusView = this.focusSession.resetForAnotherLgu();
+        this.timeInstantMs.set(focusView.timeInstantMs);
+        this.isolatedEventId.set(focusView.isolatedEventId);
+        this.clearSelection();
+      } else if (scope.status === 'inactive') {
+        this.focusedCanonicalPsgcCode = null;
+        if (this.focusSession.active) {
+          this.clearSelection();
+          const normalView = this.focusSession.exit();
+          this.timeInstantMs.set(normalView.timeInstantMs);
+          this.isolatedEventId.set(normalView.isolatedEventId);
+        }
+      }
 
       if (this.map) {
         this.applyFilters();
@@ -2093,6 +2124,10 @@ export class Explore {
     // they just asked to see.
     this.openTool.set(null);
 
+    if (mode !== 'earthquakes' && this.lguEarthquakeMapScope.enabled()) {
+      this.exitLguEarthquakeFocus();
+    }
+
     if (this.hazardStore.selected() === mode) {
       return;
     }
@@ -2105,19 +2140,49 @@ export class Explore {
     }
   }
 
-  /** Activates server-authoritative LGU containment without changing place/radius state or camera. */
+  /** Enters or exits the temporary LGU focus without changing place/radius state or camera. */
   protected exploreSelectedLguEarthquakes(): void {
+    if (this.lguEarthquakeMapScope.enabled()) {
+      this.exitLguEarthquakeFocus();
+      return;
+    }
+
     if (!this.hazardStore.isEarthquakes()) {
       this.hazardStore.select('earthquakes');
       this.closeHazardSpecificTools('earthquakes');
     }
 
+    const focusView = this.focusSession.enter({
+      timeInstantMs: this.timeInstantMs(),
+      isolatedEventId: this.isolatedEventId(),
+    });
+    this.timeInstantMs.set(focusView.timeInstantMs);
+    this.isolatedEventId.set(focusView.isolatedEventId);
+    this.clearSelection();
     this.lguEarthquakeMapScope.activate();
 
     if (this.map) {
       this.applyHazardToMap(this.map);
       this.applyFilters();
     }
+  }
+
+  protected exitLguEarthquakeFocus(): void {
+    this.clearSelection();
+    const normalView = this.focusSession.exit();
+    this.lguEarthquakeMapScope.clear();
+    this.timeInstantMs.set(normalView.timeInstantMs);
+    this.isolatedEventId.set(normalView.isolatedEventId);
+    this.applyFilters();
+  }
+
+  protected selectContainedEarthquake(event: MapPoint): void {
+    this.highlightPosition(event.x, event.y);
+    void this.selectEvent(event.i);
+  }
+
+  protected returnToContainedEarthquakes(): void {
+    this.clearSelection();
   }
 
   /** Dismisses whichever tools do not belong to the hazard being activated. */
@@ -2905,9 +2970,16 @@ export class Explore {
     const filter = this.filterStore.filter();
     const isolated = this.isolatedEventId();
     const containmentScope = this.lguEarthquakeMapScope.state();
-    const containedIds = containmentScope.status === 'ready'
-      ? new Set(containmentScope.data.points.map((point) => point.i))
-      : null;
+
+    if (containmentScope.status !== 'inactive' && containmentScope.status !== 'ready') {
+      this.visibleCount.set(null);
+      this.lguEarthquakeMapScope.setShownCount(null);
+      return;
+    }
+    const containedIds =
+      containmentScope.status === 'ready'
+        ? new Set(containmentScope.data.points.map((point) => point.i))
+        : null;
 
     if (instantMs === null && !this.filterStore.isFiltered() && isolated === null) {
       this.visibleCount.set(null);

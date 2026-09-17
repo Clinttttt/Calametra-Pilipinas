@@ -35,6 +35,13 @@ export class EventDetail {
   /** True when the request failed, so the panel can say so rather than look empty. */
   readonly failed = input(false);
 
+  /** Removes independent panel chrome when this presentation is hosted in another rail. */
+  readonly embedded = input(false);
+
+  readonly showHeader = input(true);
+
+  readonly showSimilarAction = input(true);
+
   /** Whether the similarity section is showing, so the button that opens it can hide. */
   readonly similarOpen = input(false);
 

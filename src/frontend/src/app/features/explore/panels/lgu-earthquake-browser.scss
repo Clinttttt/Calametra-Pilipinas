@@ -1,0 +1,145 @@
+:host {
+  position: absolute;
+  top: var(--space-3);
+  right: calc(var(--space-3) + 2.75rem);
+  /* Leaves the lower map edge to the archive readout on the left and MapLibre navigation/scale on
+     the right. The same clearance is used on both sides so changing LGUs never changes rail height. */
+  bottom: calc(var(--space-3) + 7rem);
+  z-index: var(--z-panel);
+  display: flex;
+  min-height: 0;
+  animation: panel-in var(--motion-quick) var(--ease-out);
+}
+
+:host([data-side='left']) {
+  top: calc(var(--space-3) + 2.25rem + var(--space-2));
+  right: auto;
+  left: var(--space-3);
+}
+
+.focus-browser {
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.focus-browser__header,
+.focus-browser__footer {
+  flex: none;
+  padding: var(--space-3) var(--space-4);
+}
+
+.focus-browser__header {
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.focus-browser__count {
+  margin-top: var(--space-1);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+}
+
+.focus-browser__order {
+  margin-top: var(--space-3);
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.focus-browser__back,
+.focus-browser__exit {
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-secondary);
+}
+
+.focus-browser__back {
+  margin-top: var(--space-3);
+}
+
+.focus-browser__back:hover,
+.focus-browser__exit:hover {
+  color: var(--accent);
+}
+
+.focus-browser__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.focus-browser__list {
+  list-style: none;
+}
+
+.focus-browser__list li + li {
+  border-top: 1px solid var(--line-faint);
+}
+
+.focus-event {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+}
+
+.focus-event:hover,
+.focus-event:focus-visible {
+  background-color: var(--surface-200);
+}
+
+.focus-event__magnitude {
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.focus-event__meta {
+  font-size: var(--text-micro);
+  color: var(--text-tertiary);
+}
+
+.focus-browser__state {
+  padding: var(--space-5) var(--space-4);
+  font-size: var(--text-small);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+  max-inline-size: none;
+}
+
+.focus-browser__state--caution {
+  color: var(--caution);
+}
+
+.focus-browser__footer {
+  border-top: 1px solid var(--line-faint);
+}
+
+@media (max-width: 48rem) {
+  :host,
+  :host([data-side='left']) {
+    top: auto;
+    right: var(--space-2);
+    bottom: calc(var(--space-2) + 7rem);
+    left: var(--space-2);
+    z-index: var(--z-modal);
+  }
+
+  .focus-browser {
+    width: 100%;
+    max-height: 60vh;
+  }
+}
+
+@media (min-width: 48.001rem) and (max-width: 64rem) {
+  :host,
+  :host([data-side='left']) {
+    top: calc(var(--space-3) + 2.25rem + var(--space-2));
+    right: calc(var(--space-3) + 2.75rem);
+    left: auto;
+  }
+}

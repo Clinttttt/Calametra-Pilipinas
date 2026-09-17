@@ -4,7 +4,11 @@
   The map holds the whole viewport. Everything else floats over it, and nothing is
   permanently on screen that the user has not asked for.
 -->
-<div class="explore" [class.explore--presenting]="presenting()">
+<div
+  class="explore"
+  [class.explore--presenting]="presenting()"
+  [class.explore--lgu-focus]="lguEarthquakeMapScope.enabled()"
+>
   <div
     #canvas
     class="explore__canvas"
@@ -33,24 +37,39 @@
   @if (earthquakesActive() && readoutTotalCount() !== null) {
     @let count = readoutTotalCount() ?? 0;
     <div class="explore__readout">
-      @if (lguEarthquakeMapScope.state().status === 'loading') {
-        <p class="readout__isolated">Loading selected-LGU containment&hellip;</p>
-      } @else {
-        <p class="readout__figure">
-          <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
-          @if (filtered()) {
-            <span class="readout__of">of {{ count.toLocaleString() }}</span>
-          }
-        </p>
-        <p class="readout__caption">
-          Earthquakes Â· USGS catalogue
-          <span class="readout__note">{{ floorLabel() }}</span>
-        </p>
+      @if (lguEarthquakeMapScope.state(); as focusState) {
+        @if (focusState.status === 'loading') {
+          <p class="readout__isolated">Loading selected-LGU containment&hellip;</p>
+        } @else if (focusState.status === 'unavailable') {
+          <p class="readout__isolated">LGU containment unavailable</p>
+        } @else if (focusState.status === 'failed') {
+          <p class="readout__isolated">LGU containment could not be loaded</p>
+        } @else if (focusState.status === 'ready') {
+          <p class="readout__figure">
+            <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
+            <span class="readout__of">/ {{ count.toLocaleString() }}</span>
+          </p>
+          <p class="readout__caption">
+            Earthquakes &middot; {{ focusState.data.name }}
+            <span class="readout__note">Land-boundary containment</span>
+          </p>
+        } @else {
+          <p class="readout__figure">
+            <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
+            @if (filtered()) {
+              <span class="readout__of">of {{ count.toLocaleString() }}</span>
+            }
+          </p>
+          <p class="readout__caption">
+            Earthquakes Â· USGS catalogue
+            <span class="readout__note">{{ floorLabel() }}</span>
+          </p>
+        }
       }
 
       <!-- Stated, with the way out. The map is showing one event because the reader asked for one; a
            single dot beside a five-figure total would misrepresent what is on screen. -->
-      @if (isolatedEventId() !== null) {
+      @if (isolatedEventId() !== null && !lguEarthquakeMapScope.enabled()) {
         <button class="readout__isolated" type="button" (click)="showWholeArchive()">
           Showing this event alone — show the whole archive
         </button>
@@ -59,18 +78,18 @@
       @if (lguEarthquakeMapScope.enabled()) {
         @switch (lguEarthquakeMapScope.state().status) {
           @case ('ready') {
-            <button class="readout__isolated" type="button" (click)="lguEarthquakeMapScope.clear()">
-              LGU land-boundary containment &mdash; show all earthquakes
+            <button class="readout__isolated" type="button" (click)="exitLguEarthquakeFocus()">
+              Exit LGU focus
             </button>
           }
           @case ('unavailable') {
-            <button class="readout__isolated" type="button" (click)="lguEarthquakeMapScope.clear()">
-              Boundary unavailable; showing the whole archive &mdash; clear LGU filter
+            <button class="readout__isolated" type="button" (click)="exitLguEarthquakeFocus()">
+              Boundary unavailable &mdash; exit LGU focus
             </button>
           }
           @case ('failed') {
-            <button class="readout__isolated" type="button" (click)="lguEarthquakeMapScope.clear()">
-              LGU containment could not be loaded; showing the whole archive &mdash; clear LGU filter
+            <button class="readout__isolated" type="button" (click)="exitLguEarthquakeFocus()">
+              LGU containment could not be loaded &mdash; exit LGU focus
             </button>
           }
         }
@@ -251,11 +270,27 @@
        showed nothing — the answer existed and had nowhere to appear. -->
   @if (lguSelection.hasSelection()) {
     <div
-      class="explore__side-panel"
+      class="explore__side-panel explore__administrative-panel"
       [class.explore__side-panel--left]="lguPanelSide() === 'left'"
     >
       <cal-lgu-panel (mapRequested)="exploreSelectedLguEarthquakes()" />
     </div>
+  }
+
+  @if (lguEarthquakeMapScope.enabled() && lguSelection.selected(); as selectedLgu) {
+    <cal-lgu-earthquake-browser
+      [attr.data-side]="lguFocusPanelSide()"
+      [lguName]="selectedLgu.name"
+      [state]="lguEarthquakeMapScope.state()"
+      [selectedEventId]="selectedEventId()"
+      [selectedDetail]="selectedDetail()"
+      [detailLoading]="detailLoading()"
+      [detailFailed]="detailFailed()"
+      (eventSelected)="selectContainedEarthquake($event)"
+      (backRequested)="returnToContainedEarthquakes()"
+      (exitRequested)="exitLguEarthquakeFocus()"
+      (locateRequested)="locateObservation($event)"
+    />
   }
 
   <!-- Place explorer. Gated on the hazard as well as on its own state: it counts earthquakes and
@@ -292,7 +327,7 @@
 
   <!-- Detail panel for a selected event. The similarity search is projected inside it so
        the two share one panel, one width and one scroll area. -->
-  @if (earthquakesActive() && selectedEventId()) {
+  @if (earthquakesActive() && selectedEventId() && !lguEarthquakeMapScope.enabled()) {
     <div class="explore__detail" [class.explore__detail--raised]="openTool() === 'timeline'">
       <cal-event-detail
         [event]="selectedDetail()"

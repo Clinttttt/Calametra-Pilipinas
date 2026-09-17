@@ -1,0 +1,71 @@
+<div class="focus-browser c-panel" role="complementary" aria-label="Contained earthquakes">
+  <header class="focus-browser__header">
+    <p class="c-label">Earthquakes in {{ lguName() }}</p>
+    @if (readyData(); as data) {
+      <p class="focus-browser__count">{{ data.count.toLocaleString() }} contained events</p>
+      @if (showingDetail()) {
+        <button class="focus-browser__back" type="button" (click)="backRequested.emit()">
+          &larr; Back to {{ data.count.toLocaleString() }} earthquakes
+        </button>
+      } @else {
+        <p class="focus-browser__order">Newest first</p>
+      }
+    }
+  </header>
+
+  <div class="focus-browser__body">
+    @switch (state().status) {
+      @case ('loading') {
+        <p class="focus-browser__state">Loading contained earthquakes&hellip;</p>
+      }
+      @case ('unavailable') {
+        <p class="focus-browser__state focus-browser__state--caution">
+          This LGU has no current COD-AB land boundary, so containment is unavailable.
+        </p>
+      }
+      @case ('failed') {
+        <p class="focus-browser__state focus-browser__state--caution">
+          Contained earthquakes could not be loaded. The normal archive is not being shown as a
+          substitute.
+        </p>
+      }
+      @case ('ready') {
+        @if (showingDetail()) {
+          <cal-event-detail
+            [event]="selectedDetail()"
+            [loading]="detailLoading()"
+            [failed]="detailFailed()"
+            [embedded]="true"
+            [showHeader]="false"
+            [showSimilarAction]="false"
+            (closed)="backRequested.emit()"
+            (locateRequested)="locateRequested.emit($event)"
+          />
+        } @else if (events().length === 0) {
+          <p class="focus-browser__state">
+            No catalogue earthquakes fall within this land boundary.
+          </p>
+        } @else {
+          <ol class="focus-browser__list" aria-label="Contained earthquakes, newest first">
+            @for (event of events(); track event.i) {
+              <li>
+                <button class="focus-event" type="button" (click)="eventSelected.emit(event)">
+                  <span class="focus-event__magnitude u-numeric">{{ formatMagnitude(event) }}</span>
+                  <span class="focus-event__meta">
+                    {{ formatDepth(event) }} &middot; {{ formatDate(event) }}
+                  </span>
+                </button>
+              </li>
+            }
+          </ol>
+        }
+      }
+    }
+  </div>
+
+  <footer class="focus-browser__footer">
+    <button class="focus-browser__exit" type="button" (click)="exitRequested.emit()">
+      Exit LGU focus
+    </button>
+  </footer>
+</div>

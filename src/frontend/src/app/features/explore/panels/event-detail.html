@@ -6,13 +6,21 @@
   explanation sits *after* the readings rather than before, so a user reads the
   disagreement and then finds it accounted for.
 -->
-<aside class="detail c-panel" role="complementary" aria-label="Earthquake detail">
-  <header class="detail__header">
-    <span class="c-label">Earthquake</span>
-    <button class="c-icon-button" type="button" (click)="close()">
-      <cal-icon name="close" [size]="16" label="Close detail panel" />
-    </button>
-  </header>
+<aside
+  class="detail"
+  [class.c-panel]="!embedded()"
+  [class.detail--embedded]="embedded()"
+  [attr.role]="embedded() ? 'presentation' : 'complementary'"
+  aria-label="Earthquake detail"
+>
+  @if (showHeader()) {
+    <header class="detail__header">
+      <span class="c-label">Earthquake</span>
+      <button class="c-icon-button" type="button" (click)="close()">
+        <cal-icon name="close" [size]="16" label="Close detail panel" />
+      </button>
+    </header>
+  }
 
   @if (loading()) {
     <div class="detail__state">
@@ -153,7 +161,7 @@
       <!-- Opens the similarity search. A separate action rather than loading with the
            panel, because it is a follow-up question and a spatial query. Hidden once the
            section below is showing, since it would then do nothing. -->
-      @if (!similarOpen()) {
+      @if (showSimilarAction() && !similarOpen()) {
         <footer class="detail__actions">
           <button class="c-button" type="button" (click)="requestSimilar()">
             Find similar events

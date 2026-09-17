@@ -80,7 +80,7 @@ describe('LguEarthquakeMapScopeStore', () => {
     await fixture.whenStable();
   });
 
-  it('activates for the selected LGU without touching PlaceStore', async () => {
+  it('enters focus with the complete contained set without touching PlaceStore', async () => {
     filters.setMagnitudeRange(4.5, 7.2);
     filters.setDepthRange(10, 80);
     filters.setIncludeAssignedDepth(false);
@@ -91,6 +91,7 @@ describe('LguEarthquakeMapScopeStore', () => {
     expect(api.requests).toEqual([CANTILAN.psgc]);
     expect(hazardMode.selected()).toBe('earthquakes');
     expect(scope.state()).toEqual({ status: 'loading', canonicalPsgcCode: CANTILAN.psgc });
+    expect(selection.selectedPsgc()).toBe(CANTILAN.psgc);
     expect(place.openPanel).not.toHaveBeenCalled();
     expect(place.closePanel).not.toHaveBeenCalled();
     expect(place.select).not.toHaveBeenCalled();
@@ -98,12 +99,50 @@ describe('LguEarthquakeMapScopeStore', () => {
     expect(filters.filter()).toEqual({
       fromMs: null,
       toMs: null,
-      minMagnitude: 4.5,
-      maxMagnitude: 7.2,
-      minDepthKm: 10,
-      maxDepthKm: 80,
-      includeAssignedDepth: false,
+      minMagnitude: null,
+      maxMagnitude: null,
+      minDepthKm: null,
+      maxDepthKm: null,
+      includeAssignedDepth: true,
     });
+  });
+
+  it('reports the complete authoritative set as shown when focus has no temporary filters', async () => {
+    selection.select(LANUZA);
+    scope.activate();
+    await fixture.whenStable();
+    const ids = Array.from({ length: 16 }, (_, index) => `event-${index + 1}`);
+
+    api.responses.get(LANUZA.psgc)!.next(response(LANUZA, ids));
+    scope.setShownCount(16);
+    await fixture.whenStable();
+
+    const state = scope.state();
+    expect(state.status).toBe('ready');
+    if (state.status === 'ready') {
+      expect({ shown: scope.shownCount(), contained: state.data.count }).toEqual({
+        shown: 16,
+        contained: 16,
+      });
+    }
+  });
+
+  it('restores the normal archive filters exactly when focus exits', async () => {
+    filters.applyPreset('twelve-months', new Date(Date.UTC(2026, 8, 12, 22, 30)));
+    filters.setMagnitudeRange(4.5, 7.2);
+    filters.setDepthRange(10, 80);
+    filters.setIncludeAssignedDepth(false);
+    const before = filters.snapshot();
+    selection.select(CANTILAN);
+
+    scope.activate();
+    await fixture.whenStable();
+    filters.setMagnitudeRange(5, null);
+    scope.clear();
+    await fixture.whenStable();
+
+    expect(filters.snapshot()).toEqual(before);
+    expect(selection.selectedPsgc()).toBe(CANTILAN.psgc);
   });
 
   it('replaces the contained set when selection changes and ignores a stale response', async () => {
@@ -112,11 +151,15 @@ describe('LguEarthquakeMapScopeStore', () => {
     await fixture.whenStable();
     const cantilan = api.responses.get(CANTILAN.psgc)!;
 
+    // A temporary focus filter must not leak into the next administrative subject.
+    filters.setMagnitudeRange(6, null);
+
     selection.select(LANUZA);
     await fixture.whenStable();
 
     expect(cantilan.observed).toBe(false);
     expect(api.requests).toEqual([CANTILAN.psgc, LANUZA.psgc]);
+    expect(filters.isFiltered()).toBe(false);
 
     cantilan.next(response(CANTILAN, ['old']));
     api.responses.get(LANUZA.psgc)!.next(response(LANUZA, ['new']));
@@ -135,9 +178,9 @@ describe('LguEarthquakeMapScopeStore', () => {
     scope.activate();
     await fixture.whenStable();
 
-    api.responses.get(CANTILAN.psgc)!.error(
-      new HttpErrorResponse({ status: 404, error: { code: 'lgu_boundary.not_available' } }),
-    );
+    api.responses
+      .get(CANTILAN.psgc)!
+      .error(new HttpErrorResponse({ status: 404, error: { code: 'lgu_boundary.not_available' } }));
     await fixture.whenStable();
 
     expect(scope.state()).toEqual({

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { panelSideFor } from './panel-side';
+import { oppositePanelSide, panelSideFor } from './panel-side';
 
 describe('panelSideFor', () => {
   it('takes the left when the reader clicked the right half', () => {
@@ -31,5 +31,12 @@ describe('panelSideFor', () => {
     // A zero-width canvas during layout would divide to NaN. The panel appearing on its usual side is a
     // better failure than a panel that does not appear.
     expect(panelSideFor(Number.NaN)).toBe('right');
+  });
+});
+
+describe('oppositePanelSide', () => {
+  it('keeps the focus browser opposite the Administrative Unit panel', () => {
+    expect(oppositePanelSide('left')).toBe('right');
+    expect(oppositePanelSide('right')).toBe('left');
   });
 });

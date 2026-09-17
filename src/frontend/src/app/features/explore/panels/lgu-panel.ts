@@ -110,11 +110,9 @@ export class LguPanel {
   }
 
   protected toggleMapScope(): void {
-    if (this.mapScope.enabled()) {
-      this.mapScope.clear();
-    } else {
-      this.mapRequested.emit();
-    }
+    // Explore owns the temporary archive-filter snapshot as well as map isolation state, so both entry
+    // and exit are delegated to the map context rather than partially handled in this panel.
+    this.mapRequested.emit();
   }
 
   protected registerEditionDisplay(label: string): string {

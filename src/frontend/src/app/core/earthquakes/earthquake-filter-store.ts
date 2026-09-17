@@ -28,6 +28,11 @@ export interface EarthquakeFilter {
   readonly includeAssignedDepth: boolean;
 }
 
+/** A lossless snapshot of the reader's normal archive filter configuration. */
+export interface EarthquakeFilterState extends EarthquakeFilter {
+  readonly preset: TimePreset;
+}
+
 /**
  * The reader's filter over the earthquake archive.
  *
@@ -168,6 +173,23 @@ export class EarthquakeFilterStore {
 
   setIncludeAssignedDepth(include: boolean): void {
     this._includeAssignedDepth.set(include);
+  }
+
+  /** Captures every reader-controlled archive bound, including the preset shown by the UI. */
+  snapshot(): EarthquakeFilterState {
+    return { ...this.filter(), preset: this._preset() };
+  }
+
+  /** Restores a previously captured archive configuration without inferring any field. */
+  restore(state: EarthquakeFilterState): void {
+    this._fromMs.set(state.fromMs);
+    this._toMs.set(state.toMs);
+    this._minMagnitude.set(state.minMagnitude);
+    this._maxMagnitude.set(state.maxMagnitude);
+    this._minDepthKm.set(state.minDepthKm);
+    this._maxDepthKm.set(state.maxDepthKm);
+    this._includeAssignedDepth.set(state.includeAssignedDepth);
+    this._preset.set(state.preset);
   }
 
   /** Clears every bound. The archive as it stands, which is the honest default to return to. */

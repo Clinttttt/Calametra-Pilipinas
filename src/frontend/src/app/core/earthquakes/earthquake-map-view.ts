@@ -15,9 +15,11 @@ export function containmentMapClause(state: LguEarthquakeMapScopeState): unknown
     return ['in', ['get', 'id'], ['literal', state.data.points.map((point) => point.i)]];
   }
 
-  return state.status === 'loading'
-    ? ['==', ['get', 'id'], '__calametra_containment_loading__']
-    : null;
+  // While focus is loading or cannot establish authoritative membership, draw no archive events.
+  // Falling back to the national archive would look like a valid contained result.
+  return state.status === 'inactive'
+    ? null
+    : ['==', ['get', 'id'], '__calametra_containment_unavailable__'];
 }
 
 /** Mirrors the map layer predicate for a viewport-independent visible count. */

@@ -66,7 +66,9 @@
   z-index: var(--z-map-overlay);
   pointer-events: none;
   /* Legible over both dark ocean and lit terrain without a background plate. */
-  text-shadow: 0 1px 12px rgb(0 0 0 / 90%), 0 0 3px rgb(0 0 0 / 80%);
+  text-shadow:
+    0 1px 12px rgb(0 0 0 / 90%),
+    0 0 3px rgb(0 0 0 / 80%);
 }
 
 .readout__figure {
@@ -362,6 +364,14 @@
   top: calc(var(--space-3) + 2.25rem + var(--space-2));
 }
 
+/* Two full side rails leave too little map below this width. Focus becomes the one contextual rail;
+   the LGU remains selected and its persistent outline continues to carry the administrative context. */
+@media (max-width: 64rem) {
+  .explore--lgu-focus .explore__administrative-panel {
+    display: none;
+  }
+}
+
 /* The storm list sits on the left, opposite the rail. Cyclone work is a browse-then-inspect task
    and the list stays open while the map is read, so it takes the side the reader's attention is not
    already on. */
@@ -422,4 +432,3 @@
   box-shadow: var(--shadow-panel);
   animation: panel-in var(--motion-quick) var(--ease-out);
 }
-

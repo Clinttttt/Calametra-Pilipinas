@@ -31,3 +31,8 @@ export function panelSideFor(normalisedX: number | null): PanelSide {
   // midline it stays right, so a click on the centre line does not flip the panel back and forth.
   return normalisedX > 0.5 ? 'left' : 'right';
 }
+
+/** Places a secondary contextual rail across the map from its primary rail. */
+export function oppositePanelSide(side: PanelSide): PanelSide {
+  return side === 'left' ? 'right' : 'left';
+}

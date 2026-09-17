@@ -24,9 +24,9 @@ const EVENT = {
 
 describe('earthquake map containment composition', () => {
   it('intersects authoritative membership with existing earthquake filters', () => {
-    expect(
-      eventMatchesEarthquakeMapView(EVENT, FILTER, null, null, new Set([EVENT.id])),
-    ).toBe(true);
+    expect(eventMatchesEarthquakeMapView(EVENT, FILTER, null, null, new Set([EVENT.id]))).toBe(
+      true,
+    );
     expect(
       eventMatchesEarthquakeMapView(EVENT, FILTER, null, null, new Set(['another-event'])),
     ).toBe(false);
@@ -59,8 +59,23 @@ describe('earthquake map containment composition', () => {
     expect(containmentMapClause({ status: 'loading', canonicalPsgcCode: '1606810000' })).toEqual([
       '==',
       ['get', 'id'],
-      '__calametra_containment_loading__',
+      '__calametra_containment_unavailable__',
     ]);
+  });
+
+  it('does not substitute the normal archive for unavailable or failed containment', () => {
+    expect(
+      containmentMapClause({
+        status: 'unavailable',
+        canonicalPsgcCode: '1606810000',
+      }),
+    ).not.toBeNull();
+    expect(
+      containmentMapClause({
+        status: 'failed',
+        canonicalPsgcCode: '1606810000',
+      }),
+    ).not.toBeNull();
   });
 
   it('keeps the existing event id used by the earthquake detail click flow', () => {

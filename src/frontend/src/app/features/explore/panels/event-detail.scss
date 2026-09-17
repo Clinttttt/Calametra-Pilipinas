@@ -6,6 +6,16 @@
   overflow: hidden;
 }
 
+.detail--embedded {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+}
+
+.detail--embedded .detail__body {
+  overflow: visible;
+}
+
 .detail__header {
   display: flex;
   align-items: center;
