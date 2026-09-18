@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { type EarthquakeFilter } from './earthquake-filter-store';
-import { containmentMapClause, eventMatchesEarthquakeMapView } from './earthquake-map-view';
+import {
+  containmentMapClause,
+  eventMatchesEarthquakeMapView,
+  eventSetMapClause,
+} from './earthquake-map-view';
 import { toEarthquakeGeoJson } from '../visual/earthquake-geojson';
 
 const FILTER: EarthquakeFilter = {
@@ -23,6 +27,19 @@ const EVENT = {
 };
 
 describe('earthquake map containment composition', () => {
+  it('draws no markers when Earthquakes is active without an event population', () => {
+    expect(eventSetMapClause('none')).toEqual([
+      '==',
+      ['get', 'id'],
+      '__calametra_no_earthquake_event_set__',
+    ]);
+    expect(eventSetMapClause('historicalComparable')).toBeNull();
+    expect(eventSetMapClause('customFiltered')).toBeNull();
+    expect(eventSetMapClause('completeCatalogue')).toBeNull();
+    expect(eventSetMapClause('isolatedEvent')).toBeNull();
+    expect(eventSetMapClause('lguFocus')).toBeNull();
+  });
+
   it('intersects authoritative membership with existing earthquake filters', () => {
     expect(eventMatchesEarthquakeMapView(EVENT, FILTER, null, null, new Set([EVENT.id]))).toBe(
       true,

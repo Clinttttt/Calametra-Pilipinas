@@ -48,19 +48,12 @@ export interface EarthquakeFilterState extends EarthquakeFilter {
  */
 @Injectable({ providedIn: 'root' })
 export class EarthquakeFilterStore {
-  /**
-   * Opening magnitude floor.
-   *
-   * The archive holds 27,241 events across 125 years. Drawn at once they read as a smear over the
-   * archipelago rather than as a distribution, and the sparse early record invites the false
-   * reading that earthquakes have become more frequent. Opening at M6.0+ shows the era-comparable
-   * record, and the panel is where a reader asks for the rest.
-   */
-  static readonly openingMagnitudeFloor = 6;
+  /** The explicit historically comparable preset; it is never applied merely by choosing a hazard. */
+  static readonly historicalComparableMagnitudeFloor = 6;
 
   private readonly _fromMs = signal<number | null>(null);
   private readonly _toMs = signal<number | null>(null);
-  private readonly _minMagnitude = signal<number | null>(EarthquakeFilterStore.openingMagnitudeFloor);
+  private readonly _minMagnitude = signal<number | null>(null);
   private readonly _maxMagnitude = signal<number | null>(null);
   private readonly _minDepthKm = signal<number | null>(null);
   private readonly _maxDepthKm = signal<number | null>(null);

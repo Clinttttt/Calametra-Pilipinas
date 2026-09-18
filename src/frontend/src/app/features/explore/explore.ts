@@ -76,10 +76,12 @@ import {
 } from '../../core/visual/fault-style';
 import { HIGHLIGHT_COLOUR } from '../../core/visual/highlight-style';
 import { EarthquakeFilterStore } from '../../core/earthquakes/earthquake-filter-store';
+import { EarthquakeEventSetStore } from '../../core/earthquakes/earthquake-event-set-store';
 import { LguEarthquakeMapScopeStore } from '../../core/earthquakes/lgu-earthquake-map-scope-store';
 import { LguEarthquakeFocusSession } from '../../core/earthquakes/lgu-earthquake-focus-session';
 import {
   containmentMapClause,
+  eventSetMapClause,
   eventMatchesEarthquakeMapView,
   type LoadedEarthquakeMapEvent,
 } from '../../core/earthquakes/earthquake-map-view';
@@ -292,14 +294,6 @@ export class Explore {
     Explore.cyclonePositionLayerId,
   ] as const;
 
-  /**
-   * The magnitude the map opens on.
-   *
-   * Defined by <see cref="EarthquakeFilterStore"/>, which owns the floor, and re-exported here only
-   * because the template's opening readout needs it. Two constants would eventually differ.
-   */
-  private static readonly openingMagnitudeFloor = EarthquakeFilterStore.openingMagnitudeFloor;
-
   private readonly config = inject(APP_CONFIG);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -324,6 +318,7 @@ export class Explore {
   private readonly placeStore = inject(PlaceStore);
   private readonly basemapStore = inject(BasemapStore);
   private readonly hazardStore = inject(HazardModeStore);
+  protected readonly earthquakeEventSets = inject(EarthquakeEventSetStore);
   private readonly canvas = viewChild.required<ElementRef<HTMLDivElement>>('canvas');
 
   private map?: MapLibreMap;
@@ -504,9 +499,6 @@ export class Explore {
     return scope.status === 'ready' ? scope.data.count : this.eventCount();
   });
 
-  /** True when any filter is narrowing the archive. */
-  protected readonly filtered = computed(() => this.visibleCount() !== null);
-
   // ---- Selected event -----------------------------------------------------
 
   protected readonly selectedEventId = signal<string | null>(null);
@@ -518,24 +510,6 @@ export class Explore {
 
   private readonly timeInstantMs = signal<number | null>(null);
 
-  /**
-   * The magnitude floor applied to the map.
-   *
-   * <b>Opens at M6.0, not at the whole catalogue.</b> Rendering all 27,241 events at once produced a
-   * saturated orange mass covering the archipelago: at national zoom the symbols overlap several
-   * deep, so the picture conveyed neither where earthquakes occur nor how deep they are, and the
-   * one thing it did convey — density — is an artefact of instrumentation rather than of seismicity.
-   *
-   * 6.0 is not a display convenience, it is the threshold this archive supports. Events per decade
-   * rise from 21 in the 1900s to 5,974 in the 2020s, a 285-fold increase that is entirely a change
-   * in the recording network, while the M6.0+ rate is flat at roughly five per year across the same
-   * 125 years. So M6.0+ is the only subset that can be compared between eras, and it is therefore
-   * the only honest thing to open a historical exploration platform on. Measured against the loaded
-   * archive: 631 events at M6.0+, against 5,053 at M5.0+ and 15,971 at M4.5+.
-   *
-   * The full catalogue is one click away and the readout states the floor in place, so nothing is
-   * hidden — the default states a premise instead of dumping a population.
-   */
   /**
    * The reader's own filter over the archive, beyond the timeline's scrub and floor.
    *
@@ -1735,9 +1709,9 @@ export class Explore {
         this.hazardStore.select('earthquakes');
         this.applyHazardToMap(map);
 
-        // The reader asked for one earthquake, so the archive opens with the floor lifted rather than
-        // at M6.0+ — otherwise a magnitude 4.7 arrives selected but filtered out of the map beneath it.
-        this.filterStore.setMagnitudeRange(null, null);
+        // The reader asked for one earthquake, so that event becomes the population on the map.
+        this.filterStore.clear();
+        this.earthquakeEventSets.select('isolatedEvent');
         this.isolatedEventId.set(requested);
         this.applyFilters();
 
@@ -2087,11 +2061,8 @@ export class Explore {
 
       this.eventCount.set(archive.count);
 
-      // Applies the active floor to the newly loaded features. Easy to miss and previously
-      // unnecessary: the floor used to default to null, so there was nothing to apply until the
-      // reader touched the Time Machine. With an opening floor of M6.0 the filter has to be pushed
-      // the moment the data arrives, or the map renders all 27,241 events while the readout claims
-      // to be showing M6.0+.
+      // Applies the selected population to the newly loaded features. In the initial `none` state
+      // this is what keeps the source loaded but every marker hidden until the reader chooses a set.
       this.applyFilters();
     } catch {
       // The HTTP interceptor already surfaced a toast; this drives the on-map state
@@ -2886,6 +2857,12 @@ export class Explore {
     const clauses: unknown[] = [];
     const containmentScope = this.lguEarthquakeMapScope.state();
 
+    const eventSetClause = eventSetMapClause(this.earthquakeEventSets.eventSet());
+
+    if (eventSetClause !== null) {
+      clauses.push(eventSetClause);
+    }
+
     const containmentClause = containmentMapClause(containmentScope);
 
     if (containmentClause !== null) {
@@ -2971,6 +2948,12 @@ export class Explore {
     const isolated = this.isolatedEventId();
     const containmentScope = this.lguEarthquakeMapScope.state();
 
+    if (this.earthquakeEventSets.eventSet() === 'none') {
+      this.visibleCount.set(null);
+      this.lguEarthquakeMapScope.setShownCount(null);
+      return;
+    }
+
     if (containmentScope.status !== 'inactive' && containmentScope.status !== 'ready') {
       this.visibleCount.set(null);
       this.lguEarthquakeMapScope.setShownCount(null);
@@ -3009,6 +2992,7 @@ export class Explore {
 
   protected onInstantChanged(instantMs: number | null): void {
     this.timeInstantMs.set(instantMs);
+    this.activateEventSetForCurrentFilters();
     this.applyFilters();
   }
 
@@ -3020,6 +3004,32 @@ export class Explore {
    * is no second route by which the map and the count could fall out of step.
    */
   protected onFilterChanged(): void {
+    this.isolatedEventId.set(null);
+    this.earthquakeEventSets.selectFilterResult(this.filterStore.isFiltered());
+    this.applyFilters();
+  }
+
+  /** Opens the established filter surface without choosing a population on the reader's behalf. */
+  protected openEarthquakeFilters(): void {
+    this.openTool.set('filter');
+    this.placeStore.closePanel();
+  }
+
+  /** Applies the explicit historically comparable preset. */
+  protected showHistoricalEarthquakes(): void {
+    this.clearNormalEarthquakeContext();
+    this.filterStore.setMagnitudeRange(
+      EarthquakeFilterStore.historicalComparableMagnitudeFloor,
+      null,
+    );
+    this.earthquakeEventSets.select('historicalComparable');
+    this.applyFilters();
+  }
+
+  /** Displays the archive without silently presenting it as historically uniform. */
+  protected showCompleteEarthquakeCatalogue(): void {
+    this.clearNormalEarthquakeContext();
+    this.earthquakeEventSets.select('completeCatalogue');
     this.applyFilters();
   }
 
@@ -3035,14 +3045,45 @@ export class Explore {
 
   /** Returns the whole archive to the map, keeping the event selected. */
   protected showWholeArchive(): void {
-    this.isolatedEventId.set(null);
+    this.clearNormalEarthquakeContext();
+    this.earthquakeEventSets.select('completeCatalogue');
     this.applyFilters();
   }
 
   protected onMagnitudeFloorChanged(floor: number | null): void {
     // Written to the store, not to a local signal: the filter panel reads the same field.
     this.filterStore.setMagnitudeRange(floor, this.filterStore.maxMagnitude());
-    this.applyFilters();  }
+    this.activateEventSetForCurrentFilters();
+    this.applyFilters();
+  }
+
+  private activateEventSetForCurrentFilters(): void {
+    const historicalFloor = EarthquakeFilterStore.historicalComparableMagnitudeFloor;
+    const filter = this.filterStore.filter();
+    const isHistoricalPreset =
+      this.timeInstantMs() === null
+      && filter.fromMs === null
+      && filter.toMs === null
+      && filter.minMagnitude === historicalFloor
+      && filter.maxMagnitude === null
+      && filter.minDepthKm === null
+      && filter.maxDepthKm === null
+      && filter.includeAssignedDepth;
+
+    this.earthquakeEventSets.select(
+      isHistoricalPreset
+        ? 'historicalComparable'
+        : this.timeInstantMs() === null && !this.filterStore.isFiltered()
+          ? 'completeCatalogue'
+          : 'customFiltered',
+    );
+  }
+
+  private clearNormalEarthquakeContext(): void {
+    this.filterStore.clear();
+    this.timeInstantMs.set(null);
+    this.isolatedEventId.set(null);
+  }
 
   // ---- Selection ----------------------------------------------------------
 
@@ -3158,6 +3199,7 @@ export class Explore {
     // panel to account for it is worse than either.
     if (this.isolatedEventId() !== null) {
       this.isolatedEventId.set(null);
+      this.earthquakeEventSets.select('none');
       this.applyFilters();
     }
 

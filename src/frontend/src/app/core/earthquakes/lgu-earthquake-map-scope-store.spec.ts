@@ -11,6 +11,7 @@ import { PlaceStore } from '../places/place-store';
 import { HazardModeStore } from '../hazards/hazard-mode-store';
 import { LguEarthquakeMapScopeStore } from './lgu-earthquake-map-scope-store';
 import { EarthquakeFilterStore } from './earthquake-filter-store';
+import { EarthquakeEventSetStore } from './earthquake-event-set-store';
 
 const CANTILAN: SelectedLgu = {
   psgc: '1606805000',
@@ -50,6 +51,7 @@ describe('LguEarthquakeMapScopeStore', () => {
   let api: ApiStub;
   let hazardMode: HazardModeStore;
   let filters: EarthquakeFilterStore;
+  let eventSets: EarthquakeEventSetStore;
   const place = {
     openPanel: vi.fn(),
     closePanel: vi.fn(),
@@ -77,6 +79,7 @@ describe('LguEarthquakeMapScopeStore', () => {
     selection = TestBed.inject(LguSelectionStore);
     hazardMode = TestBed.inject(HazardModeStore);
     filters = TestBed.inject(EarthquakeFilterStore);
+    eventSets = TestBed.inject(EarthquakeEventSetStore);
     await fixture.whenStable();
   });
 
@@ -105,6 +108,7 @@ describe('LguEarthquakeMapScopeStore', () => {
       maxDepthKm: null,
       includeAssignedDepth: true,
     });
+    expect(eventSets.eventSet()).toBe('lguFocus');
   });
 
   it('reports the complete authoritative set as shown when focus has no temporary filters', async () => {
@@ -145,6 +149,53 @@ describe('LguEarthquakeMapScopeStore', () => {
     expect(selection.selectedPsgc()).toBe(CANTILAN.psgc);
   });
 
+  it('restores the explicit M6 historical preset after focus', async () => {
+    filters.setMagnitudeRange(EarthquakeFilterStore.historicalComparableMagnitudeFloor, null);
+    eventSets.select('historicalComparable');
+    selection.select(CANTILAN);
+
+    scope.activate();
+    await fixture.whenStable();
+    scope.clear();
+    await fixture.whenStable();
+
+    expect(eventSets.eventSet()).toBe('historicalComparable');
+    expect(filters.minMagnitude()).toBe(6);
+  });
+
+  it.each([
+    'none',
+    'historicalComparable',
+    'customFiltered',
+    'completeCatalogue',
+    'isolatedEvent',
+  ] as const)('restores the prior %s event-set state when focus exits', async (eventSet) => {
+    eventSets.select(eventSet);
+    selection.select(CANTILAN);
+
+    scope.activate();
+    await fixture.whenStable();
+    expect(eventSets.eventSet()).toBe('lguFocus');
+
+    scope.clear();
+    await fixture.whenStable();
+
+    expect(eventSets.eventSet()).toBe(eventSet);
+  });
+
+  it('restores no population when the LGU selection is cleared during focus', async () => {
+    eventSets.select('none');
+    selection.select(CANTILAN);
+    scope.activate();
+    await fixture.whenStable();
+
+    selection.clear();
+    await fixture.whenStable();
+
+    expect(scope.state()).toEqual({ status: 'inactive' });
+    expect(eventSets.eventSet()).toBe('none');
+  });
+
   it('replaces the contained set when selection changes and ignores a stale response', async () => {
     selection.select(CANTILAN);
     scope.activate();
@@ -160,6 +211,7 @@ describe('LguEarthquakeMapScopeStore', () => {
     expect(cantilan.observed).toBe(false);
     expect(api.requests).toEqual([CANTILAN.psgc, LANUZA.psgc]);
     expect(filters.isFiltered()).toBe(false);
+    expect(eventSets.eventSet()).toBe('lguFocus');
 
     cantilan.next(response(CANTILAN, ['old']));
     api.responses.get(LANUZA.psgc)!.next(response(LANUZA, ['new']));

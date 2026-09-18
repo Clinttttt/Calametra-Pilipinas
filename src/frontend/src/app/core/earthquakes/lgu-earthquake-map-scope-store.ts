@@ -5,6 +5,10 @@ import { LguSelectionStore } from '../administrative/lgu-selection-store';
 import { CalametraApi } from '../api/calametra-api';
 import { type LguContainedEarthquakeMapData, type ProblemDetails } from '../api/contracts';
 import { HazardModeStore } from '../hazards/hazard-mode-store';
+import {
+  EarthquakeEventSetStore,
+  type EarthquakeEventSet,
+} from './earthquake-event-set-store';
 import { EarthquakeFilterStore, type EarthquakeFilterState } from './earthquake-filter-store';
 
 export type LguEarthquakeMapScopeState =
@@ -27,10 +31,12 @@ export class LguEarthquakeMapScopeStore {
   private readonly lguSelection = inject(LguSelectionStore);
   private readonly hazardMode = inject(HazardModeStore);
   private readonly filters = inject(EarthquakeFilterStore);
+  private readonly eventSets = inject(EarthquakeEventSetStore);
   private readonly enabledState = signal(false);
   private readonly scopeState = signal<LguEarthquakeMapScopeState>({ status: 'inactive' });
   private readonly shownCountState = signal<number | null>(null);
   private normalFilterState: EarthquakeFilterState | null = null;
+  private normalEventSet: EarthquakeEventSet | null = null;
   private requestedCanonicalPsgcCode: string | null = null;
 
   readonly enabled = this.enabledState.asReadonly();
@@ -70,6 +76,7 @@ export class LguEarthquakeMapScopeStore {
         // A new administrative subject starts as the complete contained set. Any filters the reader
         // experimented with inside the previous focus remain temporary and do not follow to this LGU.
         this.filters.clear();
+        this.eventSets.select('lguFocus');
         this.requestedCanonicalPsgcCode = canonicalPsgcCode;
       }
       this.scopeState.set({ status: 'loading', canonicalPsgcCode });
@@ -99,7 +106,9 @@ export class LguEarthquakeMapScopeStore {
   activate(): void {
     if (this.lguSelection.selected() !== null && !this.enabledState()) {
       this.normalFilterState = this.filters.snapshot();
+      this.normalEventSet = this.eventSets.eventSet();
       this.filters.clear();
+      this.eventSets.select('lguFocus');
       this.hazardMode.select('earthquakes');
       this.enabledState.set(true);
     }
@@ -121,6 +130,11 @@ export class LguEarthquakeMapScopeStore {
     if (this.normalFilterState !== null) {
       this.filters.restore(this.normalFilterState);
       this.normalFilterState = null;
+    }
+
+    if (this.normalEventSet !== null) {
+      this.eventSets.select(this.normalEventSet);
+      this.normalEventSet = null;
     }
   }
 }

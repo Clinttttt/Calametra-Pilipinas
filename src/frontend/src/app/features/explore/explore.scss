@@ -108,6 +108,46 @@
   max-inline-size: none;
 }
 
+.readout__idle-title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.readout__idle-copy,
+.readout__caveat {
+  margin: var(--space-1) 0 0;
+  max-inline-size: 20rem;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}
+
+.readout__caveat {
+  color: var(--text-tertiary);
+}
+
+.readout__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+  pointer-events: auto;
+}
+
+.readout__actions button {
+  padding: 0;
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
 /* The coverage floor travels with the count, so the number is never quoted
    without the limit that qualifies it. */
 .readout__note {
@@ -133,6 +173,7 @@
   background: none;
   border: 0;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .explore__readout--failed {

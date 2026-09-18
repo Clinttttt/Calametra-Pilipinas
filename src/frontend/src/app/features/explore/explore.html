@@ -32,10 +32,9 @@
     }
   </div>
 
-  <!-- Archive readout. States the catalogue and its floor, because a bare count
-       would invite "this is every earthquake in the Philippines", which is false. -->
-  @if (earthquakesActive() && readoutTotalCount() !== null) {
-    @let count = readoutTotalCount() ?? 0;
+  <!-- Earthquakes can be the active subject without a population being rendered. That idle state is
+       not a zero result: it is an invitation to choose the analytical set deliberately. -->
+  @if (earthquakesActive() && !loadFailed()) {
     <div class="explore__readout">
       @if (lguEarthquakeMapScope.state(); as focusState) {
         @if (focusState.status === 'loading') {
@@ -46,22 +45,37 @@
           <p class="readout__isolated">LGU containment could not be loaded</p>
         } @else if (focusState.status === 'ready') {
           <p class="readout__figure">
-            <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
-            <span class="readout__of">/ {{ count.toLocaleString() }}</span>
+            <span class="readout__value">{{ (visibleCount() ?? focusState.data.count).toLocaleString() }}</span>
+            <span class="readout__of">/ {{ focusState.data.count.toLocaleString() }}</span>
           </p>
           <p class="readout__caption">
             Earthquakes &middot; {{ focusState.data.name }}
             <span class="readout__note">Land-boundary containment</span>
           </p>
-        } @else {
+        } @else if (earthquakeEventSets.eventSet() === 'none') {
+          <p class="readout__caption">Earthquakes</p>
+          <p class="readout__idle-title">No events shown</p>
+          <p class="readout__idle-copy">Choose a filter or archive view to display earthquake events on the map.</p>
+          <div class="readout__actions" aria-label="Choose an earthquake event set">
+            <button type="button" (click)="openEarthquakeFilters()">Filter earthquakes</button>
+            <button type="button" (click)="showHistoricalEarthquakes()">Show M6.0+ historical set</button>
+            <button type="button" (click)="showCompleteEarthquakeCatalogue()">Show complete catalogue</button>
+          </div>
+          <p class="readout__caveat">
+            M6.0+ is comparable across more of the historical record. The complete catalogue is denser
+            and reflects changing instrumentation.
+          </p>
+        } @else if (readoutTotalCount() !== null) {
           <p class="readout__figure">
-            <span class="readout__value">{{ (visibleCount() ?? count).toLocaleString() }}</span>
-            @if (filtered()) {
-              <span class="readout__of">of {{ count.toLocaleString() }}</span>
-            }
+            <span class="readout__value">{{ (visibleCount() ?? readoutTotalCount() ?? 0).toLocaleString() }}</span>
           </p>
           <p class="readout__caption">
-            Earthquakes Â· USGS catalogue
+            @switch (earthquakeEventSets.eventSet()) {
+              @case ('historicalComparable') { Earthquakes &middot; Historical set }
+              @case ('customFiltered') { Earthquakes &middot; Filtered }
+              @case ('completeCatalogue') { Earthquakes &middot; Complete catalogue }
+              @case ('isolatedEvent') { Earthquakes &middot; Selected event }
+            }
             <span class="readout__note">{{ floorLabel() }}</span>
           </p>
         }

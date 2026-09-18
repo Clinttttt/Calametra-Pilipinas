@@ -1,4 +1,5 @@
 import { type EarthquakeFilter } from './earthquake-filter-store';
+import { type EarthquakeEventSet } from './earthquake-event-set-store';
 import { type LguEarthquakeMapScopeState } from './lgu-earthquake-map-scope-store';
 
 export interface LoadedEarthquakeMapEvent {
@@ -7,6 +8,13 @@ export interface LoadedEarthquakeMapEvent {
   readonly magnitude: number | null;
   readonly depthKm: number | null;
   readonly depthMeasured: boolean;
+}
+
+/** MapLibre clause for whether the reader has selected any normal earthquake population. */
+export function eventSetMapClause(eventSet: EarthquakeEventSet): unknown[] | null {
+  return eventSet === 'none'
+    ? ['==', ['get', 'id'], '__calametra_no_earthquake_event_set__']
+    : null;
 }
 
 /** MapLibre clause for server-authoritative LGU membership; null means ordinary archive view. */

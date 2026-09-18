@@ -14,13 +14,20 @@ describe('EarthquakeFilterStore', () => {
   /** Mid-month, mid-year, and in the evening UTC so a local-time slip would move the date. */
   const now = new Date(Date.UTC(2026, 8, 12, 22, 30));
 
-  it('opens on the era-comparable record rather than the whole archive', () => {
+  it('starts unbounded because event-set activation is an explicit separate choice', () => {
     const filter = store();
 
-    // 27,241 events across 125 years drawn at once read as a smear, and the sparse early record
-    // invites the false conclusion that earthquakes are becoming more frequent.
-    expect(filter.minMagnitude()).toBe(6);
+    expect(filter.minMagnitude()).toBeNull();
     expect(filter.fromMs()).toBeNull();
+    expect(filter.isFiltered()).toBe(false);
+  });
+
+  it('retains M6.0 as the explicit historically comparable preset', () => {
+    const filter = store();
+
+    filter.setMagnitudeRange(EarthquakeFilterStore.historicalComparableMagnitudeFloor, null);
+
+    expect(filter.minMagnitude()).toBe(6);
     expect(filter.isFiltered()).toBe(true);
   });
 
